@@ -1,0 +1,19 @@
+{
+	"name": "Pink-Palace-Gardening-Backend",
+	"version": "0.0.1",
+	"private": true,
+	"engines": {
+		"node": ">=6.5",
+		"npm": ">=3.10"
+	},
+	"description": "Garden Calendar for tracking Pink Palace gardening schedule",
+	"main": "index.js",
+	"author": "Kyle Combeer",
+	"license": "MIT",
+	"dependencies": {
+		"body-parser": "^1.17.2",
+		"express": "^4.15.3",
+		"mongodb": "^2.2.29",
+		"react": "^15.6.1"
+	}
+}
