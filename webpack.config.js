@@ -5,14 +5,12 @@
 	Company: Pink Palace
 */
 
-/*
-	Node Modules
-*/
+
+// Node Modules
 var path = require('path');
 
-/*
-	NPM Modules
-*/
+
+// NPM Modules
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 
 /*
@@ -41,6 +39,13 @@ module.exports = {
 				options: {
 					presets: ['es2015', 'react']
 				}
+			},
+			{
+				test: /\.css$/,
+				exclude: [
+					path.resolve(__dirname, 'server')
+				],
+				loader: 'style-loader!css-loader'
 			}
 		]
 	},
