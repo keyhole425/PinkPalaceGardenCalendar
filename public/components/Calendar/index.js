@@ -11,6 +11,10 @@ import moment from 'moment';
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../../main.css';
+import events from '../events';
+
+console.log('events');
+console.log(events);
 
 // Setup the localizer by providing the moment (or globalize) Object
 // to the correct localizer.
@@ -20,7 +24,13 @@ export default class Calendar extends React.Component {
 	render() {
 		return (
 			<div>
-				<BigCalendar events={[]} startAccessor='startDate' endAccessor='endDate'/>
+				<BigCalendar 
+					events={events} 
+					startAccessor='start' 
+					endAccessor='end' 
+					selectable={true} 
+					popup={true}
+					onSelectEvent={(event) => alert(event.title)}/>
 			</div>
 		);
 	}
