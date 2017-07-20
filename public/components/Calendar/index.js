@@ -11,26 +11,39 @@ import moment from 'moment';
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../../main.css';
-import events from '../events';
-
-console.log('events');
-console.log(events);
+import Events from '../events';
 
 // Setup the localizer by providing the moment (or globalize) Object
 // to the correct localizer.
-BigCalendar.momentLocalizer(moment); // or globalizeLocalizer
 
 export default class Calendar extends React.Component {
+	constructor(props, context) {
+		super(props, context);
+
+		this.context = context;
+		this.state = {
+			events: Events
+		};
+
+		BigCalendar.setLocalizer(BigCalendar.momentLocalizer(moment));
+		this.handleSelectSlot = this.handleSelectSlot.bind(this);
+	}
+
+	handleSelectSlot(slotInfo) {
+		alert(slotInfo.start + ' ' + slotInfo.end);
+	}
+
 	render() {
 		return (
 			<div>
 				<BigCalendar 
-					events={events} 
+					events={ this.state.events } 
 					startAccessor='start' 
 					endAccessor='end' 
-					selectable={true} 
-					popup={true}
-					onSelectEvent={(event) => alert(event.title)}/>
+					selectable={ true } 
+					popup={ true }
+					onSelectEvent={ (event) => alert(event.title) }
+					onSelectSlot={ this.handleSelectSlot }/>
 			</div>
 		);
 	}
