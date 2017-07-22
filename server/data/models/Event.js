@@ -1,5 +1,5 @@
 /*
-	Events.js - Mongoose model for Events objects
+	Event.js - Mongoose model for Event objects
 
 	Author: Kyle Combeer (2017)
 	Company: Virtual Ark
@@ -15,10 +15,11 @@ var eventSchema = mongoose.Schema({
 	completed: Boolean,
 	plantid: String,
 	summary: String,
-	owner: {
+	creator: {
 		id: String,
 		name: String
-	}
+	},
+	type: String
 });
 
 module.exports = mongoose.model('Event', eventSchema);
