@@ -21,3 +21,7 @@ var db = mongoose.connection;
 db.once('open', () => {
 	logger.info('Connected to MongoDB database');
 });
+
+db.on('error', (err) => {
+	logger.error('Error connecting to the database, did you forget to turn it on?');
+});
