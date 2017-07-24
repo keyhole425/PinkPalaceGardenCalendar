@@ -23,7 +23,7 @@ var HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
 });
 
 /*
-	Our Webpack Configuration File
+	Our Webpack Configuration
 */
 module.exports = {
 	entry: path.resolve(__dirname, 'public','client.js'),
@@ -37,8 +37,15 @@ module.exports = {
 				], 
 				loader: 'babel-loader',
 				options: {
-					presets: ['es2015', 'react']
+					presets: ['es2015', 'react', 'stage-1']
 				}
+			},
+			{
+				test: /\.less$/,
+				exclude: [
+					path.resolve(__dirname, 'server')
+				],
+				loader: 'style-loader!css-loader!less-loader'
 			},
 			{
 				test: /\.css$/,
