@@ -8,6 +8,9 @@
 import React from 'react';
 import Calendar from './Calendar';
 
+// Import CSS
+import '../main.css';
+
 export default class App extends React.Component {
 	render() {
 		return (

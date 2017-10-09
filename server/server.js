@@ -4,24 +4,24 @@
 	Author: Kyle Combeer 2017
 	Company: Pink Palace
 */
-//NODE MODULES
-var path = require('path');
+// NODE MODULES
+const path = require('path');
 
-//NPM MODULES
-import express from 'express';
-import bodyParser from 'body-parser';
+// NPM MODULES
+const express = require('express');
+const bodyParser = require('body-parser');
 
-//OUR MODULES
-var logger = require(__dirname + '/utils/logger');
-var mongoserver = require('./db');
-var env = require('./env');
+// OUR MODULES
+const logger = require(__dirname + '/utils/logger');
+const mongoserver = require('./db');
+const env = require('./env');
 
 //TODO - Learn how to set this properly
 //Set node dev or prod env
 process.env.NODE_ENV = env.NODE_ENV;
 
-//APP SETUP
-var server = express();
+// APP SETUP
+const server = express();
 
 //APP CONFIGURATION
 server.use(bodyParser.json({limit: '5mb'})); //allows us to jsonify things

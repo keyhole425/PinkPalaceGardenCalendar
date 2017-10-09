@@ -5,20 +5,25 @@
 	Company: Pink Palace
 */
 
+// NPM MODULES
 import React from 'react';
 import BigCalendar from 'react-big-calendar';
 import moment from 'moment';
 
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import '../../main.css';
-import '../../../node_modules/elemental/less/elemental.less'
-import Events from '../events';
+// REACT COMPONENT
 import { Modal, ModalHeader, ModalBody } from 'elemental';
+import Event from '../Event/index';
+
+// NPM MODULE CSS
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import '../../../node_modules/elemental/less/elemental.less'
+
+// STATIC EVENTS
+import Events from '../events';
 
 
 // Setup the localizer by providing the moment (or globalize) Object
 // to the correct localizer.
-
 export default class Calendar extends React.Component {
 	constructor(props, context) {
 		super(props, context);
@@ -33,20 +38,35 @@ export default class Calendar extends React.Component {
 	}
 
 	openNewEventModal = (slotInfo) => {
-		console.log('New event modal show');
+		console.log('New event modal show', slotInfo);
 
 		this.setState({
 			modalOpen: true
 		});
 	}
 
-	cancelNewEventModal = () => {
+	toggleEventModal = () => {
 		this.setState({
-			modalOpen: false
+			modalOpen: !this.state.modalOpen
 		});
 	}
 
+	/*
+		
+	*/
+	renderEventPopup = () => {
+		console.log('event popup render: ', this.state.modalOpen);
+
+		return (
+			<div>
+				<Event initialOpen={ this.state.modalOpen } toggleEventModal={ this.toggleEventModal } />
+			</div>
+		);
+	}
+
 	render() {
+		let eventPopup = this.renderEventPopup();
+
 		return (
 			<div>
 				<BigCalendar 
@@ -57,10 +77,7 @@ export default class Calendar extends React.Component {
 					popup={ true }
 					onSelectEvent= { (event) => alert(event.title) }
 					onSelectSlot= { this.openNewEventModal } />
-				<Modal isOpen={ this.state.modalOpen } onCancel={ this.cancelNewEventModal }>
-					<ModalHeader text="Nice header bro" />
-					<ModalBody> FUCK YA CUNNO </ModalBody>
-				</Modal>	
+				{ eventPopup }
 			</div>
 		);
 	}

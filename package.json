@@ -42,6 +42,6 @@
 		"start": "yarn build && yarn bundle && yarn serve",
 		"build": "babel public -d build --presets=es2015,stage-2,react",
 		"bundle": "webpack",
-		"serve": "nodemon index.js --exec babel-node --presets react,es2015"
+		"serve": "node index.js"
 	}
 }
