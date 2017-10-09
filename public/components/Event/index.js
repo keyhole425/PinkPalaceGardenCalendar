@@ -30,7 +30,7 @@ export default class Event extends React.Component {
 		return (
 			<div>
 				<Modal isOpen={ this.props.initialOpen } onCancel={ this.props.toggleEventModal }>
-					<ModalHeader text="Nice header bro" showCloseButton onClose={ this.props.toggleEventModal } />
+					<ModalHeader text={ this.props.eventType } showCloseButton onClose={ this.props.toggleEventModal } />
 					<ModalBody> FUCK YA CUNNO </ModalBody>
 				</Modal>
 			</div>

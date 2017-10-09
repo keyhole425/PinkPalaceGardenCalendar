@@ -31,17 +31,28 @@ export default class Calendar extends React.Component {
 		this.context = context;
 		this.state = {
 			events: Events,
-			modalOpen: false
+			modalOpen: false,
+			eventType: ''
 		};
 
 		BigCalendar.setLocalizer(BigCalendar.momentLocalizer(moment));
 	}
 
 	openNewEventModal = (slotInfo) => {
-		console.log('New event modal show', slotInfo);
+		console.log('New event modal show ', slotInfo);
 
 		this.setState({
-			modalOpen: true
+			modalOpen: true,
+			eventType: 'new'
+		});
+	}
+
+	openEditEventModal = (slotInfo) => {
+		console.log('Edit event modal show ', slotInfo);
+
+		this.setState({
+			modalOpen: true,
+			eventType: 'edit'
 		});
 	}
 
@@ -59,7 +70,9 @@ export default class Calendar extends React.Component {
 
 		return (
 			<div>
-				<Event initialOpen={ this.state.modalOpen } toggleEventModal={ this.toggleEventModal } />
+				<Event initialOpen={ this.state.modalOpen }
+				toggleEventModal={ this.toggleEventModal }
+				eventType={ this.state.eventType } />
 			</div>
 		);
 	}
@@ -75,8 +88,8 @@ export default class Calendar extends React.Component {
 					endAccessor='end' 
 					selectable={ true } 
 					popup={ true }
-					onSelectEvent= { (event) => alert(event.title) }
-					onSelectSlot= { this.openNewEventModal } />
+					onSelectEvent={ this.openEditEventModal }
+					onSelectSlot={ this.openNewEventModal } />
 				{ eventPopup }
 			</div>
 		);
