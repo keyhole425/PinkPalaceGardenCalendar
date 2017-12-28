@@ -68,4 +68,4 @@ export default [
 		'start':new Date(2017, 9, 13, 7, 0, 0),
 		'end': new Date(2017, 9, 13, 9, 30, 0)
 	}
-]
+];

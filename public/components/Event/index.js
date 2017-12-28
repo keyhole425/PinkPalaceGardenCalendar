@@ -12,7 +12,7 @@ import React from 'react';
 import { Modal, ModalHeader, ModalBody } from 'elemental';
 
 //Elemental CSS
-import '../../../node_modules/elemental/less/elemental.less'
+import '../../../node_modules/elemental/less/elemental.less';
 
 export default class Event extends React.Component {
 	constructor(props, context) {

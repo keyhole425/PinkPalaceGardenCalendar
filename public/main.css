@@ -2,6 +2,13 @@
 	main.css - Main CSS file for Pink Palace
 */
 
+.main-container {
+	margin: 0 auto;
+	max-width: 90%;
+	width: 90%;
+}
+
 .rbc-calendar { 
-  height: 800px; 
+	height: 800px;
+	max-height: 800px;
 }

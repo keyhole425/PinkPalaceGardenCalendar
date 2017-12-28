@@ -13,7 +13,7 @@ var plantSchema = mongoose.Schema({
 	feeding: String,
 	flowering: String,
 	fruiting: Boolean,
-	location: String
+	location: String,
 	name: String,
 	pruning: String,
 	schedule: [{

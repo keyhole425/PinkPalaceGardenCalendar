@@ -25,6 +25,7 @@ import Events from '../events';
 // Setup the localizer by providing the moment (or globalize) Object
 // to the correct localizer.
 export default class Calendar extends React.Component {
+	
 	constructor(props, context) {
 		super(props, context);
 

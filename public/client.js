@@ -5,15 +5,15 @@
 	Company: Pink Palace
 */
 
-import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
 import App from './components/app.js';
+import React from 'react';
 import ReactDOM from 'react-dom';
+import { BrowserRouter } from 'react-router-dom'
 
 if (typeof window !== 'undefined') {
 	ReactDOM.render((
 		<BrowserRouter>
-			<div>
+			<div className='main-container'>
 				<App />
 			</div>
 		</BrowserRouter>
