@@ -11,6 +11,7 @@
 	"author": "Kyle Combeer",
 	"license": "MIT",
 	"dependencies": {
+		"babel": "^6.23.0",
 		"babel-cli": "^6.24.1",
 		"babel-core": "^6.25.0",
 		"babel-loader": "^7.1.1",
@@ -31,15 +32,17 @@
 		"babel-preset-stage-1": "^6.24.1",
 		"babel-preset-stage-2": "^6.24.1",
 		"css-loader": "^0.28.4",
+		"eslint": "^4.11.0",
+		"eslint-plugin-react": "^7.5.1",
 		"less-loader": "^4.0.5",
 		"style-loader": "^0.18.2",
 		"webpack": "^3.0.0"
 	},
 	"scripts": {
-		"lint:js": "eslint public tools",
+		"lint:js": "eslint server/data server/utils server/server.js",
 		"lint:css": "stylelint \"public/**/*.{css,less,scss,sss}\"",
-		"lint": "yarn run lint:js && yarn run lint:css",
-		"start": "yarn build && yarn bundle && yarn serve",
+		"lint": "yarn run lint:js",
+		"start": "yarn lint && yarn build && yarn bundle && yarn serve",
 		"build": "babel public -d build --presets=es2015,stage-2,react",
 		"bundle": "webpack",
 		"serve": "node index.js"
