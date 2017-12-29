@@ -2,13 +2,35 @@
 	main.css - Main CSS file for Pink Palace
 */
 
+/* 
+	Styles Reset for browsers 
+*/
+html, body, p {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	outline: 0;
+	font-size: 100%;
+	vertical-align: baseline;
+	background: transparent;
+}
+
 .main-container {
 	margin: 0 auto;
-	max-width: 90%;
-	width: 90%;
+	max-width: 95%;
+	width: 95%;
+	margin-bottom: 5%;
 }
 
 .rbc-calendar { 
 	height: 800px;
 	max-height: 800px;
+}
+
+.header {
+	height: 80px;
+	padding-left: 2.5%;
+	padding-top: 20px;
+	margin-bottom: 10px;
+	background-color: #fec6d3;
 }

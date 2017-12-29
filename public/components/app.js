@@ -6,6 +6,7 @@
 */
 
 import React from 'react';
+import Header from './Common/Header';
 import Calendar from './Calendar';
 
 // Import CSS
@@ -15,8 +16,10 @@ export default class App extends React.Component {
 	render() {
 		return (
 			<div>
-				<p> Hello Pink Palace! </p>
-				<Calendar />
+				<Header />
+				<div className='main-container'>
+					<Calendar />
+				</div>
 			</div>
 		);
 	}

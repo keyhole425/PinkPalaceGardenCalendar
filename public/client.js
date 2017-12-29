@@ -13,9 +13,7 @@ import { BrowserRouter } from 'react-router-dom'
 if (typeof window !== 'undefined') {
 	ReactDOM.render((
 		<BrowserRouter>
-			<div className='main-container'>
-				<App />
-			</div>
+			<App />
 		</BrowserRouter>
 	), document.getElementById('root'));
 }
