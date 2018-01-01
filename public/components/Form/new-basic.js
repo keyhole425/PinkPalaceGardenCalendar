@@ -8,6 +8,11 @@
 // NPM MODULES
 import React from 'react';
 
+// OUR MODULES
+import fetchUtility from '../Common/fetchUtility';
+
+let newFetch = new fetchUtility();
+
 export default class NewBasicForm extends React.Component {
 	constructor(props, context) {
 		super(props, context);
@@ -17,8 +22,8 @@ export default class NewBasicForm extends React.Component {
 			plant: '',
 			age: '',
 			ageUnit: '',
-			position: '',
-			light: ''
+			position: 'Outdoor',
+			light: 'FullSun'
 		};
 	}
 
@@ -34,11 +39,6 @@ export default class NewBasicForm extends React.Component {
 		Handles text input changes to make React the source of truth
 	*/
 	handleChange = (event) => {
-		console.log('Received event target', event.target);
-		console.log('Received event target value', event.target.value);
-		console.log('Received event target name', event.target.name);
-		console.log('Received event target value length', event.target.value.length);
-
 		// If receiving value for age field...
 		if (event.target.name === 'age' && event.target.value.length > 0) {
 			console.log('In the age field');
@@ -67,6 +67,8 @@ export default class NewBasicForm extends React.Component {
 		// Prevent default form submit behaviour
 		event.preventDefault();
 
+		console.log('Submitted Content For POST...');
+
 		if (!this.state.plant) {
 			// No plant selected, this is required
 			this.setState({
@@ -90,6 +92,24 @@ export default class NewBasicForm extends React.Component {
 		console.log('Age Unit.', this.state.ageUnit);
 		console.log('Position.', this.state.position);
 		console.log('Light.', this.state.light);
+
+		// Set up our body
+		let bodyContents = {
+			plant: this.state.plant,
+			age: this.state.age,
+			ageUnit: this.state.ageUnit,
+			position: this.state.position,
+			light: this.state.light
+		};
+
+		// Make a POST call
+		newFetch.postToUrl('http://localhost:3050/api/v1/Event', bodyContents, null)
+		.then( () => {
+			console.log('Returned to Event Form with Success');
+		})
+		.catch( (err) => {
+			console.log('Returned to Event Form with Error', err);
+		});
 	}
 
 	render() {
@@ -116,17 +136,17 @@ export default class NewBasicForm extends React.Component {
 						Position:
 					</label>
 					<select className='single' name='position' value={ this.state.position } onChange={ this.handleChange }>
-						<option value='Indoor'>Indoor</option>
 						<option value='Outdoor'>Outdoor</option>
+						<option value='Indoor'>Indoor</option>
 					</select>
 					<label>
 						Light:
 					</label>
 					<select className='single' name='light' value={ this.state.light } onChange={ this.handleChange }>
+						<option value='FullSun'>Full Sun</option>
 						<option value='FullShelter'>Full Shelter</option>
 						<option value='Filtered'>Filtered</option>
 						<option value='PartialShade'>Partial Shade</option>
-						<option value='FullSun'>Full Sun</option>
 					</select>
 					<input type='submit' value='Submit' />
 				</form>
