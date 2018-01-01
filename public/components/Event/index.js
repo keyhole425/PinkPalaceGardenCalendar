@@ -1,5 +1,5 @@
 /*
-	Event/index.js - Event file for Pink Palace Calendar View
+	Event/index.js - Event Component for Pink Palace Calendar View
 
 	Author: Kyle Combeer 2017
 	Company: Pink Palace
@@ -7,18 +7,19 @@
 
 // NPM MODULES
 import React from 'react';
+import Moment from 'moment';
 
 // REACT MODULES
-import { Modal, ModalHeader, ModalBody } from 'elemental';
+import { Modal, ModalBody, ModalHeader } from 'elemental';
+import NewBasicForm from '../Form/new-basic';
 
-//Elemental CSS
+// Elemental CSS
 import '../../../node_modules/elemental/less/elemental.less';
 
 export default class Event extends React.Component {
+	// Construct Object
 	constructor(props, context) {
 		super(props, context);
-
-		console.log('Creating event component');
 
 		this.context = context;
 		this.state = {
@@ -26,12 +27,24 @@ export default class Event extends React.Component {
 		};
 	}
 
+	componentWillReceiveProps(props) {
+		console.log('Received new props:', props);
+	}
+
 	render() {
+		let headerText = '';
+
+		if (this.props.eventType === 'new') {
+			headerText = 'New Plant Cycle Starting ' + Moment(this.props.slotDetails.start).format('DD/MM/YYYY');
+		}
+
 		return (
 			<div>
 				<Modal isOpen={ this.props.initialOpen } onCancel={ this.props.toggleEventModal }>
-					<ModalHeader text={ this.props.eventType } showCloseButton onClose={ this.props.toggleEventModal } />
-					<ModalBody> FUCK YA CUNNO </ModalBody>
+					<ModalHeader text={ headerText } showCloseButton onClose={ this.props.toggleEventModal } />
+					<ModalBody>
+						<NewBasicForm slotDetails={ this.props.slotDetails } eventType={ this.props.eventType }/>
+					</ModalBody>
 				</Modal>
 			</div>
 		);

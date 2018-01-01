@@ -24,11 +24,3 @@ export default class App extends React.Component {
 		);
 	}
 }
-
-/*
-	Order of elements
-	- Header
-	- Calendar
-	- Action Bar
-	- 
-*/
