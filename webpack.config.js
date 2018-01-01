@@ -6,17 +6,17 @@
 */
 
 
-// Node Modules
-var path = require('path');
+// NODE MODULES
+const path = require('path');
 
 
-// NPM Modules
-var HtmlWebpackPlugin = require('html-webpack-plugin');
+// NPM MODULES
+let HtmlWebpackPlugin = require('html-webpack-plugin');
 
 /*
 	Our configuration for the HTML plugin
 */
-var HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
+let HtmlWebpackPluginConfig = new HtmlWebpackPlugin({
 	template: path.resolve(__dirname, 'public/index.html'),
 	filename: 'index.html',
 	inject: 'body'
@@ -63,5 +63,5 @@ module.exports = {
 	plugins: [
 		HtmlWebpackPluginConfig //Bundles scripts into our initial html file
 	],
-	target: "web"
+	target: 'web'
 }
