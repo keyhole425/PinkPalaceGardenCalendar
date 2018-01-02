@@ -103,7 +103,7 @@ export default class NewBasicForm extends React.Component {
 		};
 
 		// Make a POST call
-		newFetch.postToUrl('http://localhost:3050/api/v1/Event', bodyContents, null)
+		newFetch.postToUrl('http://localhost:3050/api/v1/event', bodyContents, null)
 		.then( () => {
 			console.log('Returned to Event Form with Success');
 		})
