@@ -9,41 +9,37 @@
 export default class fetchUtility {
 	constructor() {}
 	
-	postToUrl = (url, body, options) => {
-		return new Promise( (fulfill, reject) => {
-			// Set options for 
-			let postOptions = (options) ? options : {};
-			let bodyContents = (body) ? JSON.stringify(body) : '';
-			let formData = new FormData();
+	postToUrl = (url, body) => {
+		return new Promise( async (fulfill, reject) => {
+			if (!url || typeof url === 'undefined') {
+				return reject('url should be a real value');
+			}
+			else if (!body || typeof body === 'undefined') {
+				return reject('Body should be a real value');
+			}
 
-			//Set our static options
-			postOptions.method = 'post';
-			postOptions.headers = {
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+			// Attach headers to POST
+			let headers = new Headers();
+			headers.set('Content-Type', 'application/json');
+				
+			// Set options for fetch call
+			let options = {
+				method: 'POST',
+				body: JSON.stringify(body),
+				headers: headers
 			};
 
-			// Add our body data in
-			postOptions.body = bodyContents;
-
-			// Make our call to the URL with our options now
-			fetch(url, postOptions)
-			.then( (response) => {
-				// Got a response...
-				if (response.status === 201) {
-					// Positive response
-					console.log('Got a good response');
-					return fulfill();
-				}
-
-				// Bad response
-				console.log('Got a bad response');
-				return reject();
-			})
-			.catch( (err) => {
-				// Error during fetch call
+			try {
+				// Make our call to the URL with our options now
+				let response = await fetch(url, options);
+				
+				return fulfill(response);
+				
+			}
+			catch(err) {
 				console.error('Got an error response', err);
 				return reject(err);
-			});
+			}
 		});
 	}
 }

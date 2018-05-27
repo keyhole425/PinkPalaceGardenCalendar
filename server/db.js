@@ -14,6 +14,7 @@ const logger = require('./utils/logger');
 // MONGODB DEV URL
 const url = 'mongodb://localhost:27017/ppa'; //Prototype database in db server
 
+mongoose.Promise = global.Promise;
 mongoose.connect(url, { useMongoClient: true });
 
 let db = mongoose.connection;

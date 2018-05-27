@@ -12,7 +12,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 // OUR MODULES
-const logger = require(__dirname + '/utils/logger');
+const logger = require('./utils/logger');
 const mongoserver = require('./db');
 const env = require('../env');
 
@@ -51,6 +51,16 @@ server.use('/', apiRoutes);
 */
 server.get('*', (req, res) => {
 	res.sendFile(path.resolve(__dirname, '../build/index.html'));
+});
+
+// ERROR MIDDLEWARE
+server.use( (err, req, res, next) => {
+	logger.error('Error HTTP Status Code:', err.httpStatusCode);
+	logger.error(err);
+
+	return res.status(err.httpStatusCode).json({
+		'error': err.message
+	});
 });
 
 module.exports = server;

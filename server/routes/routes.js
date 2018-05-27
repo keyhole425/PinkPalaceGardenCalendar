@@ -8,7 +8,7 @@
 const express = require('express');
 
 // OUR ROUTES
-const eventRoutes = require('./Event');
+const growRoutes = require('./Grow');
 
 // Create Express Router
 const router = express();
@@ -16,7 +16,7 @@ const router = express();
 const routerVersion = '/api/v1';
 
 // Add Routes
-router.use(routerVersion + '/event', eventRoutes);
+router.use(routerVersion + '/grow', growRoutes);
 
 //Export Routes
 module.exports = router;

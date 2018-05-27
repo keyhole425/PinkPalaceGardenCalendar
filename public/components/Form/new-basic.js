@@ -1,5 +1,5 @@
 /*
-	Form/new-basic.js - Basic form for entering a new plant event
+	Form/new-basic.js - Basic form for entering a new plant grow
 
 	Author: Kyle Combeer 2017
 	Company: Pink Palace
@@ -22,15 +22,8 @@ export default class NewBasicForm extends React.Component {
 			plant: '',
 			age: '',
 			plantAmount: '',
+			created: false // Has event been created yet?
 		};
-	}
-
-	/* 
-		Method used to send data to server
-		TODO - Move to EVENT index.js
-	*/
-	startPlantCalendar = () => {
-
 	}
 
 	/*
@@ -91,13 +84,21 @@ export default class NewBasicForm extends React.Component {
 		let bodyContents = {
 			plant: this.state.plant,
 			age: this.state.age,
-			plantAmount: this.state.plantAmount
+			plantAmount: this.state.plantAmount,
+			startDate: this.props.slotDetails.start
 		};
 
 		// Make a POST call
-		newFetch.postToUrl('http://localhost:3050/api/v1/event', bodyContents, null)
-		.then( () => {
-			console.log('Returned to Event Form with Success');
+		newFetch.postToUrl('http://localhost:3050/api/v1/grow', bodyContents, null)
+		.then( (response) => {
+			console.log('Returned to Event Form with Response status:', response.status);
+
+			// If item was created successfully...
+			if (response.status === 201) {
+				this.setState({
+					created: true
+				});
+			}
 		})
 		.catch( (err) => {
 			console.log('Returned to Event Form with Error', err);
@@ -105,28 +106,37 @@ export default class NewBasicForm extends React.Component {
 	}
 
 	render() {
-		return (
-			<div>
-				<form className='form' onSubmit={ this.handleSubmit }>
-					<label>
-						Plant:
-					</label>
-					<input type='text' name='plant' value={ this.state.plant } onChange={ this.handleChange } />
-					<div className='age-field'>	
+		if (this.state.created) {
+			return (
+				<div>
+					Successfully Created A New Grow.
+				</div>
+			);
+		}
+		else {
+			return (
+				<div>
+					<form className='form' onSubmit={ this.handleSubmit }>
 						<label>
-							Age:
+							Plant:
 						</label>
-						<input type='text' name='age' value={ this.state.age } onChange={ this.handleChange } /> Days
-					</div>
-					<div>
-						<label>
-							Number of Plants: 
-						</label>
-						<input type='text' name='plantAmount' value={ this.state.plantAmount } onChange={ this.handleChange } />
-					</div>
-					<input type='submit' value='Submit' />
-				</form>
-			</div>
-		);
+						<input type='text' name='plant' value={ this.state.plant } onChange={ this.handleChange } />
+						<div className='age-field'>	
+							<label>
+								Age:
+							</label>
+							<input type='text' name='age' value={ this.state.age } onChange={ this.handleChange } /> Days
+						</div>
+						<div>
+							<label>
+								Number of Plants: 
+							</label>
+							<input type='text' name='plantAmount' value={ this.state.plantAmount } onChange={ this.handleChange } />
+						</div>
+						<input type='submit' value='Submit' />
+					</form>
+				</div>
+			);
+		}
 	}
 }
