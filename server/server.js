@@ -14,7 +14,7 @@ const bodyParser = require('body-parser');
 // OUR MODULES
 const logger = require(__dirname + '/utils/logger');
 const mongoserver = require('./db');
-const env = require('./env');
+const env = require('../env');
 
 // OUR ROUTE
 const apiRoutes = require('./routes/routes');
@@ -34,11 +34,11 @@ server.use(bodyParser.json({limit: '5mb'})); //allows us to jsonify things
 server.use(bodyParser.urlencoded({limit: '5mb', extended: true})); //allows us to access the body of POST/PUT + other requests
 server.use('/', express.static(path.resolve(__dirname, '../build')));
 
-logger.info('App will serve static content from ' + path.resolve(__dirname, '../build'));
+logger.info(`App will serve static content from ${path.resolve(__dirname, '../build')}`);
 
 // SET MIDDLEWARE
 server.use('*', (req, res, next) => {
-	logger.info('Got request from', req.ip, ' looking for', req.path, ' or', req.route);
+	logger.info(`Got request from ${req.ip} looking for ${req.path} using ${req.method}`);
 	next();
 });
 

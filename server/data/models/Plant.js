@@ -5,27 +5,13 @@
 	Company: Virtual Ark
 */
 
-var mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 //Event objects
-var plantSchema = mongoose.Schema({
-	description: String,
-	feeding: String,
-	flowering: String,
-	fruiting: Boolean,
-	location: String,
-	name: String,
-	pruning: String,
-	schedule: [{
-		title: String,
-		summary: String,
-		start: Date,
-		end: Date,
-		completed: Boolean,
-		plantid: String
-	}],
-	scientific_name: String,
-	seedling: String
+const plantSchema = mongoose.Schema({
+	name: String, // Regular plant name
+	scientific_name: String, // Scientific plant name
+	age_in_days: Number // Age of plant in days
 });
 
 module.exports = mongoose.model('Plant', plantSchema);

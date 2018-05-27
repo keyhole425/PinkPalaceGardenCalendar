@@ -9,17 +9,8 @@ var mongoose = require('mongoose');
 
 //Event objects
 var userSchema = mongoose.Schema({
-	events: [{
-		id: String, 
-		title: String
-	}],
-	notifications: Boolean,
-	password: String,
-	plants: [{
-		id: String,
-		name: String
-	}],
-	username: String
+	username: String, // Username of user
+	password: String // Password of user
 });
 
 module.exports = mongoose.model('User', userSchema);

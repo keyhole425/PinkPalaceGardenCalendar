@@ -28,14 +28,15 @@ export default class Event extends React.Component {
 	}
 
 	componentWillReceiveProps(props) {
-		console.log('Received new props:', props);
+		console.log('Event received new props:', props);
 	}
 
 	render() {
 		let headerText = '';
 
+		// Set the header text of the event popping up in the calendar
 		if (this.props.eventType === 'new') {
-			headerText = 'New Plant Cycle Starting ' + Moment(this.props.slotDetails.start).format('DD/MM/YYYY');
+			headerText = 'New Grow Starting ' + Moment(this.props.slotDetails.start).format('DD/MM/YYYY');
 		}
 
 		return (

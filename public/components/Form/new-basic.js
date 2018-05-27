@@ -21,9 +21,7 @@ export default class NewBasicForm extends React.Component {
 		this.state = {
 			plant: '',
 			age: '',
-			ageUnit: '',
-			position: 'Outdoor',
-			light: 'FullSun'
+			plantAmount: '',
 		};
 	}
 
@@ -40,8 +38,8 @@ export default class NewBasicForm extends React.Component {
 	*/
 	handleChange = (event) => {
 		// If receiving value for age field...
-		if (event.target.name === 'age' && event.target.value.length > 0) {
-			console.log('In the age field');
+		if ((event.target.name === 'age' || event.target.name === 'plantAmount') && event.target.value.length > 0) {
+			console.log('In the age/plantAmt field');
 			console.log('Is nan?', isNaN(event.target.value));
 
 			// Reject if not a number
@@ -67,39 +65,33 @@ export default class NewBasicForm extends React.Component {
 		// Prevent default form submit behaviour
 		event.preventDefault();
 
-		console.log('Submitted Content For POST...');
+		console.log('Submitting Content For POST...');
 
 		if (!this.state.plant) {
 			// No plant selected, this is required
 			this.setState({
-				inputError: 'Please Select A Plant.'
+				inputError: 'Please Input A Plant.'
 			});
 			return;
 		}
 		else if (!this.state.age) {
 			this.setState({
-				inputError: 'Please Select An Age'
+				inputError: 'Please Input An Age'
 			});
 			return;
 		}
-
-		// Check all values are valid THEN
-		// Fire off new event to server to save values THEN
-		// Respond with success or failure
-		console.log('Have values to submit to form.');
-		console.log('Plant.', this.state.plant);
-		console.log('Age.', this.state.age);
-		console.log('Age Unit.', this.state.ageUnit);
-		console.log('Position.', this.state.position);
-		console.log('Light.', this.state.light);
+		else if (this.state.plantAmount === -1) {
+			this.setState({
+				inputError: 'Please Input An Amount Of Plants'
+			});
+			return;
+		}
 
 		// Set up our body
 		let bodyContents = {
 			plant: this.state.plant,
 			age: this.state.age,
-			ageUnit: this.state.ageUnit,
-			position: this.state.position,
-			light: this.state.light
+			plantAmount: this.state.plantAmount
 		};
 
 		// Make a POST call
@@ -124,30 +116,14 @@ export default class NewBasicForm extends React.Component {
 						<label>
 							Age:
 						</label>
-						<input type='text' name='age' value={ this.state.age } onChange={ this.handleChange } />
-						<select name='ageUnit' value={ this.state.ageUnit } onChange={ this.handleChange }>
-							<option value='Days'>Days</option>
-							<option value='Weeks'>Weeks</option>
-							<option value='Months'>Months</option>
-							<option value='Years'>Years</option>
-						</select>
+						<input type='text' name='age' value={ this.state.age } onChange={ this.handleChange } /> Days
 					</div>
-					<label>
-						Position:
-					</label>
-					<select className='single' name='position' value={ this.state.position } onChange={ this.handleChange }>
-						<option value='Outdoor'>Outdoor</option>
-						<option value='Indoor'>Indoor</option>
-					</select>
-					<label>
-						Light:
-					</label>
-					<select className='single' name='light' value={ this.state.light } onChange={ this.handleChange }>
-						<option value='FullSun'>Full Sun</option>
-						<option value='FullShelter'>Full Shelter</option>
-						<option value='Filtered'>Filtered</option>
-						<option value='PartialShade'>Partial Shade</option>
-					</select>
+					<div>
+						<label>
+							Number of Plants: 
+						</label>
+						<input type='text' name='plantAmount' value={ this.state.plantAmount } onChange={ this.handleChange } />
+					</div>
 					<input type='submit' value='Submit' />
 				</form>
 			</div>
