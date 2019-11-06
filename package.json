@@ -20,7 +20,7 @@
 		"html-webpack-plugin": "^2.29.0",
 		"less": "^2.7.3",
 		"moment": "^2.20.1",
-		"mongoose": "^4.11.3",
+		"mongoose": "^5.7.5",
 		"react": "^15.6.1",
 		"react-addons-css-transition-group": "^15.6.0",
 		"react-big-calendar": "^0.14.4",
