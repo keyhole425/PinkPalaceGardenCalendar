@@ -30,6 +30,15 @@ describe('what figgy says when Claude will not answer', () => {
 		expect(said).toContain('ops/.env');
 	});
 
+	it('explains an organisation key that names no workspace', () => {
+		const raw =
+			'400 {"type":"error","error":{"type":"invalid_request_error","message":"This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use."}}';
+		const said = describeError(apiError(400, raw));
+		expect(said).toContain('ANTHROPIC_WORKSPACE_ID');
+		expect(said).toContain('workspace-scoped key');
+		expect(said).not.toContain('{');
+	});
+
 	it('suggests waiting when rate limited', () => {
 		const said = describeError(
 			new Anthropic.RateLimitError(429, {}, 'slow down', new Headers()),
@@ -38,7 +47,9 @@ describe('what figgy says when Claude will not answer', () => {
 	});
 
 	it('treats an outage as their problem, not yours', () => {
-		expect(describeError(apiError(529, 'overloaded'))).toContain('their end'.replace('their', 'its'));
+		expect(describeError(apiError(529, 'overloaded'))).toContain(
+			'their end'.replace('their', 'its'),
+		);
 	});
 
 	it('pulls the sentence out of any other error body', () => {

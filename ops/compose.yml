@@ -18,6 +18,8 @@ services:
       # Not set here. Put it in ops/.env, which is gitignored:
       #   ANTHROPIC_API_KEY=sk-ant-...
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Only needed for an organisation-level key; see ops/.env.
+      ANTHROPIC_WORKSPACE_ID: ${ANTHROPIC_WORKSPACE_ID:-}
       TZ: Australia/Adelaide
     volumes:
       # A named volume, not a bind mount. SQLite on a macOS bind mount has

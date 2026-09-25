@@ -22,7 +22,15 @@ export function anthropic(): Anthropic {
 			'No ANTHROPIC_API_KEY, so figgy cannot look anything up. Add one and restart.',
 		);
 	}
-	client ??= new Anthropic();
+
+	// An organisation-level key is not tied to a workspace and has to say which
+	// one to bill; a workspace-scoped key already knows. Supporting both means
+	// whichever kind of key you happen to have made will work.
+	const workspace = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+
+	client ??= new Anthropic(
+		workspace ? { defaultHeaders: { 'anthropic-workspace-id': workspace } } : {},
+	);
 	return client;
 }
 
@@ -51,6 +59,9 @@ export function describeError(error: unknown): string {
 		// about where to go: the key is fine, the account is simply empty.
 		if (/credit balance is too low/i.test(error.message)) {
 			return 'The key works, but the Anthropic account has no credit. Add some under Plans & Billing at console.anthropic.com, then try again.';
+		}
+		if (/not scoped to a workspace/i.test(error.message)) {
+			return 'That key belongs to the organisation rather than a workspace, so Claude does not know which workspace to bill. Either set ANTHROPIC_WORKSPACE_ID in ops/.env, or make a workspace-scoped key in the Anthropic console.';
 		}
 		if (error.status >= 500) {
 			return 'Claude had a problem at its end. Worth trying again shortly.';
