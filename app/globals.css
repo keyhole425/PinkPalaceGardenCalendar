@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/*
+ * figgy's palette.
+ *
+ * The pinks are carried over from the original Pink Palace app. The three
+ * action colours are the ones the orchard spreadsheet used - green to feed,
+ * orange to cut, pink to pick - so the grid reads the same way it always has.
+ */
+@theme {
+	--color-palace-50: #fff5f8;
+	--color-palace-100: #ffe8ee;
+	--color-palace-200: #fec6d3;
+	--color-palace-300: #ffb7c7;
+	--color-palace-500: #e8829b;
+	--color-palace-700: #a84b63;
+
+	--color-fertilise: #35a63a;
+	--color-fertilise-soft: #d8f0d9;
+	--color-prune: #ef7c1b;
+	--color-prune-soft: #fde4cd;
+	--color-harvest: #f78fb8;
+	--color-harvest-soft: #fde2ed;
+
+	--color-ink: #333333;
+	--color-ink-soft: #777777;
+	--color-rule: #d6d6d6;
+	--color-rule-strong: #c2c2c2;
+	--color-paper: #ffffff;
+	--color-paper-sunk: #f7f5f5;
+
+	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+	/* The grid is wide; let it scroll horizontally without bouncing the page. */
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	background: var(--color-paper);
+	color: var(--color-ink);
+	font-family: var(--font-sans);
+}
