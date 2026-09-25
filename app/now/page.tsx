@@ -1,10 +1,14 @@
 import Link from 'next/link';
+import { LogSentence } from '@/components/ai/LogSentence';
 import { Section } from '@/components/tasks/Section';
 import { ActionChip, TaskCard } from '@/components/tasks/TaskCard';
+import { WeatherStrip } from '@/components/weather/WeatherStrip';
+import { aiAvailable } from '@/lib/ai/client';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { sowableThisMonth } from '@/lib/db/queries/beds';
 import { getDashboard } from '@/lib/db/queries/garden';
 import { monthName } from '@/lib/schedule/months';
+import { getForecast, signalsFrom } from '@/lib/weather';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +16,7 @@ export default async function NowPage() {
 	const when = today();
 	const board = getDashboard(when);
 	const toSow = sowableThisMonth(when);
+	const forecast = await getForecast(when);
 
 	return (
 		<div className="space-y-6">
@@ -21,6 +26,19 @@ export default async function NowPage() {
 					{formatLong(when)} &middot; {monthName(monthOf(when))} in the garden
 				</p>
 			</header>
+
+			<section className="space-y-2">
+				<h2 className="font-semibold text-lg">Write something down</h2>
+				<LogSentence available={aiAvailable()} today={when} />
+			</section>
+
+			{forecast && (
+				<WeatherStrip
+					forecast={forecast}
+					signals={signalsFrom(forecast)}
+					today={when}
+				/>
+			)}
 
 			<Section
 				title="Overdue"

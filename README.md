@@ -69,6 +69,36 @@ The vegetable sowing months in the seed are a general temperate-Australia
 guide, not this garden. They are meant to be corrected, by hand or by asking
 Claude to research the crop properly.
 
+## Looking after the garden with words
+
+`/now` takes a sentence — "netted the cherries and picked about 2 kg off the
+lemon" — and proposes records from it, matched against the plants figgy
+actually has. **It proposes; you confirm.** Nothing is written until you have
+looked at the sheet, and anything Claude could not match to a specific plant
+cannot be committed at all.
+
+`/ask` answers questions about your own records. Every tool it can reach is
+read-only and takes enumerated arguments, so a confused question gives a
+confused answer and nothing worse.
+
+Both need `ANTHROPIC_API_KEY`. Without it they explain themselves.
+
+## Weather
+
+`/now` shows the week from [Open-Meteo](https://open-meteo.com) — free, no key
+— and says the two things worth saying: frost coming, a scorcher on Thursday,
+enough rain that watering is a waste. Those judgements are made here rather
+than asked of a model: frost is frost, and an answer that works offline and
+costs nothing beats a clever one that needs an API key.
+
+## Running it at home
+
+See [ops/DEPLOY.md](ops/DEPLOY.md). Short version:
+
+```bash
+npm run docker:up
+```
+
 ## Layout
 
 ```

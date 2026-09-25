@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="figgy">
+  <title>figgy</title>
+  <rect width="512" height="512" rx="96" fill="#fec6d3"/>
+  <path d="M256 132c-14 0-26 6-34 16-10-6-22-8-34-5-28 7-46 34-42 62 2 16 10 30 22 39-8 22-8 47 2 70 18 42 56 70 86 70s68-28 86-70c10-23 10-48 2-70 12-9 20-23 22-39 4-28-14-55-42-62-12-3-24-1-34 5-8-10-20-16-34-16z" fill="#a84b63"/>
+  <path d="M256 196v170" stroke="#fff5f8" stroke-width="14" stroke-linecap="round"/>
+  <path d="M256 268l44-34M256 312l-44-34" stroke="#fff5f8" stroke-width="14" stroke-linecap="round"/>
+</svg>

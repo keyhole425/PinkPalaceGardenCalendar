@@ -16,7 +16,12 @@
 		"db:migrate": "tsx db/migrate.ts",
 		"db:seed": "tsx db/seed/run.ts",
 		"db:studio": "drizzle-kit studio",
-		"db:reset": "rm -f data/garden.db data/garden.db-wal data/garden.db-shm && npm run db:migrate && npm run db:seed"
+		"db:reset": "rm -f data/garden.db data/garden.db-wal data/garden.db-shm && npm run db:migrate && npm run db:seed",
+		"backup": "tsx scripts/backup.ts",
+		"docker:up": "docker compose -f ops/compose.yml up -d --build",
+		"docker:logs": "docker compose -f ops/compose.yml logs -f figgy",
+		"docker:down": "docker compose -f ops/compose.yml down",
+		"test:e2e": "playwright test"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.128.0",
@@ -31,6 +36,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
+		"@playwright/test": "^1.63.0",
 		"@tailwindcss/postcss": "^4",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/node": "^26.6.2",

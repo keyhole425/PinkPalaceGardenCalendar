@@ -5,6 +5,8 @@ import './globals.css';
 export const metadata: Metadata = {
 	title: 'figgy',
 	description: 'The Pink Palace garden calendar',
+	appleWebApp: { capable: true, title: 'figgy', statusBarStyle: 'default' },
+	icons: { icon: '/icon.svg', apple: '/icon.svg' },
 };
 
 export const viewport: Viewport = {
@@ -39,6 +41,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 							className="text-ink text-sm hover:text-palace-700"
 						>
 							Places
+						</Link>
+						<Link href="/ask" className="text-ink text-sm hover:text-palace-700">
+							Ask
 						</Link>
 						<Link
 							href="/settings"

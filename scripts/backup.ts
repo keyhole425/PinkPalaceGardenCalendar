@@ -1,0 +1,60 @@
+/**
+ * Nightly backup.
+ *
+ * Uses SQLite's own backup API, never a file copy. In WAL mode the database
+ * file on its own is not a database - the recent writes are in the -wal file -
+ * so `cp garden.db` produces something that looks like a backup and restores
+ * as corruption. The API takes a consistent snapshot of the live database
+ * while it is being written to.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+
+const source =
+	process.env.GARDEN_DB_PATH ?? path.join(process.cwd(), 'data', 'garden.db');
+const dir = process.env.GARDEN_BACKUP_PATH ?? path.join(process.cwd(), 'backups');
+const keep = Number(process.env.GARDEN_BACKUP_KEEP ?? 30);
+
+async function main() {
+	if (!fs.existsSync(source)) {
+		console.error(`figgy backup: no database at ${source}`);
+		process.exit(1);
+	}
+	fs.mkdirSync(dir, { recursive: true });
+
+	const stamp = new Date().toISOString().slice(0, 10);
+	const target = path.join(dir, `garden-${stamp}.db`);
+
+	const db = new Database(source, { readonly: true });
+	await db.backup(target);
+
+	// Record it where the app can see it, so a silently dead backup job shows
+	// up as an ageing date on the settings page rather than as nothing at all.
+	const writable = new Database(source);
+	writable
+		.prepare(
+			'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+		)
+		.run('last_backup_at', new Date().toISOString());
+	writable.close();
+	db.close();
+
+	const snapshots = fs
+		.readdirSync(dir)
+		.filter((name) => /^garden-\d{4}-\d{2}-\d{2}\.db$/.test(name))
+		.sort();
+	for (const old of snapshots.slice(0, Math.max(0, snapshots.length - keep))) {
+		fs.rmSync(path.join(dir, old));
+	}
+
+	const size = fs.statSync(target).size;
+	console.log(
+		`figgy backup: ${target} (${(size / 1024).toFixed(0)} KB), keeping ${Math.min(snapshots.length, keep)}`,
+	);
+}
+
+main().catch((error) => {
+	console.error('figgy backup failed:', error);
+	process.exit(1);
+});

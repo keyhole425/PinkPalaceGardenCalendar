@@ -1,0 +1,58 @@
+# figgy on the home network.
+#
+#   docker compose -f ops/compose.yml up -d --build
+#
+# Then http://pinkpalace.local:3000 from anything on the network, once the
+# Mac's local hostname is set (System Settings -> General -> Sharing).
+
+services:
+  figgy:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    image: figgy:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Not set here. Put it in ops/.env, which is gitignored:
+      #   ANTHROPIC_API_KEY=sk-ant-...
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TZ: Australia/Adelaide
+    volumes:
+      # A named volume, not a bind mount. SQLite on a macOS bind mount has
+      # well-known file-locking trouble; a named volume lives in the Linux VM
+      # where locking behaves.
+      - figgy-data:/data
+      # Backups do go to the Mac, because a backup you cannot see is no use.
+      - ../backups:/backups
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Runs the backup once a day and otherwise sleeps. Same image, same volume.
+  backup:
+    image: figgy:latest
+    depends_on:
+      - figgy
+    restart: unless-stopped
+    environment:
+      GARDEN_DB_PATH: /data/garden.db
+      GARDEN_BACKUP_PATH: /backups
+      TZ: Australia/Adelaide
+    volumes:
+      - figgy-data:/data
+      - ../backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          node_modules/.bin/tsx scripts/backup.ts || echo "figgy: backup failed"
+          sleep 86400
+        done
+
+volumes:
+  figgy-data:
