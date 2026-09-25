@@ -33,7 +33,9 @@ export function createTempGarden(): TempGarden {
 	return {
 		file,
 		cleanup: () => {
-			process.env.GARDEN_DB_PATH = undefined;
+			// Deliberately not unset: vitest.setup.ts points it at a throwaway
+			// file for the whole run, and leaving it pointing there keeps the
+			// real garden out of reach even between tests.
 			fs.rmSync(dir, { recursive: true, force: true });
 		},
 	};

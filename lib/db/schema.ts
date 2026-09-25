@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import {
 	index,
 	integer,
+	real,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -229,6 +230,69 @@ export const careLog = sqliteTable(
 	],
 );
 
+/**
+ * Something Claude worked out, waiting for a human to agree with it.
+ *
+ * Nothing here is part of the schedule. A proposal becomes real only when it
+ * is accepted, and what gets accepted is whatever the person ticked - which
+ * is why the payload is stored whole rather than spread across the care
+ * tables.
+ */
+export const aiProposal = sqliteTable(
+	'ai_proposal',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		kind: text('kind', { enum: ['plant_research'] })
+			.notNull()
+			.default('plant_research'),
+		/** What was asked for, in the person's own words. */
+		query: text('query').notNull(),
+		/** Set when filling gaps in a plant figgy already knows about. */
+		plantTypeId: integer('plant_type_id').references(() => plantType.id, {
+			onDelete: 'cascade',
+		}),
+
+		/** The structured proposal, as JSON. */
+		payload: text('payload'),
+		/** Every page consulted, as JSON. Data, never instructions. */
+		citations: text('citations'),
+		/** The research prose the structured pass was built from. */
+		notes: text('notes'),
+
+		model: text('model').notNull(),
+		status: text('status', {
+			enum: ['running', 'ready', 'accepted', 'rejected', 'failed'],
+		})
+			.notNull()
+			.default('running'),
+		error: text('error'),
+
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		reviewedAt: text('reviewed_at'),
+	},
+	(t) => [index('ai_proposal_status_idx').on(t.status)],
+);
+
+/** What each request to the model cost, so spending is visible rather than felt. */
+export const aiCall = sqliteTable('ai_call', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	proposalId: integer('proposal_id').references(() => aiProposal.id, {
+		onDelete: 'set null',
+	}),
+	purpose: text('purpose').notNull(),
+	model: text('model').notNull(),
+
+	inputTokens: integer('input_tokens').notNull().default(0),
+	outputTokens: integer('output_tokens').notNull().default(0),
+	cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+	cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
+	webSearches: integer('web_searches').notNull().default(0),
+	/** Token cost in US cents. Web search fees are not included. */
+	costCents: real('cost_cents').notNull().default(0),
+
+	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+});
+
 /** Small key/value bag: seed version, last backup time. */
 export const meta = sqliteTable('meta', {
 	key: text('key').primaryKey(),
@@ -240,3 +304,5 @@ export type PlantType = typeof plantType.$inferSelect;
 export type Planting = typeof planting.$inferSelect;
 export type CareRule = typeof careRule.$inferSelect;
 export type CareLog = typeof careLog.$inferSelect;
+export type AiProposal = typeof aiProposal.$inferSelect;
+export type AiCall = typeof aiCall.$inferSelect;

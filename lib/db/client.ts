@@ -30,13 +30,17 @@ export function createDb(file: string) {
 	return drizzle(sqlite, { schema });
 }
 
-// Next.js reloads modules in development; without this the process would open
-// a new connection on every edit.
+// Next.js reloads modules on every edit in development, which would otherwise
+// open a new connection each time. The cache is deliberately limited to
+// development: under test it would outlive the module reset that gives each
+// test its own database, and every test would quietly share the first one.
 const globalForDb = globalThis as unknown as { figgyDb?: Db };
+const cacheConnection = process.env.NODE_ENV === 'development';
 
-export const db = globalForDb.figgyDb ?? createDb(resolveDbPath());
+export const db =
+	(cacheConnection ? globalForDb.figgyDb : undefined) ?? createDb(resolveDbPath());
 
-if (process.env.NODE_ENV !== 'production') {
+if (cacheConnection) {
 	globalForDb.figgyDb = db;
 }
 

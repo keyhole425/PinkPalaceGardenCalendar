@@ -37,6 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 						>
 							Places
 						</Link>
+						<Link
+							href="/settings"
+							className="ml-auto text-ink-soft text-sm hover:text-palace-700"
+						>
+							Settings
+						</Link>
 					</nav>
 				</header>
 				<main className="mx-auto max-w-[1400px] px-4 py-6">{children}</main>

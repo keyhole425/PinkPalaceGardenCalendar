@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AskForm } from '@/components/ai/AskForm';
 import { PlantForm } from '@/components/plants/PlantForm';
 import { PlantingManager } from '@/components/plants/PlantingManager';
 import { ReviewedButton } from '@/components/plants/ReviewedButton';
 import { RuleList } from '@/components/plants/RuleList';
+import { aiAvailable } from '@/lib/ai/client';
 import { monthOf, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import {
@@ -45,12 +47,20 @@ export default async function EditPlantPage({
 			</div>
 
 			{plant.needsReview && (
-				<div className="flex flex-wrap items-center gap-3 rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
-					<span>
-						figgy doesn&rsquo;t have the full picture for this one. Fill in what it
-						needs below, then say it&rsquo;s sorted.
-					</span>
-					<ReviewedButton plantTypeId={plant.id} />
+				<div className="space-y-3 rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
+					<div className="flex flex-wrap items-center gap-3">
+						<span>
+							figgy doesn&rsquo;t have the full picture for this one. Fill in what
+							it needs below, then say it&rsquo;s sorted.
+						</span>
+						<ReviewedButton plantTypeId={plant.id} />
+					</div>
+					<AskForm
+						available={aiAvailable()}
+						plantTypeId={plant.id}
+						defaultQuery={plant.commonName}
+						label="Ask Claude"
+					/>
 				</div>
 			)}
 

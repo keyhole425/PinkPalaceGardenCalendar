@@ -9,5 +9,7 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['lib/**/*.test.ts'],
+		// Must run before any test module is imported: see the file.
+		setupFiles: ['./vitest.setup.ts'],
 	},
 });
