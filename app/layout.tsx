@@ -22,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 						<Link href="/" className="font-semibold text-palace-700 text-lg">
 							figgy
 						</Link>
+						<Link href="/now" className="text-ink text-sm hover:text-palace-700">
+							What&rsquo;s on
+						</Link>
 						<Link href="/grid" className="text-ink text-sm hover:text-palace-700">
 							The year
 						</Link>

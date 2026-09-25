@@ -204,6 +204,13 @@ export const careLog = sqliteTable(
 		 * year it started rather than splitting across two.
 		 */
 		seasonYear: integer('season_year').notNull(),
+		/**
+		 * Which occurrence of the rule this answers: '2026-09' for a monthly
+		 * window, '2026-w8' for a once-a-season one. Null for an ad-hoc entry -
+		 * a bucket of figs picked on a whim answers no particular occurrence,
+		 * and you can record as many of those as you like.
+		 */
+		occurrenceKey: text('occurrence_key'),
 		completedOn: text('completed_on').notNull(),
 		quantityNote: text('quantity_note'),
 		notesMd: text('notes_md'),
@@ -211,13 +218,11 @@ export const careLog = sqliteTable(
 		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 	},
 	(t) => [
-		// One completion per rule per season. Ad-hoc entries (null rule) are
-		// exempt, since SQLite treats NULLs as distinct in a unique index.
-		uniqueIndex('care_log_occurrence_idx').on(
-			t.plantingId,
-			t.careRuleId,
-			t.seasonYear,
-		),
+		// One completion per scheduled occurrence. Ad-hoc entries carry no
+		// occurrence key and are deliberately left out of the constraint.
+		uniqueIndex('care_log_occurrence_idx')
+			.on(t.plantingId, t.careRuleId, t.occurrenceKey)
+			.where(sql`${t.occurrenceKey} is not null`),
 		index('care_log_completed_idx').on(t.completedOn),
 	],
 );

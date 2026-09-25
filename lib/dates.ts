@@ -64,6 +64,13 @@ export function startOfMonth(year: number, month: Month): IsoDate {
 	return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
 }
 
+/** Last day of a month, as a date string. */
+export function endOfMonth(year: number, month: Month): IsoDate {
+	// Day 0 of the next month is the last day of this one.
+	const day = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 /** Australian reading order: 14 March 2026. */
 export function formatLong(date: IsoDate): string {
 	return format(parseISO(date), 'd MMMM yyyy');
