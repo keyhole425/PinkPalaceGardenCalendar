@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { ask } from '@/actions/ask';
+import { Prose } from './Prose';
 
 const SUGGESTIONS = [
 	'What should I sow this weekend?',
@@ -68,7 +69,9 @@ export function AskGarden({ available }: { available: boolean }) {
 			{state?.ok && (
 				<div className="space-y-2 rounded-md border border-palace-300 bg-palace-50 p-3">
 					<p className="font-medium text-sm">{state.question}</p>
-					<div className="whitespace-pre-line text-sm">{state.answer}</div>
+					<div className="text-sm">
+						<Prose text={state.answer} />
+					</div>
 					{state.toolsUsed.length > 0 && (
 						<p className="text-ink-soft text-xs">
 							Read: {state.toolsUsed.join(', ').replaceAll('_', ' ')}

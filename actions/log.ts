@@ -22,7 +22,7 @@ import {
 } from '@/lib/ai/parse-log';
 import { type IsoDate, isIsoDate, today, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
-import { getSchedule } from '@/lib/db/queries/garden';
+import { getSchedule, OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import {
 	CARE_ACTIONS,
 	careLog,
@@ -109,6 +109,17 @@ const commitSchema = z.object({
 /**
  * Does an open job of this kind exist for this plant around this date? If so
  * the entry answers it; a tick, not a second record beside it.
+ *
+ * Two ways it can match, and the second one matters more than it looks.
+ * Inside the window is the easy case. But a window that closed last month with
+ * nothing logged against it is exactly the job you are most likely to be
+ * describing - you are writing it down late because you did it late - so a
+ * recently missed job of the same kind counts too. Without that, "pruned the
+ * mulberry on Tuesday" filed a new record beside the overdue August pruning
+ * and left it sitting there overdue, which is not what anybody meant.
+ *
+ * The lookback is the same ninety days the dashboard uses, so a sentence can
+ * only answer a job the dashboard would still be nagging about.
  */
 function matchOccurrence(
 	plantingId: number,
@@ -120,13 +131,19 @@ function matchOccurrence(
 	);
 	if (!entry) return null;
 
-	const candidate = entry.occurrences.find(
-		(o) =>
-			o.rule.action === action &&
-			o.state !== 'done' &&
-			o.opensOn <= on &&
-			o.closesOn >= on,
+	const open = entry.occurrences.filter(
+		(o) => o.rule.action === action && o.state !== 'done',
 	);
+
+	const inWindow = open.find((o) => o.opensOn <= on && o.closesOn >= on);
+	const recentlyMissed = open
+		.filter(
+			(o) => o.closesOn < on && o.closesOn >= shiftIso(on, -OVERDUE_LOOKBACK_DAYS),
+		)
+		// The most recently closed one: last August's pruning, not the one before.
+		.sort((a, b) => b.closesOn.localeCompare(a.closesOn))[0];
+
+	const candidate = inWindow ?? recentlyMissed;
 	return candidate
 		? {
 				key: candidate.key,
@@ -134,6 +151,12 @@ function matchOccurrence(
 				seasonYear: candidate.seasonYear,
 			}
 		: null;
+}
+
+function shiftIso(date: IsoDate, days: number): IsoDate {
+	const d = new Date(`${date}T00:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + days);
+	return d.toISOString().slice(0, 10);
 }
 
 export async function commitLog(
@@ -162,6 +185,25 @@ export async function commitLog(
 			entry.action,
 			entry.completedOn,
 		);
+
+		// You do not prune the same tree twice in one day, so a second identical
+		// entry is a double submission rather than a second pruning. Picking is
+		// the exception: two kilos this morning and one more this afternoon are
+		// genuinely two pickings, and the whole point of an ad-hoc record.
+		if (entry.action !== 'harvest') {
+			const already = db
+				.select({ id: careLog.id })
+				.from(careLog)
+				.where(
+					and(
+						eq(careLog.plantingId, entry.plantingId),
+						eq(careLog.action, entry.action),
+						eq(careLog.completedOn, entry.completedOn),
+					),
+				)
+				.get();
+			if (already) continue;
+		}
 
 		try {
 			db.insert(careLog)

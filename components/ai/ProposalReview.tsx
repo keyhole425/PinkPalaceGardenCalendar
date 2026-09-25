@@ -12,6 +12,7 @@ import {
 	monthName,
 	monthsInOrder,
 } from '@/lib/schedule/months';
+import { Prose } from './Prose';
 
 const CONFIDENCE_CLASS: Record<string, string> = {
 	high: 'bg-fertilise-soft text-ink',
@@ -116,8 +117,8 @@ export function ProposalReview({
 				<h2 className="font-semibold text-lg">What Claude found</h2>
 				<p className="text-sm">{proposal.suitability}</p>
 				{proposal.notesMd && (
-					<blockquote className="whitespace-pre-line border-palace-300 border-l-4 bg-palace-50 py-2 pl-3 text-sm">
-						{proposal.notesMd}
+					<blockquote className="border-palace-300 border-l-4 bg-palace-50 py-2 pl-3 text-sm">
+						<Prose text={proposal.notesMd} />
 					</blockquote>
 				)}
 			</section>
@@ -300,9 +301,9 @@ export function ProposalReview({
 					))}
 				</ul>
 				{notes && (
-					<pre className="mt-3 whitespace-pre-wrap border-rule border-t pt-3 text-ink-soft text-xs">
-						{notes}
-					</pre>
+					<div className="mt-3 border-rule border-t pt-3 text-ink-soft text-xs">
+						<Prose text={notes} />
+					</div>
 				)}
 			</details>
 		</div>
