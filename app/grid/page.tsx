@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { MonthGrid } from '@/components/grid/MonthGrid';
 import { monthOf, today } from '@/lib/dates';
-import { getGrid } from '@/lib/db/queries/grid';
+import { getGrid, getGridMarks } from '@/lib/db/queries/grid';
 import { type Month, monthName } from '@/lib/schedule/months';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +22,7 @@ export default async function GridPage({
 	const startMonth: Month = start === '1' ? 1 : DEFAULT_START;
 	const currentMonth = monthOf(today());
 	const plants = getGrid();
+	const marks = getGridMarks(today());
 
 	return (
 		<div className="space-y-4">
@@ -30,7 +31,8 @@ export default async function GridPage({
 					<h1 className="font-semibold text-2xl">The year</h1>
 					<p className="text-ink-soft text-sm">
 						Every plant, every month. Cells marked <em>or</em> are alternatives
-						&mdash; do one of them, not all. Today is {monthName(currentMonth)}.
+						&mdash; do one of them, not all. A tick is work recorded in the last
+						year. Today is {monthName(currentMonth)}.
 					</p>
 				</div>
 				<div className="flex items-center gap-1 text-sm">
@@ -48,6 +50,7 @@ export default async function GridPage({
 				plants={plants}
 				startMonth={startMonth}
 				currentMonth={currentMonth}
+				marks={marks}
 			/>
 
 			<p className="text-ink-soft text-xs">

@@ -1,5 +1,11 @@
 import Link from 'next/link';
-import type { GridAction, GridPlant, GridRule } from '@/lib/db/queries/grid';
+import type {
+	CellMark,
+	GridAction,
+	GridPlant,
+	GridRule,
+} from '@/lib/db/queries/grid';
+import { cellKey } from '@/lib/db/queries/grid';
 import {
 	hasMonth,
 	isRunStart,
@@ -30,6 +36,11 @@ const ACTION_CELL: Record<GridAction, string> = {
 	harvest: 'bg-harvest',
 };
 
+/** A full tick when every plant of the type is done, a hollow one otherwise. */
+function tick(mark: CellMark): string {
+	return mark.done >= mark.total ? '\u2713' : `\u2713${mark.done}/${mark.total}`;
+}
+
 type CellState = {
 	filled: boolean;
 	/** True when this month is one of several alternatives, only one needed. */
@@ -56,10 +67,13 @@ export function MonthGrid({
 	plants,
 	startMonth,
 	currentMonth,
+	marks,
 }: {
 	plants: GridPlant[];
 	startMonth: Month;
 	currentMonth: Month;
+	/** Completions from the last twelve months, keyed by plant, action, month. */
+	marks: Map<string, CellMark>;
 }) {
 	const months = monthsInOrder(startMonth);
 
@@ -138,11 +152,12 @@ export function MonthGrid({
 								{months.map((m) => {
 									const state = cellState(row.rules, m);
 									const isNow = m === currentMonth;
+									const mark = marks.get(cellKey(plant.id, row.action, m));
 									return (
 										<td
 											key={m}
 											className={`h-9 border-rule border-r border-b p-0.5 ${
-												isNow && !state.filled ? 'bg-palace-50' : ''
+												isNow && !state.filled && !mark ? 'bg-palace-50' : ''
 											}`}
 										>
 											{state.filled && (
@@ -153,7 +168,17 @@ export function MonthGrid({
 														`${ACTION_LABEL[row.action]} - ${monthName(m)}`
 													}
 												>
-													{state.alternative ? 'or' : ''}
+													{mark ? tick(mark) : state.alternative ? 'or' : ''}
+												</div>
+											)}
+											{!state.filled && mark && (
+												// Work done outside the written window still counts,
+												// and is worth seeing where it actually happened.
+												<div
+													className="flex h-full items-center justify-center rounded-sm border border-rule text-ink-soft text-[10px]"
+													title={`${ACTION_LABEL[row.action]} recorded in ${monthName(m)}, outside the usual window`}
+												>
+													{tick(mark)}
 												</div>
 											)}
 											<span className="sr-only">

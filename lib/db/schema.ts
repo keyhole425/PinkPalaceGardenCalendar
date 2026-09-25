@@ -130,6 +130,8 @@ export const CARE_ACTIONS = [
 	'net',
 	'spray',
 	'water',
+	/** Not a job - an observation logged against a plant. */
+	'note',
 ] as const;
 export type CareAction = (typeof CARE_ACTIONS)[number];
 

@@ -164,6 +164,39 @@ export function getSchedule(when: IsoDate = todayInGarden()): GardenSchedule {
 	return { today: when, plantings, tasks, harvesting };
 }
 
+/**
+ * Finds one occurrence by the identity a page hands back.
+ *
+ * Completions are written against this rather than against whatever a form
+ * says: the engine decides which action and which season a job belongs to, so
+ * a stale page cannot invent a job that does not exist.
+ */
+export function findOccurrence(
+	plantingId: number,
+	ruleId: number,
+	occurrenceKey: string,
+	when: IsoDate = todayInGarden(),
+): Task | null {
+	const { plantings } = getSchedule(when);
+	const entry = plantings.find((p) => p.context.plantingId === plantingId);
+	if (!entry) return null;
+
+	const occurrence = entry.occurrences.find(
+		(o) => o.rule.ruleIds.includes(ruleId) && o.key === occurrenceKey,
+	);
+	return occurrence ? { occurrence, context: entry.context } : null;
+}
+
+/** The harvest seasons open for one plant right now. */
+export function openSeasonsFor(
+	plantingId: number,
+	when: IsoDate = todayInGarden(),
+): HarvestSeason[] {
+	return getSchedule(when).harvesting.filter(
+		(h) => h.context.plantingId === plantingId,
+	);
+}
+
 /** How far back a missed job keeps nagging before it becomes history. */
 export const OVERDUE_LOOKBACK_DAYS = 90;
 /** How far back the "recently done" list reaches. */

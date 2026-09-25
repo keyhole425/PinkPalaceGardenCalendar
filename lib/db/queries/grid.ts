@@ -5,9 +5,13 @@
  * the whole orchard is a few dozen rows.
  */
 import { asc, eq, isNull } from 'drizzle-orm';
+import type { IsoDate } from '@/lib/dates';
+import { monthOf, today as todayInGarden } from '@/lib/dates';
+import type { Month } from '@/lib/schedule/months';
 import { db } from '../client';
 import type { Cadence, CareAction } from '../schema';
 import { careRule, plantType } from '../schema';
+import { getSchedule } from './garden';
 
 /** The order the spreadsheet used, and the order the grid shows. */
 export const GRID_ACTIONS = ['fertilise', 'prune', 'harvest'] as const;
@@ -109,3 +113,64 @@ export function countPlantsNeedingReview(): number {
 }
 
 export type { CareAction };
+
+/**
+ * Which cells to tick.
+ *
+ * The grid is a view of plant *types*, but work is done to individual plants -
+ * there are two cherries, and pruning one of them is not pruning both. A cell
+ * is only fully ticked when every plant of that type has been done; do one of
+ * two and it shows as partial.
+ *
+ * The tick lands on the month the work actually happened, which is not always
+ * the month it was due: pruning in September something that was due in August
+ * should read as September.
+ */
+export type CellMark = { done: number; total: number };
+
+export function getGridMarks(
+	when: IsoDate = todayInGarden(),
+): Map<string, CellMark> {
+	const { plantings } = getSchedule(when);
+	const marks = new Map<string, CellMark>();
+
+	// Only the last twelve months count, so the grid shows this year round,
+	// not every tick since the garden was planted.
+	const floor = shiftIso(when, -365);
+
+	const totals = new Map<string, number>();
+	for (const p of plantings) {
+		for (const rule of p.rules) {
+			const key = `${p.context.plantTypeId}:${rule.action}`;
+			totals.set(key, (totals.get(key) ?? 0) + 1);
+		}
+	}
+
+	for (const p of plantings) {
+		for (const occurrence of p.occurrences) {
+			if (occurrence.state !== 'done' || !occurrence.completedOn) continue;
+			if (occurrence.completedOn < floor) continue;
+
+			const month = monthOf(occurrence.completedOn);
+			const cell = `${p.context.plantTypeId}:${occurrence.rule.action}:${month}`;
+			const existing = marks.get(cell);
+			marks.set(cell, {
+				done: (existing?.done ?? 0) + 1,
+				total:
+					totals.get(`${p.context.plantTypeId}:${occurrence.rule.action}`) ?? 1,
+			});
+		}
+	}
+
+	return marks;
+}
+
+export function cellKey(plantTypeId: number, action: string, month: Month): string {
+	return `${plantTypeId}:${action}:${month}`;
+}
+
+function shiftIso(date: IsoDate, days: number): IsoDate {
+	const d = new Date(`${date}T00:00:00Z`);
+	d.setUTCDate(d.getUTCDate() + days);
+	return d.toISOString().slice(0, 10);
+}

@@ -3,6 +3,7 @@ import { daysBetween, formatLong, type IsoDate, monthOf } from '@/lib/dates';
 import type { Task } from '@/lib/db/queries/garden';
 import type { CareAction } from '@/lib/db/schema';
 import { maskRuns, monthAbbr } from '@/lib/schedule/months';
+import { DoneForm, UndoButton } from './DoneForm';
 
 export const ACTION_LABEL: Record<string, string> = {
 	fertilise: 'Fertilise',
@@ -73,7 +74,16 @@ function ruleSummary(monthMask: number): string {
 		.join(', ');
 }
 
-export function TaskCard({ task, today }: { task: Task; today: IsoDate }) {
+export function TaskCard({
+	task,
+	today,
+	actionable = true,
+}: {
+	task: Task;
+	today: IsoDate;
+	/** Off where a card is history rather than a to-do. */
+	actionable?: boolean;
+}) {
 	const { occurrence, context } = task;
 	const alternatives = occurrence.rule.ruleIds.length > 1;
 
@@ -132,6 +142,18 @@ export function TaskCard({ task, today }: { task: Task; today: IsoDate }) {
 					<p className="mt-1 text-ink-soft text-xs">{occurrence.rule.note}</p>
 				)}
 			</div>
+
+			{actionable && occurrence.state !== 'done' && (
+				<DoneForm
+					plantingId={context.plantingId}
+					ruleId={occurrence.rule.id}
+					occurrenceKey={occurrence.key}
+					today={today}
+				/>
+			)}
+			{occurrence.state === 'done' && occurrence.logId !== null && (
+				<UndoButton logId={occurrence.logId} slug={context.plantSlug} />
+			)}
 		</li>
 	);
 }

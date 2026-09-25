@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { HarvestForm } from '@/components/plants/HarvestForm';
 import { RuleStrip } from '@/components/plants/RuleStrip';
+import { DoneForm, UndoButton } from '@/components/tasks/DoneForm';
 import { ACTION_LABEL, ActionChip } from '@/components/tasks/TaskCard';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
@@ -172,6 +174,22 @@ export default async function PlantPage({
 										>
 											{shown.label}
 										</span>
+										{o.state === 'done' && o.logId !== null ? (
+											<UndoButton logId={o.logId} slug={plant.slug} />
+										) : (
+											o.state !== 'future' && (
+												<DoneForm
+													plantingId={p.plantingId}
+													ruleId={o.rule.id}
+													occurrenceKey={o.key}
+													today={when}
+													label={
+														shown.label === 'no record' ? 'record it' : 'Mark done'
+													}
+													quiet={shown.label === 'no record'}
+												/>
+											)
+										)}
 									</li>
 								);
 							})}
@@ -182,6 +200,58 @@ export default async function PlantPage({
 								</li>
 							)}
 						</ul>
+					</div>
+
+					{p.openSeasons.map((season) => (
+						<HarvestForm
+							key={season.rule.id}
+							plantingId={p.plantingId}
+							ruleId={season.rule.id}
+							today={when}
+							closesOn={formatLong(season.closesOn)}
+						/>
+					))}
+
+					<div>
+						<h3 className="mb-1 font-medium text-ink-soft text-sm">History</h3>
+						{p.history.length === 0 ? (
+							<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+								Nothing written down yet.
+							</p>
+						) : (
+							<ol className="divide-y divide-rule border border-rule">
+								{p.history.map((entry) => (
+									<li
+										key={entry.id}
+										className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm"
+									>
+										<span className="w-24 shrink-0 font-medium">
+											{ACTION_LABEL[entry.action] ?? entry.action}
+										</span>
+										<span className="text-ink-soft">
+											{formatLong(entry.completedOn)}
+										</span>
+										{entry.quantityNote && (
+											<span className="rounded-full bg-harvest-soft px-2 py-0.5 text-xs">
+												{entry.quantityNote}
+											</span>
+										)}
+										{entry.notesMd && (
+											<span className="w-full text-ink-soft text-xs">
+												{entry.notesMd}
+											</span>
+										)}
+										<span className="ml-auto">
+											<UndoButton
+												logId={entry.id}
+												slug={plant.slug}
+												label="Remove"
+											/>
+										</span>
+									</li>
+								))}
+							</ol>
+						)}
 					</div>
 				</section>
 			))}

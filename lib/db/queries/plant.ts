@@ -1,11 +1,21 @@
 /** Everything one plant's page needs. */
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { today as todayInGarden } from '@/lib/dates';
 import type { EffectiveRule, Occurrence } from '@/lib/schedule/types';
 import { db } from '../client';
-import { plantType } from '../schema';
+import { careLog, plantType } from '../schema';
+import type { HarvestSeason } from './garden';
 import { getSchedule } from './garden';
+
+export type HistoryEntry = {
+	id: number;
+	action: string;
+	completedOn: string;
+	occurrenceKey: string | null;
+	quantityNote: string | null;
+	notesMd: string | null;
+};
 
 export type PlantPlanting = {
 	plantingId: number;
@@ -14,6 +24,10 @@ export type PlantPlanting = {
 	/** Every rule, harvest seasons included - those produce no occurrences. */
 	rules: EffectiveRule[];
 	occurrences: Occurrence[];
+	/** Harvest windows open right now, which can be logged against freely. */
+	openSeasons: HarvestSeason[];
+	/** Everything ever written down about this plant, newest first. */
+	history: HistoryEntry[];
 };
 
 export type PlantDetail = {
@@ -51,6 +65,10 @@ export function getPlant(
 			occurrences: [...p.occurrences].sort((a, b) =>
 				a.opensOn.localeCompare(b.opensOn),
 			),
+			openSeasons: schedule.harvesting.filter(
+				(h) => h.context.plantingId === p.context.plantingId,
+			),
+			history: getHistory(p.context.plantingId),
 		}))
 		.sort((a, b) => a.label.localeCompare(b.label));
 
@@ -76,4 +94,21 @@ export function listPlantSlugs(): string[] {
 		.orderBy(asc(plantType.id))
 		.all()
 		.map((r) => r.slug);
+}
+
+/** Everything written down against one plant, newest first. */
+export function getHistory(plantingId: number): HistoryEntry[] {
+	return db
+		.select({
+			id: careLog.id,
+			action: careLog.action,
+			completedOn: careLog.completedOn,
+			occurrenceKey: careLog.occurrenceKey,
+			quantityNote: careLog.quantityNote,
+			notesMd: careLog.notesMd,
+		})
+		.from(careLog)
+		.where(eq(careLog.plantingId, plantingId))
+		.orderBy(desc(careLog.completedOn), desc(careLog.id))
+		.all();
 }

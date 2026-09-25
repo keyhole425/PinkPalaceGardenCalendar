@@ -110,11 +110,12 @@ export default async function NowPage() {
 			)}
 
 			<p className="text-ink-soft text-xs">
-				Ticking jobs off arrives in the next round. For now this is a read of{' '}
+				Done today is one tap; open <em>another day, or a note</em> to back-date it
+				or say how it went. Everything also shows on{' '}
 				<Link href="/grid" className="underline">
 					the year
-				</Link>{' '}
-				against today&rsquo;s date.
+				</Link>
+				.
 			</p>
 		</div>
 	);
