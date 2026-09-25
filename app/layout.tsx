@@ -28,6 +28,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 						<Link href="/grid" className="text-ink text-sm hover:text-palace-700">
 							The year
 						</Link>
+						<Link href="/plants" className="text-ink text-sm hover:text-palace-700">
+							Plants
+						</Link>
+						<Link
+							href="/environments"
+							className="text-ink text-sm hover:text-palace-700"
+						>
+							Places
+						</Link>
 					</nav>
 				</header>
 				<main className="mx-auto max-w-[1400px] px-4 py-6">{children}</main>
