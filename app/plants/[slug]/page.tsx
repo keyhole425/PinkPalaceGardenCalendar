@@ -116,6 +116,50 @@ export default async function PlantPage({
 				</p>
 			)}
 
+			{plant.plantings.length === 0 && plant.templateRules.length > 0 && (
+				<section className="space-y-3">
+					<h2 className="font-semibold text-lg">What it needs</h2>
+					<p className="text-ink-soft text-sm">
+						None of this is in the ground yet, so there is nothing to do about it.
+						Sow some in{' '}
+						<Link href="/beds" className="underline">
+							a bed
+						</Link>{' '}
+						and it joins the schedule.
+					</p>
+					<div className="space-y-2">
+						{plant.templateRules.map((rule) => (
+							<div
+								key={rule.ruleIds.join(',')}
+								className="flex flex-wrap items-center gap-2"
+							>
+								<span className="w-24 shrink-0">
+									<ActionChip action={rule.action} />
+								</span>
+								<RuleStrip
+									rule={{
+										id: rule.ruleIds[0],
+										ruleIds: rule.ruleIds,
+										action: rule.action,
+										monthMask: rule.monthMask,
+										sourceMask: rule.monthMask,
+										cadence: rule.cadence,
+										altGroup: null,
+										note: rule.note,
+										shifted: false,
+										isOverride: false,
+									}}
+									currentMonth={currentMonth}
+								/>
+								{rule.note && (
+									<span className="text-ink-soft text-sm">{rule.note}</span>
+								)}
+							</div>
+						))}
+					</div>
+				</section>
+			)}
+
 			{plant.plantings.map((p) => (
 				<section key={p.plantingId} className="space-y-3">
 					<h2 className="font-semibold text-lg">

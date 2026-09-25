@@ -277,7 +277,10 @@ describe('rejecting a proposal', () => {
 	it('writes nothing to the schedule', async () => {
 		const mods = await freshModules();
 		mods.seedGarden(mods.db);
-		const before = mods.db.select().from(mods.schema.careRule).all().length;
+		const before = {
+			rules: mods.db.select().from(mods.schema.careRule).all().length,
+			plants: mods.db.select().from(mods.schema.plantType).all().length,
+		};
 
 		const id = mods.proposals.startProposal('Kaffir lime');
 		mods.proposals.finishProposal(id, {
@@ -290,8 +293,12 @@ describe('rejecting a proposal', () => {
 			await mods.research.rejectProposal(null, form({ proposalId: String(id) })),
 		).toEqual({ ok: true });
 
-		expect(mods.db.select().from(mods.schema.careRule).all()).toHaveLength(before);
-		expect(mods.db.select().from(mods.schema.plantType).all()).toHaveLength(11);
+		expect(mods.db.select().from(mods.schema.careRule).all()).toHaveLength(
+			before.rules,
+		);
+		expect(mods.db.select().from(mods.schema.plantType).all()).toHaveLength(
+			before.plants,
+		);
 		expect(mods.proposals.getProposal(id)?.status).toBe('rejected');
 	});
 });

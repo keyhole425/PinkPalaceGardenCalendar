@@ -49,6 +49,26 @@ bugs; the timezone is consulted in exactly one place, `lib/dates.ts`.
 `FIGGY_TODAY=2026-08-15 npm run dev` pins "today", for looking at the schedule
 from another month.
 
+## Beds and the hothouse
+
+Plants live in **growing environments**: the orchard, outdoor beds, the
+hothouse. An environment carries a climate profile, and the one that matters
+most is `windowShiftMonths` — how far ahead of the open garden it runs. The
+hothouse is `-1`, so any window that does not name the hothouse is shifted a
+month earlier there. The same tomato is sowable in July inside and August out,
+without being entered twice.
+
+A rule scoped to an environment kind wins outright and is not shifted: it
+already means what it says.
+
+`/now` also says what **could** go in this month. That works from the crops
+figgy knows and the places open to them, rather than from plantings — it
+cannot tell you to sow beans by looking at beans you have not sown.
+
+The vegetable sowing months in the seed are a general temperate-Australia
+guide, not this garden. They are meant to be corrected, by hand or by asking
+Claude to research the crop properly.
+
 ## Layout
 
 ```

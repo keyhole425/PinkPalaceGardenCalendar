@@ -12,12 +12,18 @@ import { and, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
 import { careRule, environment, meta, planting, plantType } from '@/lib/db/schema';
 import { maskFromMonths } from '@/lib/schedule/months';
-import { environments, plantTypes, SEED_SOURCE, SEED_VERSION } from './orchard';
+import {
+	environments as orchardEnvironments,
+	plantTypes as orchardPlantTypes,
+	SEED_SOURCE,
+	SEED_VERSION,
+} from './orchard';
 import {
 	type SeedPlantType,
 	seedEnvironmentSchema,
 	seedPlantTypeSchema,
 } from './schema';
+import { vegEnvironments, vegPlantTypes } from './veg';
 
 export type SeedReport = {
 	version: string;
@@ -27,6 +33,9 @@ export type SeedReport = {
 	rules: number;
 	leftAlone: string[];
 };
+
+const environments = [...orchardEnvironments, ...vegEnvironments];
+const plantTypes = [...orchardPlantTypes, ...vegPlantTypes];
 
 function seedEnvironments(db: Db) {
 	let created = 0;
@@ -46,6 +55,10 @@ function seedEnvironments(db: Db) {
 					sortOrder: env.sortOrder,
 					frostFree: env.frostFree,
 					windowShiftMonths: env.windowShiftMonths,
+					widthCm: env.widthCm,
+					lengthCm: env.lengthCm,
+					gridCols: env.gridCols,
+					gridRows: env.gridRows,
 					notes: env.notes,
 				})
 				.where(eq(environment.id, existing.id))
@@ -190,8 +203,11 @@ export function seedGarden(db: Db): SeedReport {
 			family: pt.family,
 			notesMd: pt.notesMd,
 			needsReview: pt.needsReview,
+			daysToMaturityMin: pt.daysToMaturityMin,
+			daysToMaturityMax: pt.daysToMaturityMax,
+			spacingCm: pt.spacingCm,
 			source: 'seed' as const,
-			sourceRef: SEED_SOURCE,
+			sourceRef: pt.category === 'fruit_tree' ? SEED_SOURCE : 'Starter set',
 		};
 
 		const existing = db

@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		<html lang="en-AU">
 			<body className="min-h-dvh">
 				<header className="border-palace-300 border-b bg-palace-200">
-					<nav className="mx-auto flex max-w-[1400px] items-center gap-4 px-4 py-2">
+					<nav className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
 						<Link href="/" className="font-semibold text-palace-700 text-lg">
 							figgy
 						</Link>
@@ -27,6 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 						</Link>
 						<Link href="/grid" className="text-ink text-sm hover:text-palace-700">
 							The year
+						</Link>
+						<Link href="/beds" className="text-ink text-sm hover:text-palace-700">
+							Beds
 						</Link>
 						<Link href="/plants" className="text-ink text-sm hover:text-palace-700">
 							Plants

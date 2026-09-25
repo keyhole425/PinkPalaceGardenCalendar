@@ -31,6 +31,12 @@ export const environment = sqliteTable('environment', {
 
 	widthCm: integer('width_cm'),
 	lengthCm: integer('length_cm'),
+	/**
+	 * How the plan view divides this place up. A bed is a grid of spots you
+	 * put things in; the orchard has no grid and is just a list of trees.
+	 */
+	gridCols: integer('grid_cols'),
+	gridRows: integer('grid_rows'),
 
 	/** Never frosts: the hothouse, and anything else fully protected. */
 	frostFree: integer('frost_free', { mode: 'boolean' }).notNull().default(false),

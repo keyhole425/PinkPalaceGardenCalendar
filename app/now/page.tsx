@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Section } from '@/components/tasks/Section';
 import { ActionChip, TaskCard } from '@/components/tasks/TaskCard';
 import { formatLong, monthOf, today } from '@/lib/dates';
+import { sowableThisMonth } from '@/lib/db/queries/beds';
 import { getDashboard } from '@/lib/db/queries/garden';
 import { monthName } from '@/lib/schedule/months';
 
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function NowPage() {
 	const when = today();
 	const board = getDashboard(when);
+	const toSow = sowableThisMonth(when);
 
 	return (
 		<div className="space-y-6">
@@ -77,6 +79,46 @@ export default async function NowPage() {
 								<span className="text-ink-soft text-xs">
 									until {formatLong(season.closesOn)}
 								</span>
+							</li>
+						))}
+					</ul>
+				)}
+			</section>
+
+			<section className="space-y-2">
+				<h2 className="flex items-baseline gap-2 font-semibold text-lg">
+					Could go in now
+					<span className="font-normal text-ink-soft text-sm">{toSow.length}</span>
+				</h2>
+				{toSow.length === 0 ? (
+					<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+						Nothing wants sowing this month.
+					</p>
+				) : (
+					<ul className="flex flex-wrap gap-2">
+						{toSow.map((crop) => (
+							<li
+								key={crop.plantTypeId}
+								className="flex flex-wrap items-center gap-2 rounded-md border border-fertilise/40 bg-fertilise-soft px-3 py-2"
+							>
+								<ActionChip action="sow" />
+								<Link
+									href={`/plants/${crop.slug}`}
+									className="font-medium hover:text-palace-700"
+								>
+									{crop.commonName}
+								</Link>
+								<span className="text-ink-soft text-xs">
+									{crop.places.map((p) => p.name).join(', ')}
+								</span>
+								{crop.places.some((p) => p.shifted) && (
+									<span
+										className="rounded-full bg-palace-100 px-2 py-0.5 text-palace-700 text-xs"
+										title="Brought forward because of where it would be growing"
+									>
+										early inside
+									</span>
+								)}
 							</li>
 						))}
 					</ul>

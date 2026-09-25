@@ -43,17 +43,25 @@ describe('seeding', () => {
 		const { db, seedGarden, schema } = await freshModules();
 
 		const first = seedGarden(db);
-		expect(first.plantTypes).toBe(11);
-		expect(first.plantings).toBe(13);
-		expect(first.rules).toBe(36);
+		expect(first.plantTypes).toBeGreaterThan(0);
+		expect(first.plantings).toBeGreaterThan(0);
+		expect(first.rules).toBeGreaterThan(0);
+
+		const after = {
+			rules: db.select().from(schema.careRule).all().length,
+			plantings: db.select().from(schema.planting).all().length,
+			plants: db.select().from(schema.plantType).all().length,
+		};
 
 		const second = seedGarden(db);
 		expect(second.plantTypes).toBe(0);
 		expect(second.plantings).toBe(0);
 
-		// The count is what matters: re-seeding must not double anything up.
-		expect(db.select().from(schema.careRule).all()).toHaveLength(36);
-		expect(db.select().from(schema.planting).all()).toHaveLength(13);
+		// Counts against the first run, not against a number written here, so
+		// the test keeps working as the seed grows.
+		expect(db.select().from(schema.careRule).all()).toHaveLength(after.rules);
+		expect(db.select().from(schema.planting).all()).toHaveLength(after.plantings);
+		expect(db.select().from(schema.plantType).all()).toHaveLength(after.plants);
 	});
 
 	it('leaves an edited rule alone, and does not put its own back', async () => {

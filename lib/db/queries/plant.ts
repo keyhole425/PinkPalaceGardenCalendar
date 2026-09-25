@@ -42,6 +42,11 @@ export type PlantDetail = {
 	needsReview: boolean;
 	sourceRef: string | null;
 	plantings: PlantPlanting[];
+	/**
+	 * The plant's own rules, shown when nothing of it is in the ground - a crop
+	 * waiting for its season still has a schedule worth reading.
+	 */
+	templateRules: ReturnType<typeof getEditableRules>;
 };
 
 export function getPlant(
@@ -84,6 +89,7 @@ export function getPlant(
 		needsReview: row.needsReview,
 		sourceRef: row.sourceRef,
 		plantings,
+		templateRules: getEditableRules(row.id),
 	};
 }
 

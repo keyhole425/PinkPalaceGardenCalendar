@@ -9,9 +9,9 @@
  * Where the spreadsheet marked cells "OR", the months appear under `anyOf`:
  * those windows are alternatives, and doing any one of them is enough.
  */
-import type { SeedEnvironment, SeedPlantType } from './schema';
+import type { SeedEnvironmentInput, SeedPlantTypeInput } from './schema';
 
-export const environments: SeedEnvironment[] = [
+export const environments: SeedEnvironmentInput[] = [
 	{
 		slug: 'orchard',
 		kind: 'orchard',
@@ -23,7 +23,7 @@ export const environments: SeedEnvironment[] = [
 	},
 ];
 
-export const plantTypes: SeedPlantType[] = [
+export const plantTypes: SeedPlantTypeInput[] = [
 	{
 		slug: 'lemon',
 		commonName: 'Lemon',
@@ -249,5 +249,5 @@ export const plantTypes: SeedPlantType[] = [
 ];
 
 /** Bumped whenever this file changes; shown in /settings. */
-export const SEED_VERSION = '2026-09-25.1';
+export const SEED_VERSION = '2026-09-25.2';
 export const SEED_SOURCE = 'ORCHARD SCHEDULE.numbers';
