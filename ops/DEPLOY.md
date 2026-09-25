@@ -2,9 +2,14 @@
 
 ## Once
 
-Set the Mac's local hostname so the phone can find it: **System Settings →
-General → Sharing → Local hostname** → `pinkpalace`. Reserve a static DHCP
-lease on the router as a fallback, because mDNS occasionally sulks.
+Nothing, strictly. figgy is reachable from anything on the network as soon as
+it is up, at the Mac's own name — `http://<your-mac-name>.local:3000` — or at
+its IP.
+
+If you want a nicer name, set **System Settings → General → Sharing → Local
+hostname** to `pinkpalace` and it becomes `http://pinkpalace.local:3000`.
+Reserving a static DHCP lease on the router is worth doing either way, because
+mDNS occasionally sulks and an IP always works.
 
 If you want the plant lookup and the chat, put the key somewhere the compose
 file can read it:

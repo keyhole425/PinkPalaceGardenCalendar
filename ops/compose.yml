@@ -37,7 +37,11 @@ services:
   backup:
     image: figgy:latest
     depends_on:
-      - figgy
+      # Healthy, not merely started. On a fresh volume the app has to migrate
+      # and seed before there is a database worth copying, and a sidecar that
+      # starts a second too early fails on an empty file.
+      figgy:
+        condition: service_healthy
     restart: unless-stopped
     environment:
       GARDEN_DB_PATH: /data/garden.db

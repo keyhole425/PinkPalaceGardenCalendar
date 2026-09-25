@@ -17,8 +17,10 @@ const dir = process.env.GARDEN_BACKUP_PATH ?? path.join(process.cwd(), 'backups'
 const keep = Number(process.env.GARDEN_BACKUP_KEEP ?? 30);
 
 async function main() {
-	if (!fs.existsSync(source)) {
-		console.error(`figgy backup: no database at ${source}`);
+	// A database that is not there yet is worth waiting for rather than
+	// failing over: on a fresh volume the app is still migrating.
+	if (!fs.existsSync(source) || fs.statSync(source).size === 0) {
+		console.error(`figgy backup: nothing to back up at ${source} yet`);
 		process.exit(1);
 	}
 	fs.mkdirSync(dir, { recursive: true });
@@ -28,6 +30,17 @@ async function main() {
 
 	const db = new Database(source, { readonly: true });
 	await db.backup(target);
+
+	// The snapshot inherits WAL mode from its source, which leaves a -wal and
+	// a -shm beside it and makes the backup three files instead of one.
+	// Folding the journal in makes each snapshot a single file you can copy
+	// anywhere, which is the whole point of having one.
+	const snapshot = new Database(target);
+	snapshot.pragma('journal_mode = delete');
+	snapshot.close();
+	for (const sidecar of [`${target}-wal`, `${target}-shm`]) {
+		if (fs.existsSync(sidecar)) fs.rmSync(sidecar);
+	}
 
 	// Record it where the app can see it, so a silently dead backup job shows
 	// up as an ageing date on the settings page rather than as nothing at all.
