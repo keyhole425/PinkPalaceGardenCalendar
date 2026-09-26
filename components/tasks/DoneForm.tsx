@@ -2,6 +2,8 @@
 
 import { useActionState } from 'react';
 import { completeTask, undoCompletion } from '@/actions/care';
+import { Button } from '@/components/ui/Button';
+import { Field, inputClass, textareaClass } from '@/components/ui/Field';
 import type { IsoDate } from '@/lib/dates';
 
 /**
@@ -33,42 +35,42 @@ export function DoneForm({
 			<input type="hidden" name="ruleId" value={ruleId} />
 			<input type="hidden" name="occurrenceKey" value={occurrenceKey} />
 
-			<button
+			<Button
 				type="submit"
-				disabled={pending}
-				className={
-					quiet
-						? 'text-ink-soft text-xs underline hover:text-palace-700 disabled:opacity-50'
-						: 'min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50'
-				}
+				variant={quiet ? 'quiet' : 'primary'}
+				size={quiet ? 'sm' : undefined}
+				pending={pending}
+				pendingLabel="Saving"
 			>
-				{pending ? 'Saving' : label}
-			</button>
+				{label}
+			</Button>
 
+			{/*
+			 * Kept to one line: in a task card this sits in a narrow column
+			 * beside the job, and "another day, or a note" wrapped to two.
+			 */}
 			<details className="mt-1 text-left">
 				<summary className="cursor-pointer list-none text-ink-soft text-xs underline">
-					another day, or a note
+					or&hellip;
 				</summary>
 				<div className="mt-2 space-y-2">
-					<label className="block text-ink-soft text-xs">
-						Done on
+					<Field label="Done on" className="text-xs">
 						<input
 							type="date"
 							name="completedOn"
 							defaultValue={today}
 							max={today}
-							className="mt-0.5 block min-h-11 w-full rounded-md border border-rule px-2 text-ink text-sm"
+							className={inputClass}
 						/>
-					</label>
-					<label className="block text-ink-soft text-xs">
-						Note
+					</Field>
+					<Field label="Note" className="text-xs">
 						<textarea
 							name="notes"
 							rows={2}
 							placeholder="How did it go?"
-							className="mt-0.5 block w-full rounded-md border border-rule px-2 py-1 text-ink text-sm"
+							className={textareaClass}
 						/>
-					</label>
+					</Field>
 				</div>
 			</details>
 
@@ -94,13 +96,15 @@ export function UndoButton({
 		<form action={formAction} className="inline">
 			<input type="hidden" name="logId" value={logId} />
 			{slug && <input type="hidden" name="slug" value={slug} />}
-			<button
+			<Button
 				type="submit"
-				disabled={pending}
-				className="text-ink-soft text-xs underline hover:text-palace-700 disabled:opacity-50"
+				variant="quiet"
+				size="sm"
+				pending={pending}
+				pendingLabel="Undoing"
 			>
-				{pending ? 'Undoing' : label}
-			</button>
+				{label}
+			</Button>
 			{state && !state.ok && (
 				<span className="ml-2 text-prune text-xs">{state.error}</span>
 			)}

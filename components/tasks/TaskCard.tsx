@@ -1,45 +1,10 @@
 import Link from 'next/link';
+import { ActionChip } from '@/components/ui/ActionChip';
+import { Badge } from '@/components/ui/Badge';
 import { daysBetween, formatLong, type IsoDate, monthOf } from '@/lib/dates';
 import type { Task } from '@/lib/db/queries/garden';
-import type { CareAction } from '@/lib/db/schema';
 import { maskRuns, monthAbbr } from '@/lib/schedule/months';
 import { DoneForm, UndoButton } from './DoneForm';
-
-export const ACTION_LABEL: Record<string, string> = {
-	fertilise: 'Fertilise',
-	prune: 'Prune',
-	harvest: 'Harvest',
-	sow: 'Sow',
-	transplant: 'Transplant',
-	thin: 'Thin',
-	net: 'Net',
-	spray: 'Spray',
-	water: 'Water',
-};
-
-export const ACTION_CHIP: Record<string, string> = {
-	fertilise: 'bg-fertilise text-white',
-	prune: 'bg-prune text-white',
-	harvest: 'bg-harvest text-white',
-	sow: 'bg-fertilise text-white',
-	transplant: 'bg-fertilise text-white',
-	thin: 'bg-prune text-white',
-	net: 'bg-palace-500 text-white',
-	spray: 'bg-palace-500 text-white',
-	water: 'bg-palace-500 text-white',
-};
-
-export function ActionChip({ action }: { action: CareAction | string }) {
-	return (
-		<span
-			className={`inline-block shrink-0 rounded-sm px-2 py-1 font-medium text-xs ${
-				ACTION_CHIP[action] ?? 'bg-palace-500 text-white'
-			}`}
-		>
-			{ACTION_LABEL[action] ?? action}
-		</span>
-	);
-}
 
 /** "closes in 9 days", "closed 3 days ago", "opens in a fortnight". */
 function relativeDays(from: IsoDate, to: IsoDate, verb: string): string {
@@ -98,14 +63,14 @@ export function TaskCard({
 
 	return (
 		<li
-			className={`flex items-start gap-3 rounded-md border p-3 ${
+			className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 rounded-md border px-3 py-2 ${
 				occurrence.state === 'overdue'
 					? 'border-prune/40 bg-prune-soft/50'
 					: 'border-rule bg-paper'
 			}`}
 		>
 			<ActionChip action={occurrence.rule.action} />
-			<div className="min-w-0 flex-1">
+			<div className="min-w-0">
 				<p className="font-medium">
 					<Link
 						href={`/plants/${context.plantSlug}`}
@@ -122,20 +87,17 @@ export function TaskCard({
 				<p className="text-ink-soft text-sm">
 					{windowSummary(occurrence.opensOn, occurrence.closesOn)} &middot; {timing}
 					{alternatives && (
-						<span
-							className="ml-2 rounded-full bg-palace-100 px-2 py-0.5 text-palace-700 text-xs"
-							title="Any one month in this window will do"
-						>
+						<Badge className="ml-2" title="Any one month in this window will do">
 							one of {occurrence.rule.ruleIds.length}
-						</span>
+						</Badge>
 					)}
 					{occurrence.rule.shifted && (
-						<span
-							className="ml-2 rounded-full bg-palace-100 px-2 py-0.5 text-palace-700 text-xs"
+						<Badge
+							className="ml-2"
 							title={`Shifted from ${ruleSummary(occurrence.rule.sourceMask)} because of where this is growing`}
 						>
 							shifted
-						</span>
+						</Badge>
 					)}
 				</p>
 				{occurrence.rule.note && (
@@ -143,17 +105,19 @@ export function TaskCard({
 				)}
 			</div>
 
-			{actionable && occurrence.state !== 'done' && (
-				<DoneForm
-					plantingId={context.plantingId}
-					ruleId={occurrence.rule.id}
-					occurrenceKey={occurrence.key}
-					today={today}
-				/>
-			)}
-			{occurrence.state === 'done' && occurrence.logId !== null && (
-				<UndoButton logId={occurrence.logId} slug={context.plantSlug} />
-			)}
+			<div className="w-24 shrink-0 text-right">
+				{actionable && occurrence.state !== 'done' && (
+					<DoneForm
+						plantingId={context.plantingId}
+						ruleId={occurrence.rule.id}
+						occurrenceKey={occurrence.key}
+						today={today}
+					/>
+				)}
+				{occurrence.state === 'done' && occurrence.logId !== null && (
+					<UndoButton logId={occurrence.logId} slug={context.plantSlug} />
+				)}
+			</div>
 		</li>
 	);
 }

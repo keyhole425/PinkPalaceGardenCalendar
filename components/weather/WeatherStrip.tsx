@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/Card';
 import { formatShort } from '@/lib/dates';
 import type { Forecast, Signal } from '@/lib/weather';
 
@@ -35,21 +36,21 @@ export function WeatherStrip({
 	const worthSaying = signals.slice(0, 2);
 
 	return (
-		<section className="space-y-2">
-			<h2 className="font-semibold text-lg">The week</h2>
-
-			<ul className="flex flex-wrap gap-2">
+		<Card title="The week">
+			<ul className="grid grid-cols-5 gap-1">
 				{forecast.days.slice(0, 5).map((day) => (
 					<li
 						key={day.date}
-						className="min-w-24 rounded-md border border-rule bg-paper px-3 py-2 text-sm"
+						className="rounded-md border border-rule bg-paper px-1.5 py-1.5 text-center"
 					>
-						<span className="block font-medium">{dayLabel(day.date, today)}</span>
-						<span className="block text-ink-soft">
-							{day.minC.toFixed(0)}&ndash;{day.maxC.toFixed(0)}&deg;C
+						<span className="block truncate font-medium text-xs">
+							{dayLabel(day.date, today)}
+						</span>
+						<span className="block text-ink-soft text-xs tabular-nums">
+							{day.minC.toFixed(0)}&ndash;{day.maxC.toFixed(0)}&deg;
 						</span>
 						{day.rainMm >= 1 && (
-							<span className="block text-ink-soft text-xs">
+							<span className="block text-ink-faint text-2xs tabular-nums">
 								{day.rainMm.toFixed(0)} mm
 							</span>
 						)}
@@ -62,7 +63,7 @@ export function WeatherStrip({
 					{worthSaying.map((signal) => (
 						<li
 							key={`${signal.kind}-${signal.date}`}
-							className={`rounded-md border p-2 text-sm ${TONE[signal.kind] ?? 'border-rule bg-paper-sunk'}`}
+							className={`rounded-md border p-2 text-xs ${TONE[signal.kind] ?? 'border-rule bg-paper-sunk'}`}
 						>
 							<strong>{dayLabel(signal.date, today)}</strong>{' '}
 							<span className="text-ink-soft text-xs">
@@ -73,6 +74,6 @@ export function WeatherStrip({
 					))}
 				</ul>
 			)}
-		</section>
+		</Card>
 	);
 }
