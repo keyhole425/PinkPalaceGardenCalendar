@@ -98,38 +98,13 @@ function loadOccupants(environmentId: number): BedOccupant[] {
 		});
 }
 
-export function listBeds(): Bed[] {
-	return db
-		.select()
-		.from(environment)
-		.where(ne(environment.kind, 'orchard'))
-		.orderBy(asc(environment.sortOrder), asc(environment.id))
-		.all()
-		.map((e) => ({
-			id: e.id,
-			slug: e.slug,
-			name: e.name,
-			kind: e.kind,
-			// A place with no grid still gets one, so the plan view always works.
-			gridCols: e.gridCols ?? 4,
-			gridRows: e.gridRows ?? 2,
-			widthCm: e.widthCm,
-			lengthCm: e.lengthCm,
-			frostFree: e.frostFree,
-			windowShiftMonths: e.windowShiftMonths,
-			notes: e.notes,
-			occupants: loadOccupants(e.id),
-		}));
-}
-
-export function getBed(slug: string): Bed | null {
-	const e = db.select().from(environment).where(eq(environment.slug, slug)).get();
-	if (!e) return null;
+function toBed(e: typeof environment.$inferSelect): Bed {
 	return {
 		id: e.id,
 		slug: e.slug,
 		name: e.name,
 		kind: e.kind,
+		// A place with no grid still gets one, so the plan view always works.
 		gridCols: e.gridCols ?? 4,
 		gridRows: e.gridRows ?? 2,
 		widthCm: e.widthCm,
@@ -139,6 +114,40 @@ export function getBed(slug: string): Bed | null {
 		notes: e.notes,
 		occupants: loadOccupants(e.id),
 	};
+}
+
+/** The places you sow into: everything but the orchard. */
+export function listBeds(): Bed[] {
+	return db
+		.select()
+		.from(environment)
+		.where(ne(environment.kind, 'orchard'))
+		.orderBy(asc(environment.sortOrder), asc(environment.id))
+		.all()
+		.map(toBed);
+}
+
+/**
+ * Every place, orchard included.
+ *
+ * A bed and the orchard are the same row in the same table - the schema has
+ * always said so. The app used to show them on two separate pages, which is
+ * why it was unclear how Places and Beds related to each other.
+ */
+export function listPlaces(): Bed[] {
+	return db
+		.select()
+		.from(environment)
+		.orderBy(asc(environment.sortOrder), asc(environment.id))
+		.all()
+		.map(toBed);
+}
+
+/** Any place by slug - the orchard included, which is why it is not filtered. */
+export function getBed(slug: string): Bed | null {
+	const e = db.select().from(environment).where(eq(environment.slug, slug)).get();
+	if (!e) return null;
+	return toBed(e);
 }
 
 export type BedHistoryEntry = {

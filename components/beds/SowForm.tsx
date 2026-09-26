@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { clearFromBed, sowInBed } from '@/actions/beds';
+import { Button } from '@/components/ui/Button';
 import type { IsoDate } from '@/lib/dates';
 
 export type SowablePlant = {
@@ -77,7 +78,7 @@ export function SowForm({
 						name="plantTypeId"
 						value={choice}
 						onChange={(e) => setChoice(e.target.value)}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					>
 						{inSeason.length > 0 && (
 							<optgroup label="In season now">
@@ -105,7 +106,7 @@ export function SowForm({
 						name="posX"
 						value={posX}
 						onChange={(e) => setPosX(e.target.value)}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					>
 						{Array.from({ length: cols }, (_, x) => (
 							<option key={x} value={x}>
@@ -121,7 +122,7 @@ export function SowForm({
 						name="posY"
 						value={posY}
 						onChange={(e) => setPosY(e.target.value)}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					>
 						{Array.from({ length: rows }, (_, y) => (
 							<option key={y} value={y}>
@@ -139,7 +140,7 @@ export function SowForm({
 						value={sownOn}
 						onChange={(e) => setSownOn(e.target.value)}
 						max={today}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					/>
 				</label>
 			</div>
@@ -152,13 +153,9 @@ export function SowForm({
 			)}
 
 			<div className="flex flex-wrap items-center gap-3">
-				<button
-					type="submit"
-					disabled={pending}
-					className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
-				>
-					{pending ? 'Sowing' : clash ? 'Sow it anyway' : 'Sow'}
-				</button>
+				<Button type="submit" pending={pending} pendingLabel="Sowing">
+					{clash ? 'Sow it anyway' : 'Sow'}
+				</Button>
 				{state && !state.ok && (
 					<span className="text-prune text-sm">{state.error}</span>
 				)}

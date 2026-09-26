@@ -1,5 +1,5 @@
 /** Everything one plant's page needs. */
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNull, ne } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { today as todayInGarden } from '@/lib/dates';
 import type { EffectiveRule, Occurrence } from '@/lib/schedule/types';
@@ -194,6 +194,13 @@ export function listEnvironments() {
 		.all();
 }
 
+/**
+ * The catalogue: every kind of plant figgy knows how to grow.
+ *
+ * `plantingCount` is how many of them you actually have. Without it the page
+ * cannot say whether it is describing the world or your garden, which is
+ * exactly how it used to read.
+ */
 export function listPlants() {
 	return db
 		.select({
@@ -205,8 +212,14 @@ export function listPlants() {
 			lifecycle: plantType.lifecycle,
 			needsReview: plantType.needsReview,
 			source: plantType.source,
+			plantingCount: count(planting.id),
 		})
 		.from(plantType)
+		.leftJoin(
+			planting,
+			and(eq(planting.plantTypeId, plantType.id), ne(planting.status, 'removed')),
+		)
+		.groupBy(plantType.id)
 		.orderBy(asc(plantType.commonName))
 		.all();
 }

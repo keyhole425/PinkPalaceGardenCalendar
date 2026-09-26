@@ -45,22 +45,40 @@ export function BedPlan({
 							)}
 						</>
 					) : (
-						<span className="text-ink-soft text-xs">empty</span>
+						// An empty spot is an invitation, not a label. A grid full of
+						// the word "empty" made the whole page look switched off.
+						<span
+							key={`${x}-${y}-empty`}
+							aria-hidden="true"
+							className="block text-center text-ink-faint text-lg leading-none opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+						>
+							+
+						</span>
 					);
 
-					const className = `flex min-h-16 flex-col justify-center rounded-md border p-2 text-left ${
+					const className = `group flex min-h-16 flex-col justify-center rounded-md border p-2 text-left ${
 						occupant
 							? 'border-fertilise/40 bg-fertilise-soft'
-							: 'border-rule border-dashed bg-paper-sunk hover:bg-palace-50'
+							: 'border-rule border-dashed bg-paper-sunk hover:border-palace-300 hover:bg-palace-50'
 					}`;
 
+					const where = `column ${x + 1}, row ${y + 1}`;
+
 					return href ? (
-						<Link key={`${x}-${y}`} href={href(x, y)} className={className}>
+						<Link
+							key={`${x}-${y}`}
+							href={href(x, y)}
+							aria-label={
+								occupant ? `${occupant.plantName} in ${where}` : `Sow in ${where}`
+							}
+							className={className}
+						>
 							{content}
 						</Link>
 					) : (
 						<div key={`${x}-${y}`} className={className}>
 							{content}
+							{!occupant && <span className="sr-only">Empty spot, {where}</span>}
 						</div>
 					);
 				})}

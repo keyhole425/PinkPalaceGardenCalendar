@@ -47,8 +47,11 @@ test('a job can be ticked off and taken back', async ({ page }) => {
 test('something sown in a bed shows up with a harvest estimate', async ({
 	page,
 }) => {
-	await page.goto('/beds/bed-1');
-	await expect(page.getByText('empty').first()).toBeVisible();
+	await page.goto('/garden/bed-1');
+	// The bed starts with nothing in it. The plan's own cells no longer carry
+	// the word "empty" - a grid full of it made the page look switched off -
+	// so this asks the "Growing here now" list instead.
+	await expect(page.getByText('Empty.', { exact: true })).toBeVisible();
 
 	await page.getByLabel('What').selectOption({ label: 'Tomato' });
 	await page.getByRole('button', { name: 'Sow', exact: true }).click();
