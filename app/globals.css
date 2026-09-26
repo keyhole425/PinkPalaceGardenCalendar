@@ -1,11 +1,31 @@
 @import "tailwindcss";
 
 /*
- * figgy's palette.
+ * figgy is a garden notebook.
  *
- * The pinks are carried over from the original Pink Palace app. The three
- * action colours are the ones the orchard spreadsheet used - green to feed,
- * orange to cut, pink to pick - so the grid reads the same way it always has.
+ * It began as ORCHARD SCHEDULE.numbers, and the tokens below have always been
+ * named for paper and ink. These are the rules that follow from that:
+ *
+ *  1. Paper, not floating cards. Surfaces are paper or paper-sunk, and things
+ *     are separated by a hairline rule, never by a shadow. The shadow
+ *     utilities are deleted further down so this cannot drift.
+ *  2. Ruled lines do the work. Lists are divide-y divide-rule-faint inside one
+ *     border - already the idiom in eight places.
+ *  3. Two inks, one emphasis step. ink for content, ink-soft for apparatus;
+ *     font-medium to emphasise, font-semibold only for headings.
+ *  4. The pink is the cover and the marker, not the paper. palace-200 on the
+ *     header and the primary button, palace-50/100 as the "today" wash. Never
+ *     a large pink field.
+ *  5. fertilise / prune / harvest are data, never decoration. The three action
+ *     colours are the ones the orchard spreadsheet used - green to feed,
+ *     orange to cut, pink to pick - so the grid reads the way it always has.
+ *     Any new colour has to carry a meaning.
+ *  6. Two radii. rounded-sm for things printed on the page, rounded-md for
+ *     things you can press. rounded-full only for badges.
+ *
+ * Dark mode is deliberately out of scope: paper and ink IS the metaphor, and a
+ * dark figgy would need a second one. If it is ever wanted, it is an override
+ * of the colours below, not a change to any component.
  */
 @theme {
 	--color-palace-50: #fff5f8;
@@ -24,12 +44,98 @@
 
 	--color-ink: #333333;
 	--color-ink-soft: #777777;
+	--color-ink-faint: #9a9a9a;
 	--color-rule: #d6d6d6;
 	--color-rule-strong: #c2c2c2;
 	--color-paper: #ffffff;
 	--color-paper-sunk: #f7f5f5;
 
+	/*
+	 * One more line weight. A notebook's ruled lines are lighter than its
+	 * margins: rule-faint inside lists and the grid, rule around boxes,
+	 * rule-strong for the frame around the year.
+	 */
+	--color-rule-faint: #e9e6e6;
+	--color-focus: #a84b63;
+
+	/*
+	 * Typography. These are Tailwind's own token names on purpose: the app
+	 * already says text-sm 161 times and text-xs 97 times, so retuning the
+	 * scale here retunes every one of them without touching a component.
+	 */
+	--text-2xs: 0.6875rem;
+	--text-2xs--line-height: 1.2;
+	--text-xs: 0.75rem;
+	--text-xs--line-height: 1.4;
+	--text-sm: 0.875rem;
+	--text-sm--line-height: 1.5;
+	--text-base: 1rem;
+	--text-base--line-height: 1.6;
+	--text-lg: 1.125rem;
+	--text-lg--line-height: 1.35;
+	--text-xl: 1.375rem;
+	--text-xl--line-height: 1.3;
+	--text-2xl: 1.625rem;
+	--text-2xl--line-height: 1.2;
+	--text-2xl--letter-spacing: -0.01em;
+	/*
+	 * The one composite token: size, leading, tracking and weight in a single
+	 * utility, for the line above a page title. Sentence case, not uppercase -
+	 * figgy does not shout.
+	 */
+	--text-eyebrow: 0.8125rem;
+	--text-eyebrow--line-height: 1.2;
+	--text-eyebrow--letter-spacing: 0.01em;
+	--text-eyebrow--font-weight: 500;
+
+	/*
+	 * Named widths, replacing max-w-[1400px] and the scattered max-w-2xl and
+	 * max-w-xl. Content takes the width it can use, never the width available.
+	 */
+	--container-measure: 34rem;
+	--container-list: 52rem;
+	--container-page: 76rem;
+	--container-wide: 100rem;
+
+	/*
+	 * The numeric spacing scale is left alone. These four are the values that
+	 * are actually design decisions rather than arithmetic.
+	 */
+	--spacing-gutter: 1.25rem;
+	--spacing-gutter-lg: 2rem;
+	--spacing-rhythm: 1.5rem;
+	/* 44px. min-h-tap says why it is 44px; min-h-11 never did. */
+	--spacing-tap: 2.75rem;
+
+	--radius-sm: 0.125rem;
+	--radius-md: 0.3125rem;
+	--radius-lg: 0.5rem;
+	--radius-xl: initial;
+	--radius-2xl: initial;
+	--radius-3xl: initial;
+	--radius-4xl: initial;
+
+	/*
+	 * Elevation: there is none. figgy is paper, and depth is a hairline rule.
+	 * The utilities are removed rather than merely left unused, so shadow-md
+	 * does not compile and rule 1 cannot quietly rot.
+	 */
+	--shadow-*: initial;
+	--inset-shadow-*: initial;
+	--drop-shadow-*: initial;
+
 	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/*
+ * The faces themselves, from app/fonts.ts. `inline` matters: it puts the
+ * var(--font-figgy-*) reference straight into the utility rather than behind a
+ * second variable, so it resolves against <html>, where next/font puts it.
+ */
+@theme inline {
+	--font-sans: var(--font-figgy-sans), ui-sans-serif, system-ui, sans-serif;
+	--font-serif: var(--font-figgy-serif), ui-serif, Georgia, serif;
+	--font-mono: var(--font-figgy-mono), ui-monospace, monospace;
 }
 
 html {
@@ -41,4 +147,10 @@ body {
 	background: var(--color-paper);
 	color: var(--color-ink);
 	font-family: var(--font-sans);
+}
+
+/* The app had no focus style at all, behind a nav six links deep. */
+:focus-visible {
+	outline: 2px solid var(--color-focus);
+	outline-offset: 2px;
 }

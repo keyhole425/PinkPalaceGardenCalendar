@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import Link from 'next/link';
+import { SiteHeader, TabBar } from '@/components/shell/SiteHeader';
+import { mono, sans, serif } from './fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -17,43 +18,27 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en-AU">
+		<html
+			lang="en-AU"
+			className={`${sans.variable} ${serif.variable} ${mono.variable}`}
+		>
 			<body className="min-h-dvh">
-				<header className="border-palace-300 border-b bg-palace-200">
-					<nav className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-						<Link href="/" className="font-semibold text-palace-700 text-lg">
-							figgy
-						</Link>
-						<Link href="/now" className="text-ink text-sm hover:text-palace-700">
-							What&rsquo;s on
-						</Link>
-						<Link href="/grid" className="text-ink text-sm hover:text-palace-700">
-							The year
-						</Link>
-						<Link href="/beds" className="text-ink text-sm hover:text-palace-700">
-							Beds
-						</Link>
-						<Link href="/plants" className="text-ink text-sm hover:text-palace-700">
-							Plants
-						</Link>
-						<Link
-							href="/environments"
-							className="text-ink text-sm hover:text-palace-700"
-						>
-							Places
-						</Link>
-						<Link href="/ask" className="text-ink text-sm hover:text-palace-700">
-							Ask
-						</Link>
-						<Link
-							href="/settings"
-							className="ml-auto text-ink-soft text-sm hover:text-palace-700"
-						>
-							Settings
-						</Link>
-					</nav>
-				</header>
-				<main className="mx-auto max-w-[1400px] px-4 py-6">{children}</main>
+				<a
+					href="#main"
+					className="sr-only rounded-md bg-paper px-4 py-2 text-palace-700 focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50"
+				>
+					Skip to content
+				</a>
+				<SiteHeader />
+				{/*
+				 * No width here on purpose. A reading page and a twelve-month
+				 * table want very different things, so each page declares its
+				 * own Frame.
+				 */}
+				<main id="main" className="pt-6 pb-20 sm:pb-10">
+					{children}
+				</main>
+				<TabBar />
 			</body>
 		</html>
 	);
