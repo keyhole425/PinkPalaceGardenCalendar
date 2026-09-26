@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { SiteHeader, TabBar } from '@/components/shell/SiteHeader';
-import { mono, sans, serif } from './fonts';
+import { figgyMono, figgySans, figgySerif } from './fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 	return (
 		<html
 			lang="en-AU"
-			className={`${sans.variable} ${serif.variable} ${mono.variable}`}
+			className={`${figgySans.variable} ${figgySerif.variable} ${figgyMono.variable}`}
 		>
 			<body className="min-h-dvh">
 				<a
