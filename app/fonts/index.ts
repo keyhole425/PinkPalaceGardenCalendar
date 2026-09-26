@@ -29,6 +29,20 @@ export const figgySans = localFont({
 		{ path: './ibm-plex-sans-400.woff2', weight: '400', style: 'normal' },
 		{ path: './ibm-plex-sans-500.woff2', weight: '500', style: 'normal' },
 		{ path: './ibm-plex-sans-600.woff2', weight: '600', style: 'normal' },
+		/*
+		 * A real italic, because figgy sets a lot of scientific names: every
+		 * row of /plants is a binomial in <em>. Without this the browser
+		 * slants the upright face, and a sloped humanist sans is not what its
+		 * italic looks like - Plex draws a true single-storey a.
+		 *
+		 * 400 only. Every <em> here sits in normal-weight body text, and
+		 * carrying weights nothing asks for is what made Fraunces 120KB.
+		 */
+		{
+			path: './ibm-plex-sans-400-italic.woff2',
+			weight: '400',
+			style: 'italic',
+		},
 	],
 	display: 'swap',
 	variable: '--font-figgy-sans',
