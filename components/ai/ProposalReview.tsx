@@ -2,32 +2,17 @@
 
 import { useActionState, useState } from 'react';
 import { acceptProposal, rejectProposal } from '@/actions/research';
-import { ActionChip } from '@/components/tasks/TaskCard';
+import { ActionChip } from '@/components/ui/ActionChip';
+import { Button } from '@/components/ui/Button';
+import { MonthStrip } from '@/components/ui/MonthStrip';
 import type { Citation, PlantProposal } from '@/lib/ai/schema';
 import {
 	type Month,
 	maskFromMonths,
 	maskRuns,
 	monthAbbr,
-	monthName,
-	monthsInOrder,
 } from '@/lib/schedule/months';
 import { Prose } from './Prose';
-
-const CONFIDENCE_CLASS: Record<string, string> = {
-	high: 'bg-fertilise-soft text-ink',
-	medium: 'bg-palace-100 text-palace-700',
-	low: 'bg-prune-soft text-ink',
-};
-
-const FILL: Record<string, string> = {
-	fertilise: 'bg-fertilise',
-	prune: 'bg-prune',
-	harvest: 'bg-harvest',
-	sow: 'bg-fertilise',
-	transplant: 'bg-fertilise',
-	thin: 'bg-prune',
-};
 
 function windowLabel(months: number[]): string {
 	return maskRuns(maskFromMonths(months))
@@ -39,35 +24,11 @@ function windowLabel(months: number[]): string {
 		.join(', ');
 }
 
-/** The same twelve boxes the rest of figgy uses, so it reads the same way. */
-function Strip({
-	months,
-	action,
-	currentMonth,
-}: {
-	months: number[];
-	action: string;
-	currentMonth: Month;
-}) {
-	const set = new Set(months);
-	return (
-		<div className="flex gap-px">
-			{monthsInOrder(7).map((m) => (
-				<span
-					key={m}
-					title={monthName(m)}
-					className={`h-5 w-5 rounded-[2px] ${
-						set.has(m) ? (FILL[action] ?? 'bg-palace-500') : 'bg-paper-sunk'
-					} ${m === currentMonth ? 'ring-1 ring-palace-500' : ''}`}
-				>
-					<span className="sr-only">
-						{monthName(m)}: {set.has(m) ? action : 'nothing'}
-					</span>
-				</span>
-			))}
-		</div>
-	);
-}
+const CONFIDENCE_CLASS: Record<string, string> = {
+	high: 'bg-fertilise-soft text-ink',
+	medium: 'bg-palace-100 text-palace-700',
+	low: 'bg-prune-soft text-ink',
+};
 
 export function ProposalReview({
 	proposalId,
@@ -167,9 +128,9 @@ export function ProposalReview({
 									<div className="min-w-0 flex-1 space-y-2">
 										<div className="flex flex-wrap items-center gap-2">
 											<ActionChip action={rule.action} />
-											<Strip
-												months={rule.months}
+											<MonthStrip
 												action={rule.action}
+												monthMask={maskFromMonths(rule.months)}
 												currentMonth={currentMonth}
 											/>
 											<span className="text-sm">
@@ -227,14 +188,14 @@ export function ProposalReview({
 									<input
 										name="plantAs"
 										defaultValue={proposal.commonName}
-										className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+										className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 									/>
 								</label>
 								<label className="text-ink-soft text-xs">
 									Where
 									<select
 										name="environmentId"
-										className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+										className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 									>
 										{environments.map((e) => (
 											<option key={e.id} value={e.id}>
@@ -249,15 +210,14 @@ export function ProposalReview({
 				)}
 
 				<div className="flex flex-wrap items-center gap-3">
-					<button
+					<Button
 						type="submit"
-						disabled={accepting || chosen.size === 0}
-						className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 hover:bg-palace-300 disabled:opacity-50"
+						disabled={chosen.size === 0}
+						pending={accepting}
+						pendingLabel="Saving"
 					>
-						{accepting
-							? 'Saving'
-							: `Accept ${chosen.size} ${chosen.size === 1 ? 'window' : 'windows'}`}
-					</button>
+						{`Accept ${chosen.size} ${chosen.size === 1 ? 'window' : 'windows'}`}
+					</Button>
 					<span className="text-ink-soft text-sm">
 						You can change any of it afterwards.
 					</span>

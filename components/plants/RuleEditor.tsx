@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { deleteRule, saveRule } from '@/actions/rules';
-import { ACTION_LABEL } from '@/components/tasks/TaskCard';
+import { Button } from '@/components/ui/Button';
 import { CADENCES, CARE_ACTIONS } from '@/lib/db/schema';
 import {
 	type Month,
@@ -11,6 +11,7 @@ import {
 	monthsFromMask,
 	monthsInOrder,
 } from '@/lib/schedule/months';
+import { ACTION_LABEL } from '@/lib/ui/actions';
 
 const CADENCE_LABEL: Record<string, string> = {
 	monthly: 'Every month it names',
@@ -87,7 +88,7 @@ export function RuleEditor({
 						<select
 							name="action"
 							defaultValue={rule?.action ?? 'fertilise'}
-							className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+							className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 						>
 							{CARE_ACTIONS.filter((a) => a !== 'note').map((a) => (
 								<option key={a} value={a}>
@@ -104,7 +105,7 @@ export function RuleEditor({
 							value={alternatives ? 'once_in_window' : cadence}
 							disabled={alternatives}
 							onChange={(e) => setCadence(e.target.value)}
-							className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm disabled:opacity-60"
+							className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm disabled:opacity-60"
 						>
 							{CADENCES.map((c) => (
 								<option key={c} value={c}>
@@ -119,7 +120,7 @@ export function RuleEditor({
 						<select
 							name="environmentKind"
 							defaultValue={rule?.environmentKind ?? ''}
-							className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+							className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 						>
 							{Object.entries(ENVIRONMENT_LABEL).map(([value, label]) => (
 								<option key={value} value={value}>
@@ -142,7 +143,7 @@ export function RuleEditor({
 									onClick={() => toggle(m)}
 									aria-pressed={on}
 									title={monthName(m)}
-									className={`min-h-11 w-12 rounded-md border text-sm ${
+									className={`min-h-tap w-12 rounded-md border text-sm ${
 										on
 											? 'border-palace-500 bg-palace-200 font-medium text-palace-700'
 											: 'border-rule bg-paper text-ink-soft hover:bg-palace-50'
@@ -184,13 +185,14 @@ export function RuleEditor({
 				</label>
 
 				<div className="flex flex-wrap items-center gap-2">
-					<button
+					<Button
 						type="submit"
-						disabled={saving || months.size === 0}
-						className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
+						disabled={months.size === 0}
+						pending={saving}
+						pendingLabel="Saving"
 					>
-						{saving ? 'Saving' : rule ? 'Save' : 'Add rule'}
-					</button>
+						{rule ? 'Save' : 'Add rule'}
+					</Button>
 					{onDone && (
 						<button
 							type="button"

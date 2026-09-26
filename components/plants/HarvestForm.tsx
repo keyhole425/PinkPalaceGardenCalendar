@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { logHarvest } from '@/actions/care';
+import { Button } from '@/components/ui/Button';
 import type { IsoDate } from '@/lib/dates';
 
 /**
@@ -38,7 +39,7 @@ export function HarvestForm({
 						type="text"
 						name="quantityNote"
 						placeholder="3 kg"
-						className="mt-0.5 block min-h-11 w-28 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap w-28 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					/>
 				</label>
 				<label className="text-ink-soft text-xs">
@@ -48,16 +49,12 @@ export function HarvestForm({
 						name="completedOn"
 						defaultValue={today}
 						max={today}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					/>
 				</label>
-				<button
-					type="submit"
-					disabled={pending}
-					className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
-				>
-					{pending ? 'Saving' : 'Record'}
-				</button>
+				<Button type="submit" pending={pending} pendingLabel="Saving">
+					Record
+				</Button>
 			</div>
 			{state && !state.ok && <p className="text-prune text-xs">{state.error}</p>}
 		</form>

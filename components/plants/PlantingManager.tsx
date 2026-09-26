@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { createPlanting, setPlantingStatus } from '@/actions/plants';
+import { Button } from '@/components/ui/Button';
 
 export type ListedPlanting = {
 	id: number;
@@ -105,14 +106,14 @@ export function PlantingManager({
 								name="label"
 								required
 								placeholder="Cherry #3"
-								className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+								className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 							/>
 						</label>
 						<label className="text-ink-soft text-xs">
 							Where
 							<select
 								name="environmentId"
-								className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+								className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 							>
 								{environments.map((e) => (
 									<option key={e.id} value={e.id}>
@@ -126,18 +127,14 @@ export function PlantingManager({
 							<input
 								type="date"
 								name="plantedOn"
-								className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+								className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 							/>
 						</label>
 					</div>
 					<div className="flex items-center gap-3">
-						<button
-							type="submit"
-							disabled={pending}
-							className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
-						>
-							{pending ? 'Saving' : 'Add'}
-						</button>
+						<Button type="submit" pending={pending} pendingLabel="Saving">
+							Add
+						</Button>
 						<button
 							type="button"
 							onClick={() => setAdding(false)}
@@ -154,7 +151,7 @@ export function PlantingManager({
 				<button
 					type="button"
 					onClick={() => setAdding(true)}
-					className="min-h-11 rounded-md border border-palace-300 border-dashed px-4 text-palace-700 text-sm hover:bg-palace-50"
+					className="min-h-tap rounded-md border border-palace-300 border-dashed px-4 text-palace-700 text-sm hover:bg-palace-50"
 				>
 					Plant another one
 				</button>

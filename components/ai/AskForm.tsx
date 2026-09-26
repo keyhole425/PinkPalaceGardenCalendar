@@ -2,6 +2,8 @@
 
 import { useActionState } from 'react';
 import { askAboutPlant } from '@/actions/research';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 /**
  * Looking something up costs real money and takes the better part of a minute,
@@ -24,12 +26,12 @@ export function AskForm({
 
 	if (!available) {
 		return (
-			<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+			<EmptyState>
 				figgy can research a plant&rsquo;s care for Adelaide and propose a schedule,
 				but it needs an Anthropic API key to do it. Set{' '}
 				<code>ANTHROPIC_API_KEY</code> and restart. Everything else works without
 				one.
-			</p>
+			</EmptyState>
 		);
 	}
 
@@ -49,16 +51,12 @@ export function AskForm({
 						required
 						defaultValue={defaultQuery}
 						placeholder={placeholder}
-						className="mt-0.5 block min-h-11 w-56 rounded-md border border-rule bg-paper px-2 text-ink"
+						className="mt-0.5 block min-h-tap w-56 rounded-md border border-rule bg-paper px-2 text-ink"
 					/>
 				</label>
-				<button
-					type="submit"
-					disabled={pending}
-					className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 hover:bg-palace-300 disabled:opacity-50"
-				>
-					{pending ? 'Reading around…' : label}
-				</button>
+				<Button type="submit" pending={pending} pendingLabel="Reading around…">
+					{label}
+				</Button>
 			</div>
 			<p className="text-ink-soft text-xs">
 				Claude searches for local advice, then proposes a month-by-month schedule

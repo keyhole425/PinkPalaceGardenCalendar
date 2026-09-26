@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProposalReview } from '@/components/ai/ProposalReview';
+import { Callout } from '@/components/ui/Callout';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Frame } from '@/components/ui/Frame';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { getProposal } from '@/lib/ai/proposals';
 import { overallConfidence } from '@/lib/ai/schema';
 import { formatLong, monthOf, today } from '@/lib/dates';
@@ -22,78 +26,77 @@ export default async function ProposalPage({
 	const environments = listEnvironments();
 
 	return (
-		<div className="space-y-6">
-			<header className="space-y-1">
-				<p className="text-ink-soft text-sm">
-					<Link href="/plants" className="hover:text-palace-700">
-						Plants
-					</Link>
-				</p>
-				<h1 className="font-semibold text-2xl">{stored.query}</h1>
-				<p className="text-ink-soft text-sm">
-					Looked up {formatLong(stored.createdAt.slice(0, 10))} by {stored.model}
-					{stored.costCents > 0 && ` · cost ${stored.costCents.toFixed(1)}¢`}
-					{stored.proposal &&
-						` · ${overallConfidence(stored.proposal)} confidence overall`}
-				</p>
-			</header>
+		<Frame width="list">
+			<PageHeader
+				back={{ href: '/plants', label: '\u2190 Plants' }}
+				title={stored.query}
+				description={
+					<>
+						Looked up {formatLong(stored.createdAt.slice(0, 10))} by {stored.model}
+						{stored.costCents > 0 && ` · cost ${stored.costCents.toFixed(1)}¢`}
+						{stored.proposal &&
+							` · ${overallConfidence(stored.proposal)} confidence overall`}
+					</>
+				}
+			/>
 
-			{stored.status === 'failed' && (
-				<div className="rounded-md border border-prune/40 bg-prune-soft p-3 text-sm">
-					<p className="font-medium">That didn&rsquo;t work.</p>
-					<p className="text-ink-soft">{stored.error}</p>
-					<p className="mt-2">
-						Nothing was saved.{' '}
-						<Link href="/plants/new" className="underline">
-							Try again
-						</Link>{' '}
-						or add the plant by hand.
-					</p>
-				</div>
-			)}
+			<div className="space-y-rhythm">
+				{stored.status === 'failed' && (
+					<Callout tone="warn">
+						<p className="font-medium">That didn&rsquo;t work.</p>
+						<p className="text-ink-soft">{stored.error}</p>
+						<p className="mt-2">
+							Nothing was saved.{' '}
+							<Link href="/plants/new" className="underline">
+								Try again
+							</Link>{' '}
+							or add the plant by hand.
+						</p>
+					</Callout>
+				)}
 
-			{stored.status === 'accepted' && (
-				<div className="rounded-md border border-fertilise/40 bg-fertilise-soft p-3 text-sm">
-					Accepted
-					{stored.reviewedAt && ` on ${formatLong(stored.reviewedAt.slice(0, 10))}`}
-					.{' '}
-					{stored.plantSlug && (
-						<Link href={`/plants/${stored.plantSlug}`} className="underline">
-							See the plant
-						</Link>
-					)}
-				</div>
-			)}
+				{stored.status === 'accepted' && (
+					<Callout tone="good">
+						Accepted
+						{stored.reviewedAt &&
+							` on ${formatLong(stored.reviewedAt.slice(0, 10))}`}
+						.{' '}
+						{stored.plantSlug && (
+							<Link href={`/plants/${stored.plantSlug}`} className="underline">
+								See the plant
+							</Link>
+						)}
+					</Callout>
+				)}
 
-			{stored.status === 'rejected' && (
-				<div className="rounded-md border border-rule bg-paper-sunk p-3 text-sm">
-					Thrown away. Nothing was written to the schedule.
-				</div>
-			)}
+				{stored.status === 'rejected' && (
+					<Callout tone="quiet">
+						Thrown away. Nothing was written to the schedule.
+					</Callout>
+				)}
 
-			{stored.status === 'ready' && stored.proposal && (
-				<>
-					<p className="max-w-2xl rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
-						None of this is in your schedule yet. Untick anything you disagree with,
-						then accept the rest &mdash; you can edit it all afterwards.
-					</p>
-					<ProposalReview
-						proposalId={stored.id}
-						proposal={stored.proposal}
-						citations={stored.citations}
-						currentMonth={currentMonth}
-						environments={environments}
-						isNewPlant={stored.plantTypeId === null}
-						notes={stored.notes}
-					/>
-				</>
-			)}
+				{stored.status === 'ready' && stored.proposal && (
+					<>
+						<Callout tone="note" className="max-w-measure">
+							None of this is in your schedule yet. Untick anything you disagree
+							with, then accept the rest &mdash; you can edit it all afterwards.
+						</Callout>
+						<ProposalReview
+							proposalId={stored.id}
+							proposal={stored.proposal}
+							citations={stored.citations}
+							currentMonth={currentMonth}
+							environments={environments}
+							isNewPlant={stored.plantTypeId === null}
+							notes={stored.notes}
+						/>
+					</>
+				)}
 
-			{stored.status === 'running' && (
-				<p className="rounded-md border border-rule border-dashed p-3 text-sm">
-					Still reading around. Refresh in a moment.
-				</p>
-			)}
-		</div>
+				{stored.status === 'running' && (
+					<EmptyState>Still reading around. Refresh in a moment.</EmptyState>
+				)}
+			</div>
+		</Frame>
 	);
 }

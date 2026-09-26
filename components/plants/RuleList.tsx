@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { ActionChip } from '@/components/tasks/TaskCard';
+import { ActionChip } from '@/components/ui/ActionChip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { MonthStrip } from '@/components/ui/MonthStrip';
 import type { Month } from '@/lib/schedule/months';
 import { maskRuns, monthAbbr } from '@/lib/schedule/months';
 import { type EditableRule, RuleEditor } from './RuleEditor';
-import { RuleStrip } from './RuleStrip';
 
 export type ListedRule = EditableRule & {
 	source: string;
@@ -42,10 +43,10 @@ export function RuleList({
 	return (
 		<div className="space-y-3">
 			{rules.length === 0 && (
-				<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+				<EmptyState>
 					No rules yet. Add one below and figgy will start telling you when it is
 					due.
-				</p>
+				</EmptyState>
 			)}
 
 			{rules.map((rule) => {
@@ -57,19 +58,9 @@ export function RuleList({
 							<span className="w-24 shrink-0">
 								<ActionChip action={rule.action} />
 							</span>
-							<RuleStrip
-								rule={{
-									id: rule.ruleIds[0],
-									ruleIds: rule.ruleIds,
-									action: rule.action as never,
-									monthMask: rule.monthMask,
-									sourceMask: rule.monthMask,
-									cadence: rule.cadence as never,
-									altGroup: null,
-									note: rule.note,
-									shifted: false,
-									isOverride: false,
-								}}
+							<MonthStrip
+								action={rule.action}
+								monthMask={rule.monthMask}
 								currentMonth={currentMonth}
 							/>
 							<span className="text-ink-soft text-sm">
@@ -124,7 +115,7 @@ export function RuleList({
 				<button
 					type="button"
 					onClick={() => setAdding(true)}
-					className="min-h-11 rounded-md border border-palace-300 border-dashed px-4 text-palace-700 text-sm hover:bg-palace-50"
+					className="min-h-tap rounded-md border border-palace-300 border-dashed px-4 text-palace-700 text-sm hover:bg-palace-50"
 				>
 					Add a rule
 				</button>

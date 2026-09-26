@@ -2,6 +2,8 @@
 
 import { useActionState, useState } from 'react';
 import { createEnvironment } from '@/actions/plants';
+import { Button } from '@/components/ui/Button';
+import { textareaClass } from '@/components/ui/Field';
 
 const KINDS = [
 	['orchard', 'Orchard — open ground, trees'],
@@ -26,14 +28,14 @@ export function EnvironmentForm() {
 						name="name"
 						required
 						placeholder="The hothouse"
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink"
 					/>
 				</label>
 				<label className="text-ink-soft text-sm">
 					Kind
 					<select
 						name="kind"
-						className="mt-0.5 block min-h-11 rounded-md border border-rule bg-paper px-2 text-ink"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink"
 					>
 						{KINDS.map(([value, label]) => (
 							<option key={value} value={value}>
@@ -82,21 +84,13 @@ export function EnvironmentForm() {
 
 			<label className="block text-ink-soft text-sm">
 				Notes
-				<textarea
-					name="notes"
-					rows={2}
-					className="mt-0.5 block w-full rounded-md border border-rule bg-paper px-2 py-1 text-ink text-sm"
-				/>
+				<textarea name="notes" rows={2} className={textareaClass} />
 			</label>
 
 			<div className="flex items-center gap-3">
-				<button
-					type="submit"
-					disabled={pending}
-					className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 hover:bg-palace-300 disabled:opacity-50"
-				>
-					{pending ? 'Saving' : 'Add it'}
-				</button>
+				<Button type="submit" pending={pending} pendingLabel="Saving">
+					Add it
+				</Button>
 				{state && !state.ok && (
 					<span className="text-prune text-sm">{state.error}</span>
 				)}

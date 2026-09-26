@@ -1,14 +1,21 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { HarvestForm } from '@/components/plants/HarvestForm';
-import { RuleStrip } from '@/components/plants/RuleStrip';
 import { DoneForm, UndoButton } from '@/components/tasks/DoneForm';
-import { ACTION_LABEL, ActionChip } from '@/components/tasks/TaskCard';
+import { ActionChip } from '@/components/ui/ActionChip';
+import { Badge } from '@/components/ui/Badge';
+import { Callout } from '@/components/ui/Callout';
+import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Frame } from '@/components/ui/Frame';
+import { MonthStrip } from '@/components/ui/MonthStrip';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import { getPlant } from '@/lib/db/queries/plant';
 import { MONTH_ABBR, type Month, monthsInOrder } from '@/lib/schedule/months';
 import type { Occurrence } from '@/lib/schedule/types';
+import { ACTION_LABEL } from '@/lib/ui/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,233 +79,224 @@ export default async function PlantPage({
 	const thisYear = when.slice(0, 4);
 
 	return (
-		<div className="space-y-6">
-			<header className="space-y-1">
-				<p className="text-ink-soft text-sm">
-					<Link href="/grid" className="hover:text-palace-700">
-						The year
-					</Link>
-				</p>
-				<h1 className="font-semibold text-2xl">
-					{plant.commonName}
-					{plant.needsReview && (
-						<span className="ml-3 rounded-full bg-palace-200 px-2 py-1 align-middle font-normal text-palace-700 text-xs">
-							needs review
-						</span>
-					)}
-				</h1>
-				<p className="text-ink-soft text-sm">
-					{plant.scientificName && <em>{plant.scientificName}</em>}
-					{plant.scientificName && ' · '}
-					{plant.lifecycle}
-					{plant.family && ` · ${plant.family}`}
-				</p>
-			</header>
+		<Frame width="list">
+			<PageHeader
+				back={{ href: '/plants', label: '\u2190 Plants' }}
+				title={plant.commonName}
+				description={
+					<>
+						{plant.scientificName && <em>{plant.scientificName}</em>}
+						{plant.scientificName && ' · '}
+						{plant.lifecycle}
+						{plant.family && ` · ${plant.family}`}
+					</>
+				}
+				actions={
+					plant.needsReview ? <Badge tone="strong">needs review</Badge> : undefined
+				}
+			/>
 
-			{plant.notesMd && (
-				<section>
-					<h2 className="mb-1 font-semibold text-lg">Notes</h2>
-					<blockquote className="whitespace-pre-line border-palace-300 border-l-4 bg-palace-50 py-2 pl-3 text-sm">
-						{plant.notesMd}
-					</blockquote>
-					{plant.sourceRef && (
-						<p className="mt-1 text-ink-soft text-xs">
-							From <code>{plant.sourceRef}</code>, kept word for word.
-						</p>
-					)}
-				</section>
-			)}
-
-			{plant.needsReview && (
-				<p className="rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
-					figgy doesn&rsquo;t have the full picture for this one &mdash; the
-					spreadsheet left gaps. Filling them in is coming up.
-				</p>
-			)}
-
-			{plant.plantings.length === 0 && plant.templateRules.length > 0 && (
-				<section className="space-y-3">
-					<h2 className="font-semibold text-lg">What it needs</h2>
-					<p className="text-ink-soft text-sm">
-						None of this is in the ground yet, so there is nothing to do about it.
-						Sow some in{' '}
-						<Link href="/beds" className="underline">
-							a bed
-						</Link>{' '}
-						and it joins the schedule.
-					</p>
-					<div className="space-y-2">
-						{plant.templateRules.map((rule) => (
-							<div
-								key={rule.ruleIds.join(',')}
-								className="flex flex-wrap items-center gap-2"
-							>
-								<span className="w-24 shrink-0">
-									<ActionChip action={rule.action} />
-								</span>
-								<RuleStrip
-									rule={{
-										id: rule.ruleIds[0],
-										ruleIds: rule.ruleIds,
-										action: rule.action,
-										monthMask: rule.monthMask,
-										sourceMask: rule.monthMask,
-										cadence: rule.cadence,
-										altGroup: null,
-										note: rule.note,
-										shifted: false,
-										isOverride: false,
-									}}
-									currentMonth={currentMonth}
-								/>
-								{rule.note && (
-									<span className="text-ink-soft text-sm">{rule.note}</span>
-								)}
-							</div>
-						))}
-					</div>
-				</section>
-			)}
-
-			{plant.plantings.map((p) => (
-				<section key={p.plantingId} className="space-y-3">
-					<h2 className="font-semibold text-lg">
-						{p.label}
-						<span className="ml-2 font-normal text-ink-soft text-sm">
-							{p.environmentName}
-						</span>
-					</h2>
-
-					<div className="space-y-2">
-						<div className="flex items-center gap-2 text-ink-soft text-xs">
-							<span className="w-24" />
-							<div className="flex gap-px">
-								{monthsInOrder(7).map((m) => (
-									<span key={m} className="w-5 text-center">
-										{MONTH_ABBR[m - 1].slice(0, 1)}
-									</span>
-								))}
-							</div>
-						</div>
-						{p.rules.map((rule) => (
-							<div key={rule.id} className="flex items-center gap-2">
-								<span className="w-24 shrink-0">
-									<ActionChip action={rule.action} />
-								</span>
-								<RuleStrip rule={rule} currentMonth={currentMonth} />
-								{rule.shifted && (
-									<span className="text-ink-soft text-xs">
-										shifted for {p.environmentName.toLowerCase()}
-									</span>
-								)}
-							</div>
-						))}
-					</div>
-
-					<div>
-						<h3 className="mb-1 font-medium text-ink-soft text-sm">
-							{thisYear} and either side
-						</h3>
-						<ul className="divide-y divide-rule border border-rule">
-							{p.occurrences.map((o) => {
-								const shown = describe(o, when);
-								return (
-									<li
-										key={`${o.rule.id}-${o.key}`}
-										className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
-									>
-										<span className="w-24 shrink-0 font-medium">
-											{ACTION_LABEL[o.rule.action] ?? o.rule.action}
-										</span>
-										<span className="text-ink-soft">
-											{formatLong(o.opensOn)} &ndash; {formatLong(o.closesOn)}
-										</span>
-										<span
-											className={`ml-auto rounded-full px-2 py-0.5 text-xs ${shown.className}`}
-										>
-											{shown.label}
-										</span>
-										{o.state === 'done' && o.logId !== null ? (
-											<UndoButton logId={o.logId} slug={plant.slug} />
-										) : (
-											o.state !== 'future' && (
-												<DoneForm
-													plantingId={p.plantingId}
-													ruleId={o.rule.id}
-													occurrenceKey={o.key}
-													today={when}
-													label={
-														shown.label === 'no record' ? 'record it' : 'Mark done'
-													}
-													quiet={shown.label === 'no record'}
-												/>
-											)
-										)}
-									</li>
-								);
-							})}
-							{p.occurrences.length === 0 && (
-								<li className="px-3 py-2 text-ink-soft text-sm">
-									Nothing scheduled. Harvest windows are a season, not a job, so
-									they don&rsquo;t appear here.
-								</li>
-							)}
-						</ul>
-					</div>
-
-					{p.openSeasons.map((season) => (
-						<HarvestForm
-							key={season.rule.id}
-							plantingId={p.plantingId}
-							ruleId={season.rule.id}
-							today={when}
-							closesOn={formatLong(season.closesOn)}
-						/>
-					))}
-
-					<div>
-						<h3 className="mb-1 font-medium text-ink-soft text-sm">History</h3>
-						{p.history.length === 0 ? (
-							<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
-								Nothing written down yet.
+			<div className="space-y-rhythm">
+				{plant.notesMd && (
+					<Card title="Notes">
+						{/* The full note, which the year grid only shows the start of. */}
+						<Callout tone="note" className="whitespace-pre-line">
+							{plant.notesMd}
+						</Callout>
+						{plant.sourceRef && (
+							<p className="text-ink-soft text-xs">
+								From <code className="font-mono">{plant.sourceRef}</code>, kept word
+								for word.
 							</p>
-						) : (
-							<ol className="divide-y divide-rule border border-rule">
-								{p.history.map((entry) => (
-									<li
-										key={entry.id}
-										className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm"
-									>
-										<span className="w-24 shrink-0 font-medium">
-											{ACTION_LABEL[entry.action] ?? entry.action}
-										</span>
-										<span className="text-ink-soft">
-											{formatLong(entry.completedOn)}
-										</span>
-										{entry.quantityNote && (
-											<span className="rounded-full bg-harvest-soft px-2 py-0.5 text-xs">
-												{entry.quantityNote}
-											</span>
-										)}
-										{entry.notesMd && (
-											<span className="w-full text-ink-soft text-xs">
-												{entry.notesMd}
-											</span>
-										)}
-										<span className="ml-auto">
-											<UndoButton
-												logId={entry.id}
-												slug={plant.slug}
-												label="Remove"
-											/>
-										</span>
-									</li>
-								))}
-							</ol>
 						)}
-					</div>
-				</section>
-			))}
-		</div>
+					</Card>
+				)}
+
+				{plant.needsReview && (
+					<p className="rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
+						figgy doesn&rsquo;t have the full picture for this one &mdash; the
+						spreadsheet left gaps. Filling them in is coming up.
+					</p>
+				)}
+
+				{plant.plantings.length === 0 && plant.templateRules.length > 0 && (
+					<section className="space-y-3">
+						<h2 className="font-semibold text-lg">What it needs</h2>
+						<p className="text-ink-soft text-sm">
+							None of this is in the ground yet, so there is nothing to do about it.
+							Sow some in{' '}
+							<Link href="/beds" className="underline">
+								a bed
+							</Link>{' '}
+							and it joins the schedule.
+						</p>
+						<div className="space-y-2">
+							{plant.templateRules.map((rule) => (
+								<div
+									key={rule.ruleIds.join(',')}
+									className="flex flex-wrap items-center gap-2"
+								>
+									<span className="w-24 shrink-0">
+										<ActionChip action={rule.action} />
+									</span>
+									<MonthStrip
+										action={rule.action}
+										monthMask={rule.monthMask}
+										currentMonth={currentMonth}
+									/>
+									{rule.note && (
+										<span className="text-ink-soft text-sm">{rule.note}</span>
+									)}
+								</div>
+							))}
+						</div>
+					</section>
+				)}
+
+				{plant.plantings.map((p) => (
+					<section key={p.plantingId} className="space-y-3">
+						<h2 className="font-semibold text-lg">
+							{p.label}
+							<span className="ml-2 font-normal text-ink-soft text-sm">
+								{p.environmentName}
+							</span>
+						</h2>
+
+						<div className="space-y-2">
+							<div className="flex items-center gap-2 text-ink-soft text-xs">
+								<span className="w-24" />
+								<div className="flex gap-px">
+									{monthsInOrder(7).map((m) => (
+										<span key={m} className="w-5 text-center">
+											{MONTH_ABBR[m - 1].slice(0, 1)}
+										</span>
+									))}
+								</div>
+							</div>
+							{p.rules.map((rule) => (
+								<div key={rule.id} className="flex items-center gap-2">
+									<span className="w-24 shrink-0">
+										<ActionChip action={rule.action} />
+									</span>
+									<MonthStrip
+										action={rule.action}
+										monthMask={rule.monthMask}
+										currentMonth={currentMonth}
+									/>
+									{rule.shifted && (
+										<span className="text-ink-soft text-xs">
+											shifted for {p.environmentName.toLowerCase()}
+										</span>
+									)}
+								</div>
+							))}
+						</div>
+
+						<div>
+							<h3 className="mb-1 font-medium text-ink-soft text-sm">
+								{thisYear} and either side
+							</h3>
+							<ul className="divide-y divide-rule border border-rule">
+								{p.occurrences.map((o) => {
+									const shown = describe(o, when);
+									return (
+										<li
+											key={`${o.rule.id}-${o.key}`}
+											className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
+										>
+											<span className="w-24 shrink-0 font-medium">
+												{ACTION_LABEL[o.rule.action] ?? o.rule.action}
+											</span>
+											<span className="text-ink-soft">
+												{formatLong(o.opensOn)} &ndash; {formatLong(o.closesOn)}
+											</span>
+											<span
+												className={`ml-auto rounded-full px-2 py-0.5 text-xs ${shown.className}`}
+											>
+												{shown.label}
+											</span>
+											{o.state === 'done' && o.logId !== null ? (
+												<UndoButton logId={o.logId} slug={plant.slug} />
+											) : (
+												o.state !== 'future' && (
+													<DoneForm
+														plantingId={p.plantingId}
+														ruleId={o.rule.id}
+														occurrenceKey={o.key}
+														today={when}
+														label={
+															shown.label === 'no record'
+																? 'record it'
+																: 'Mark done'
+														}
+														quiet={shown.label === 'no record'}
+													/>
+												)
+											)}
+										</li>
+									);
+								})}
+								{p.occurrences.length === 0 && (
+									<li className="px-3 py-2 text-ink-soft text-sm">
+										Nothing scheduled. Harvest windows are a season, not a job, so
+										they don&rsquo;t appear here.
+									</li>
+								)}
+							</ul>
+						</div>
+
+						{p.openSeasons.map((season) => (
+							<HarvestForm
+								key={season.rule.id}
+								plantingId={p.plantingId}
+								ruleId={season.rule.id}
+								today={when}
+								closesOn={formatLong(season.closesOn)}
+							/>
+						))}
+
+						<div>
+							<h3 className="mb-1 font-medium text-ink-soft text-sm">History</h3>
+							{p.history.length === 0 ? (
+								<EmptyState>Nothing written down yet.</EmptyState>
+							) : (
+								<ol className="divide-y divide-rule border border-rule">
+									{p.history.map((entry) => (
+										<li
+											key={entry.id}
+											className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm"
+										>
+											<span className="w-24 shrink-0 font-medium">
+												{ACTION_LABEL[entry.action] ?? entry.action}
+											</span>
+											<span className="text-ink-soft">
+												{formatLong(entry.completedOn)}
+											</span>
+											{entry.quantityNote && (
+												<span className="rounded-full bg-harvest-soft px-2 py-0.5 text-xs">
+													{entry.quantityNote}
+												</span>
+											)}
+											{entry.notesMd && (
+												<span className="w-full text-ink-soft text-xs">
+													{entry.notesMd}
+												</span>
+											)}
+											<span className="ml-auto">
+												<UndoButton
+													logId={entry.id}
+													slug={plant.slug}
+													label="Remove"
+												/>
+											</span>
+										</li>
+									))}
+								</ol>
+							)}
+						</div>
+					</section>
+				))}
+			</div>
+		</Frame>
 	);
 }

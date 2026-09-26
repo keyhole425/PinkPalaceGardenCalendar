@@ -2,7 +2,10 @@
 
 import { useActionState, useEffect, useState } from 'react';
 import { commitLog, parseLog } from '@/actions/log';
-import { ActionChip } from '@/components/tasks/TaskCard';
+import { ActionChip } from '@/components/ui/ActionChip';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { textareaClass } from '@/components/ui/Field';
 import type { ParsedEntry } from '@/lib/ai/parse-log';
 import type { IsoDate } from '@/lib/dates';
 
@@ -52,12 +55,12 @@ export function LogSentence({
 
 	if (!available) {
 		return (
-			<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+			<EmptyState>
 				figgy can turn &ldquo;netted the cherries and picked 2 kg of lemons&rdquo;
 				into records, but it needs an Anthropic API key. Set{' '}
 				<code>ANTHROPIC_API_KEY</code> and restart. You can always tick things off
 				by hand.
-			</p>
+			</EmptyState>
 		);
 	}
 
@@ -72,17 +75,13 @@ export function LogSentence({
 						name="sentence"
 						rows={2}
 						placeholder="netted the cherries and picked about 2 kg off the lemon"
-						className="mt-0.5 block w-full rounded-md border border-rule px-2 py-1 text-ink text-sm"
+						className={textareaClass}
 					/>
 				</label>
 				<div className="flex flex-wrap items-center gap-3">
-					<button
-						type="submit"
-						disabled={parsing}
-						className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
-					>
-						{parsing ? 'Reading…' : 'Work it out'}
-					</button>
+					<Button type="submit" pending={parsing} pendingLabel="Reading…">
+						Work it out
+					</Button>
 					<span className="text-ink-soft text-xs">
 						Dictation works. Nothing is saved until you say so.
 					</span>
@@ -144,7 +143,7 @@ export function LogSentence({
 												),
 											)
 										}
-										className="min-h-11 rounded-md border border-rule bg-paper px-2 text-ink text-sm"
+										className="min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 									/>
 									{draft.quantity && (
 										<span className="rounded-full bg-harvest-soft px-2 py-0.5 text-xs">
@@ -190,15 +189,14 @@ export function LogSentence({
 								})),
 							)}
 						/>
-						<button
+						<Button
 							type="submit"
-							disabled={committing || keeping.length === 0}
-							className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
+							disabled={keeping.length === 0}
+							pending={committing}
+							pendingLabel="Saving"
 						>
-							{committing
-								? 'Saving'
-								: `Record ${keeping.length} ${keeping.length === 1 ? 'thing' : 'things'}`}
-						</button>
+							{`Record ${keeping.length} ${keeping.length === 1 ? 'thing' : 'things'}`}
+						</Button>
 						<button
 							type="button"
 							onClick={() => setDrafts([])}

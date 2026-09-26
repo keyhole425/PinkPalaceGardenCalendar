@@ -2,6 +2,9 @@
 
 import { useActionState } from 'react';
 import { ask } from '@/actions/ask';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { inputClass } from '@/components/ui/Field';
 import { Prose } from './Prose';
 
 const SUGGESTIONS = [
@@ -16,10 +19,10 @@ export function AskGarden({ available }: { available: boolean }) {
 
 	if (!available) {
 		return (
-			<p className="rounded-md border border-rule border-dashed p-3 text-ink-soft text-sm">
+			<EmptyState>
 				figgy can answer questions about your own records, but it needs an Anthropic
 				API key. Set <code>ANTHROPIC_API_KEY</code> and restart.
-			</p>
+			</EmptyState>
 		);
 	}
 
@@ -31,17 +34,13 @@ export function AskGarden({ available }: { available: boolean }) {
 					<input
 						name="question"
 						placeholder="What did the fig give us last year?"
-						className="mt-0.5 block min-h-11 w-full rounded-md border border-rule px-2 text-ink"
+						className={inputClass}
 					/>
 				</label>
 				<div className="flex flex-wrap items-center gap-3">
-					<button
-						type="submit"
-						disabled={pending}
-						className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 hover:bg-palace-300 disabled:opacity-50"
-					>
-						{pending ? 'Looking…' : 'Ask'}
-					</button>
+					<Button type="submit" pending={pending} pendingLabel="Looking…">
+						Ask
+					</Button>
 					<span className="text-ink-soft text-xs">
 						Claude reads your records. It cannot change them.
 					</span>

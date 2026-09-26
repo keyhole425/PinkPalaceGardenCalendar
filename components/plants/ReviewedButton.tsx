@@ -12,7 +12,7 @@ export function ReviewedButton({ plantTypeId }: { plantTypeId: number }) {
 			<button
 				type="submit"
 				disabled={pending}
-				className="min-h-11 rounded-md bg-palace-200 px-3 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
+				className="min-h-tap rounded-md bg-palace-200 px-3 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50"
 			>
 				{pending ? 'Saving' : 'This one is sorted'}
 			</button>

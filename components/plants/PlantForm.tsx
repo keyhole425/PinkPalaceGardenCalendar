@@ -2,6 +2,8 @@
 
 import { useActionState } from 'react';
 import { createPlantType, updatePlantType } from '@/actions/plants';
+import { Button } from '@/components/ui/Button';
+import { inputClass, textareaClass } from '@/components/ui/Field';
 
 const CATEGORIES = [
 	['fruit_tree', 'Fruit tree'],
@@ -43,7 +45,7 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					defaultValue={plant?.commonName ?? ''}
 					required
 					placeholder="Kaffir lime"
-					className="mt-0.5 block min-h-11 w-full rounded-md border border-rule px-2 text-ink"
+					className={inputClass}
 				/>
 			</label>
 
@@ -53,7 +55,7 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					name="scientificName"
 					defaultValue={plant?.scientificName ?? ''}
 					placeholder="Citrus hystrix"
-					className="mt-0.5 block min-h-11 w-full rounded-md border border-rule px-2 text-ink"
+					className={inputClass}
 				/>
 			</label>
 
@@ -63,7 +65,7 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					<select
 						name="category"
 						defaultValue={plant?.category ?? 'fruit_tree'}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule px-2 text-ink"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule px-2 text-ink"
 					>
 						{CATEGORIES.map(([value, label]) => (
 							<option key={value} value={value}>
@@ -78,7 +80,7 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					<select
 						name="lifecycle"
 						defaultValue={plant?.lifecycle ?? 'perennial'}
-						className="mt-0.5 block min-h-11 rounded-md border border-rule px-2 text-ink"
+						className="mt-0.5 block min-h-tap rounded-md border border-rule px-2 text-ink"
 					>
 						{LIFECYCLES.map(([value, label]) => (
 							<option key={value} value={value}>
@@ -95,7 +97,7 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 						defaultValue={plant?.family ?? ''}
 						placeholder="Rutaceae"
 						title="Used to warn you when the same family goes back in the same bed"
-						className="mt-0.5 block min-h-11 w-40 rounded-md border border-rule px-2 text-ink"
+						className="mt-0.5 block min-h-tap w-40 rounded-md border border-rule px-2 text-ink"
 					/>
 				</label>
 			</div>
@@ -107,18 +109,14 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					rows={4}
 					defaultValue={plant?.notesMd ?? ''}
 					placeholder="Anything worth remembering, in your own words."
-					className="mt-0.5 block w-full rounded-md border border-rule px-2 py-1 text-ink text-sm"
+					className={textareaClass}
 				/>
 			</label>
 
 			<div className="flex items-center gap-3">
-				<button
-					type="submit"
-					disabled={pending}
-					className="min-h-11 rounded-md bg-palace-200 px-4 font-medium text-palace-700 hover:bg-palace-300 disabled:opacity-50"
-				>
-					{pending ? 'Saving' : plant?.id ? 'Save' : 'Add it'}
-				</button>
+				<Button type="submit" pending={pending} pendingLabel="Saving">
+					{plant?.id ? 'Save' : 'Add it'}
+				</Button>
 				{state && !state.ok && (
 					<span className="text-prune text-sm">{state.error}</span>
 				)}
