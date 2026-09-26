@@ -101,7 +101,16 @@ export function TaskCard({
 					)}
 				</p>
 				{occurrence.rule.note && (
-					<p className="mt-1 text-ink-soft text-xs">{occurrence.rule.note}</p>
+					// Two lines, like the year grid. Some of these run to a
+					// paragraph - Plum's pruning notes make a card half again as
+					// tall as its neighbours - and a board of jobs wants every row
+					// the same height. The whole note is on hover and on the plant.
+					<p
+						title={occurrence.rule.note}
+						className="mt-1 line-clamp-2 text-ink-soft text-xs"
+					>
+						{occurrence.rule.note}
+					</p>
 				)}
 			</div>
 

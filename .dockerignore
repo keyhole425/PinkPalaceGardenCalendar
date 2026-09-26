@@ -1,0 +1,29 @@
+# What the image does not need.
+#
+# Without this the build context is the whole working tree - about 810MB,
+# most of it node_modules and .next. Both are rebuilt inside the image: the
+# deps stage runs npm ci for Linux, and the builder runs next build. Copying
+# the host's versions over the top is at best wasted time, and at worst
+# overwrites Linux native modules with macOS ones.
+.git
+.github
+node_modules
+.next
+out
+
+# The database lives on a volume. It has no business in an image, and
+# garden.db is the actual garden.
+data
+backups
+*.db
+*.db-wal
+*.db-shm
+
+# Tests and their leavings do not run in the container.
+e2e
+test-results
+playwright-report
+
+.claude
+.env
+.env.*
