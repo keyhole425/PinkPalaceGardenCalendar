@@ -1,10 +1,5 @@
 import Link from 'next/link';
-import type {
-	CellMark,
-	GridAction,
-	GridPlant,
-	GridRule,
-} from '@/lib/db/queries/grid';
+import type { CellMark, GridPlant, GridRule } from '@/lib/db/queries/grid';
 import { cellKey } from '@/lib/db/queries/grid';
 import {
 	hasMonth,
@@ -14,27 +9,7 @@ import {
 	monthName,
 	monthsInOrder,
 } from '@/lib/schedule/months';
-
-const ACTION_LABEL: Record<GridAction, string> = {
-	fertilise: 'Fertilise',
-	prune: 'Prune',
-	harvest: 'Harvest',
-};
-
-/**
- * Tailwind can't build class names at runtime, so the variants are spelled out.
- */
-const ACTION_CHIP: Record<GridAction, string> = {
-	fertilise: 'bg-fertilise text-white',
-	prune: 'bg-prune text-white',
-	harvest: 'bg-harvest text-white',
-};
-
-const ACTION_CELL: Record<GridAction, string> = {
-	fertilise: 'bg-fertilise',
-	prune: 'bg-prune',
-	harvest: 'bg-harvest',
-};
+import { actionChip, actionFill, actionLabel } from '@/lib/ui/actions';
 
 /** A full tick when every plant of the type is done, a hollow one otherwise. */
 function tick(mark: CellMark): string {
@@ -78,7 +53,7 @@ export function MonthGrid({
 	const months = monthsInOrder(startMonth);
 
 	return (
-		<div className="max-h-[calc(100dvh-11rem)] overflow-auto border border-rule-strong">
+		<div className="max-h-[calc(100dvh-13rem)] overflow-auto border border-rule-strong">
 			<table className="w-max border-collapse text-sm">
 				<thead>
 					<tr>
@@ -135,18 +110,21 @@ export function MonthGrid({
 												needs review
 											</span>
 										)}
-										{plant.notesMd && (
-											<p className="mt-1 hidden whitespace-pre-line text-ink-soft text-xs leading-snug sm:block">
-												{plant.notesMd}
+										{plant.noteSummary && (
+											<p
+												title={plant.notesMd ?? undefined}
+												className="mt-1 hidden max-w-64 text-ink-soft text-2xs leading-snug sm:line-clamp-2"
+											>
+												{plant.noteSummary}
 											</p>
 										)}
 									</th>
 								)}
 								<td className="sticky left-28 z-10 border-rule border-r border-b bg-paper p-1 sm:left-64">
 									<span
-										className={`block rounded-sm px-2 py-1 font-medium text-xs ${ACTION_CHIP[row.action]}`}
+										className={`block rounded-sm px-2 py-1 font-medium text-xs ${actionChip(row.action)}`}
 									>
-										{ACTION_LABEL[row.action]}
+										{actionLabel(row.action)}
 									</span>
 								</td>
 								{months.map((m) => {
@@ -162,10 +140,10 @@ export function MonthGrid({
 										>
 											{state.filled && (
 												<div
-													className={`flex h-full items-center justify-center rounded-sm text-[10px] text-white uppercase tracking-wide ${ACTION_CELL[row.action]}`}
+													className={`flex h-full items-center justify-center rounded-sm text-2xs text-white uppercase tracking-wide tabular-nums ${actionFill(row.action)}`}
 													title={
 														state.note ??
-														`${ACTION_LABEL[row.action]} - ${monthName(m)}`
+														`${actionLabel(row.action)} - ${monthName(m)}`
 													}
 												>
 													{mark ? tick(mark) : state.alternative ? 'or' : ''}
@@ -175,15 +153,15 @@ export function MonthGrid({
 												// Work done outside the written window still counts,
 												// and is worth seeing where it actually happened.
 												<div
-													className="flex h-full items-center justify-center rounded-sm border border-rule text-ink-soft text-[10px]"
-													title={`${ACTION_LABEL[row.action]} recorded in ${monthName(m)}, outside the usual window`}
+													className="flex h-full items-center justify-center rounded-sm border border-rule text-ink-soft text-2xs tabular-nums"
+													title={`${actionLabel(row.action)} recorded in ${monthName(m)}, outside the usual window`}
 												>
 													{tick(mark)}
 												</div>
 											)}
 											<span className="sr-only">
 												{state.filled
-													? `${ACTION_LABEL[row.action]} ${plant.commonName} in ${monthName(m)}${
+													? `${actionLabel(row.action)} ${plant.commonName} in ${monthName(m)}${
 															state.alternative ? ' (one of several options)' : ''
 														}`
 													: ''}

@@ -36,9 +36,38 @@ export type GridPlant = {
 	commonName: string;
 	scientificName: string | null;
 	notesMd: string | null;
+	/** The first sentence or so of notesMd. See noteSummary. */
+	noteSummary: string | null;
 	needsReview: boolean;
 	rows: GridRow[];
 };
+
+/**
+ * The opening of a plant's notes, short enough to sit in a grid cell.
+ *
+ * The grid puts this in a row-spanning header, so an unabridged note sets the
+ * height of every row for that plant: Plum's is 2,526 characters, which made
+ * its row 1,312px tall against about 157px for everything else. The full text
+ * is a click away on the plant's own page.
+ */
+export function noteSummary(notes: string | null): string | null {
+	if (!notes) return null;
+	const flat = notes.replace(/\s+/g, ' ').trim();
+	if (!flat) return null;
+
+	// The first sentence, as long as it is actually a sentence and not an
+	// abbreviation a few characters in.
+	const stop = flat.slice(40).search(/[.!?](\s|$)|\u2014/);
+	const firstSentence = stop === -1 ? flat : flat.slice(0, 40 + stop + 1);
+
+	if (firstSentence.length <= 120) {
+		return firstSentence === flat ? flat : `${firstSentence.trim()}\u2026`;
+	}
+
+	// Still too long: cut at a word boundary instead.
+	const cut = flat.slice(0, 120).lastIndexOf(' ');
+	return `${flat.slice(0, cut === -1 ? 120 : cut).trim()}\u2026`;
+}
 
 export function getGrid(): GridPlant[] {
 	const plants = db
@@ -86,6 +115,7 @@ export function getGrid(): GridPlant[] {
 		const mine = byPlant.get(plant.id) ?? [];
 		return {
 			...plant,
+			noteSummary: noteSummary(plant.notesMd),
 			// Every plant shows all three action rows, even when empty - an empty
 			// row is information: nobody has said what this tree needs.
 			rows: GRID_ACTIONS.map((action) => ({

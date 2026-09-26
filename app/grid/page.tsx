@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { MonthGrid } from '@/components/grid/MonthGrid';
+import { Frame } from '@/components/ui/Frame';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { monthOf, today } from '@/lib/dates';
 import { getGrid, getGridMarks } from '@/lib/db/queries/grid';
 import { type Month, monthName } from '@/lib/schedule/months';
+import { cx } from '@/lib/ui/cx';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,26 +28,28 @@ export default async function GridPage({
 	const marks = getGridMarks(today());
 
 	return (
-		<div className="space-y-4">
-			<div className="flex flex-wrap items-baseline justify-between gap-2">
-				<div>
-					<h1 className="font-semibold text-2xl">The year</h1>
-					<p className="text-ink-soft text-sm">
+		<Frame width="wide">
+			<PageHeader
+				title="The year"
+				description={
+					<>
 						Every plant, every month. Cells marked <em>or</em> are alternatives
 						&mdash; do one of them, not all. A tick is work recorded in the last
 						year. Today is {monthName(currentMonth)}.
-					</p>
-				</div>
-				<div className="flex items-center gap-1 text-sm">
-					<span className="text-ink-soft">Start the year in</span>
-					<StartToggle active={startMonth === 7} href="/grid" label="July" />
-					<StartToggle
-						active={startMonth === 1}
-						href="/grid?start=1"
-						label="January"
-					/>
-				</div>
-			</div>
+					</>
+				}
+				actions={
+					<div className="flex items-center gap-1 text-sm">
+						<span className="text-ink-soft">Start in</span>
+						<StartToggle active={startMonth === 7} href="/grid" label="July" />
+						<StartToggle
+							active={startMonth === 1}
+							href="/grid?start=1"
+							label="January"
+						/>
+					</div>
+				}
+			/>
 
 			<MonthGrid
 				plants={plants}
@@ -53,11 +58,12 @@ export default async function GridPage({
 				marks={marks}
 			/>
 
-			<p className="text-ink-soft text-xs">
-				Seeded from <code>ORCHARD SCHEDULE.numbers</code>. Plants marked{' '}
-				<em>needs review</em> have gaps the spreadsheet never filled in.
+			<p className="mt-3 text-ink-soft text-xs">
+				Seeded from <code className="font-mono">ORCHARD SCHEDULE.numbers</code>.
+				Plants marked <em>needs review</em> have gaps the spreadsheet never filled
+				in.
 			</p>
-		</div>
+		</Frame>
 	);
 }
 
@@ -73,11 +79,13 @@ function StartToggle({
 	return (
 		<Link
 			href={href}
-			className={`rounded-full px-3 py-1 ${
+			aria-current={active ? 'true' : undefined}
+			className={cx(
+				'rounded-full px-3 py-1',
 				active
 					? 'bg-palace-200 font-medium text-palace-700'
-					: 'text-ink-soft hover:bg-palace-50'
-			}`}
+					: 'text-ink-soft hover:bg-palace-50',
+			)}
 		>
 			{label}
 		</Link>
