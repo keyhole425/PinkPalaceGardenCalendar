@@ -20,6 +20,7 @@ const TONE: Record<CardTone, string> = {
 export function Card({
 	as = 'section',
 	title,
+	icon,
 	count,
 	tone = 'plain',
 	aside,
@@ -29,6 +30,8 @@ export function Card({
 }: {
 	as?: 'section' | 'form' | 'div';
 	title?: string;
+	/** Sits before the title, at the title's own size. Decoration only. */
+	icon?: React.ReactNode;
 	/** Shown next to the title, in the quiet weight. */
 	count?: number;
 	tone?: CardTone;
@@ -44,6 +47,11 @@ export function Card({
 			{title && (
 				<div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
 					<h2 className="flex items-baseline gap-2 font-semibold font-serif text-lg">
+						{icon && (
+							// Baseline-aligned rows and glyphs do not mix; centre the one
+							// item that has no baseline of its own.
+							<span className="self-center text-ink-soft">{icon}</span>
+						)}
 						<span className={tone === 'alert' ? 'text-prune' : undefined}>
 							{title}
 						</span>
