@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Frame } from '@/components/ui/Frame';
+import { Icon } from '@/components/ui/Icon';
 import { ROUTES, TABS } from '@/lib/nav';
 import { NavLink, TabLink } from './NavLink';
 
@@ -22,11 +23,18 @@ export function SiteHeader() {
 							</NavLink>
 						))}
 					</div>
+					{/*
+					 * A cog rather than the word: it is the one thing in the header
+					 * that is not a place in the garden, and at 36px it is a thumb
+					 * target without making the cover any taller.
+					 */}
 					<Link
 						href="/settings"
-						className="ml-auto shrink-0 text-ink-soft text-sm hover:text-palace-700"
+						title="Settings"
+						aria-label="Settings"
+						className="-mr-1.5 ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-palace-700 hover:bg-palace-300"
 					>
-						Settings
+						<Icon name="settings" className="h-5 w-5" />
 					</Link>
 				</nav>
 			</Frame>
