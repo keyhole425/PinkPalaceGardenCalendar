@@ -2,12 +2,13 @@
  * Weather signals. Pure judgement about numbers, so worth pinning down.
  */
 import { describe, expect, it } from 'vitest';
-import type { Forecast } from './weather';
-import { signalsFrom } from './weather';
+import { conditionOf, signalsFrom } from './signals';
+import type { Forecast, ForecastDay } from './types';
 
 function forecast(days: Partial<Forecast['days'][number]>[]): Forecast {
 	return {
 		fetchedFor: '2026-09-25',
+		source: 'bom',
 		days: days.map((d, i) => ({
 			date: `2026-09-${String(25 + i).padStart(2, '0')}`,
 			maxC: 20,
@@ -63,5 +64,48 @@ describe('weather signals', () => {
 	it('can report more than one thing about one day', () => {
 		const signals = signalsFrom(forecast([{ maxC: 39, windKph: 50 }]));
 		expect(signals.map((s) => s.kind).sort()).toEqual(['heat', 'wind']);
+	});
+});
+
+describe('the condition a day gets drawn as', () => {
+	const day = (d: Partial<ForecastDay>): ForecastDay => ({
+		date: '2026-09-25',
+		maxC: 22,
+		minC: 12,
+		rainMm: 0,
+		windKph: 10,
+		...d,
+	});
+
+	it('draws the sky the provider handed over', () => {
+		expect(conditionOf(day({ sky: 'cloud' }))).toBe('cloud');
+		expect(conditionOf(day({ sky: 'showers' }))).toBe('showers');
+		expect(conditionOf(day({ sky: 'rain' }))).toBe('rain');
+		expect(conditionOf(day({ sky: 'storm' }))).toBe('storm');
+	});
+
+	it('lets frost overrule anything, because a clear night is when it frosts', () => {
+		expect(conditionOf(day({ sky: 'clear', minC: 1 }))).toBe('frost');
+		expect(conditionOf(day({ sky: 'rain', minC: 1 }))).toBe('frost');
+	});
+
+	it('improves on a clear sky with the thermometer and the wind gauge', () => {
+		expect(conditionOf(day({ sky: 'clear', maxC: 35 }))).toBe('hot');
+		expect(conditionOf(day({ sky: 'clear', windKph: 55 }))).toBe('windy');
+	});
+
+	it('leaves a sky that is already saying something alone', () => {
+		// 35 degrees and raining is still a picture of rain.
+		expect(conditionOf(day({ sky: 'rain', maxC: 35 }))).toBe('rain');
+		expect(conditionOf(day({ sky: 'cloud', windKph: 55 }))).toBe('cloud');
+	});
+
+	it('falls back to the numbers when no provider said anything', () => {
+		expect(conditionOf(day({}))).toBe('clear');
+		expect(conditionOf(day({ rainMm: 12 }))).toBe('rain');
+		expect(conditionOf(day({ rainMm: 2 }))).toBe('showers');
+		expect(conditionOf(day({ minC: 0 }))).toBe('frost');
+		expect(conditionOf(day({ maxC: 36 }))).toBe('hot');
+		expect(conditionOf(day({ windKph: 55 }))).toBe('windy');
 	});
 });
