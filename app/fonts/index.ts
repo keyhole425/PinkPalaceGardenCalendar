@@ -62,13 +62,10 @@ export const figgySerif = localFont({
 	src: [
 		{ path: './fraunces-variable.woff2', weight: '100 900', style: 'normal' },
 		/*
-		 * Nothing sets serif italic today - every <em> in figgy sits in body
-		 * text. It is here so the family is whole: a heading or a pull quote
-		 * can be italicised without another trip to Google.
-		 *
-		 * It costs nothing to carry. Next emits no <link rel="preload"> for
-		 * fonts, and the face stays unactivated on a page that never renders
-		 * serif italic - both checked rather than assumed.
+		 * Scientific names, which a reference book would also set this way -
+		 * see components/ui/ScientificName. It is the one place Fraunces
+		 * appears outside a heading, and on a plant's page the binomial and
+		 * the title end up sharing a family, which is the point.
 		 */
 		{
 			path: './fraunces-italic-variable.woff2',

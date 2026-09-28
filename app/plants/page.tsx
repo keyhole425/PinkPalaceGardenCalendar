@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { DataList, DataRow } from '@/components/ui/DataList';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { ScientificName } from '@/components/ui/ScientificName';
 import { listPlants } from '@/lib/db/queries/plant';
 
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,9 @@ function PlantRow({ plant }: { plant: Plant }) {
 				{plant.commonName}
 			</Link>
 			{plant.scientificName && (
-				<em className="text-ink-soft text-xs">{plant.scientificName}</em>
+				<ScientificName className="text-ink-soft text-sm">
+					{plant.scientificName}
+				</ScientificName>
 			)}
 			{/* The one fact that says whether this page is about you. */}
 			{plant.plantingCount > 0 ? (

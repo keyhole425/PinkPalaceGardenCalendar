@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
 import { MonthStrip } from '@/components/ui/MonthStrip';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { ScientificName } from '@/components/ui/ScientificName';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import { getPlant } from '@/lib/db/queries/plant';
@@ -85,7 +86,9 @@ export default async function PlantPage({
 				title={plant.commonName}
 				description={
 					<>
-						{plant.scientificName && <em>{plant.scientificName}</em>}
+						{plant.scientificName && (
+							<ScientificName>{plant.scientificName}</ScientificName>
+						)}
 						{plant.scientificName && ' · '}
 						{plant.lifecycle}
 						{plant.family && ` · ${plant.family}`}
