@@ -172,7 +172,7 @@ export function DoneForm({
 			</details>
 
 			{state && !state.ok && (
-				<p className="mt-1 text-prune text-xs">{state.error}</p>
+				<p className="mt-1 text-prune-deep text-xs">{state.error}</p>
 			)}
 		</form>
 	);
@@ -203,7 +203,7 @@ export function UndoButton({
 				{label}
 			</Button>
 			{state && !state.ok && (
-				<span className="ml-2 text-prune text-xs">{state.error}</span>
+				<span className="ml-2 text-prune-deep text-xs">{state.error}</span>
 			)}
 		</form>
 	);

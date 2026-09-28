@@ -15,7 +15,8 @@ const VARIANT: Record<Variant, string> = {
 		'inline-flex min-h-tap items-center justify-center rounded-md bg-palace-200 px-4 font-medium text-palace-700 text-sm hover:bg-palace-300 disabled:opacity-50',
 	quiet:
 		'text-ink-soft text-sm underline hover:text-palace-700 disabled:opacity-50',
-	danger: 'text-ink-soft text-sm underline hover:text-prune disabled:opacity-50',
+	danger:
+		'text-ink-soft text-sm underline hover:text-prune-deep disabled:opacity-50',
 	add: 'inline-flex min-h-tap items-center justify-center rounded-md border border-palace-300 border-dashed px-4 text-palace-700 text-sm hover:bg-palace-50',
 	pill: 'rounded-full bg-palace-100 px-3 py-1 text-palace-700 text-sm hover:bg-palace-200',
 };
@@ -23,7 +24,8 @@ const VARIANT: Record<Variant, string> = {
 const SMALL: Partial<Record<Variant, string>> = {
 	quiet:
 		'text-ink-soft text-xs underline hover:text-palace-700 disabled:opacity-50',
-	danger: 'text-ink-soft text-xs underline hover:text-prune disabled:opacity-50',
+	danger:
+		'text-ink-soft text-xs underline hover:text-prune-deep disabled:opacity-50',
 };
 
 function classesFor(variant: Variant, size?: 'sm', className?: string) {

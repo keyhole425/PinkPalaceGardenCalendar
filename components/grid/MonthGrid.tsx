@@ -140,7 +140,7 @@ export function MonthGrid({
 										>
 											{state.filled && (
 												<div
-													className={`flex h-full items-center justify-center rounded-sm text-2xs text-white uppercase tracking-wide tabular-nums ${actionFill(row.action)}`}
+													className={`flex h-full items-center justify-center rounded-sm text-2xs text-ink uppercase tracking-wide tabular-nums ${actionFill(row.action)}`}
 													title={
 														state.note ??
 														`${actionLabel(row.action)} - ${monthName(m)}`

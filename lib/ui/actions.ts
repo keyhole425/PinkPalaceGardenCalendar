@@ -19,7 +19,14 @@ export const ACTION_LABEL: Record<string, string> = {
 	note: 'Note',
 };
 
-/** A filled block: grid cells and month strips. */
+/**
+ * A filled block: grid cells and month strips.
+ *
+ * Only three of these are coloured, because only three of them are the
+ * orchard's colours. net, spray, water and note are grey on purpose - they are
+ * real work, but they are not one of the three meanings the palette carries,
+ * and pink would make a watering indistinguishable from a harvest.
+ */
 export const ACTION_FILL: Record<string, string> = {
 	fertilise: 'bg-fertilise',
 	prune: 'bg-prune',
@@ -27,24 +34,29 @@ export const ACTION_FILL: Record<string, string> = {
 	sow: 'bg-fertilise',
 	transplant: 'bg-fertilise',
 	thin: 'bg-prune',
-	net: 'bg-palace-500',
-	spray: 'bg-palace-500',
-	water: 'bg-palace-500',
-	note: 'bg-palace-500',
+	net: 'bg-rule-strong',
+	spray: 'bg-rule-strong',
+	water: 'bg-rule-strong',
+	note: 'bg-rule-strong',
 };
 
-/** The same colours with a legible foreground, for chips carrying a word. */
+/**
+ * The same colours with a legible foreground, for chips carrying a word.
+ *
+ * ink, not white: the three are pale enough that white on them is 1.9-3.0:1,
+ * where ink is 4.2-6.7:1.
+ */
 export const ACTION_CHIP: Record<string, string> = {
-	fertilise: 'bg-fertilise text-white',
-	prune: 'bg-prune text-white',
-	harvest: 'bg-harvest text-white',
-	sow: 'bg-fertilise text-white',
-	transplant: 'bg-fertilise text-white',
-	thin: 'bg-prune text-white',
-	net: 'bg-palace-500 text-white',
-	spray: 'bg-palace-500 text-white',
-	water: 'bg-palace-500 text-white',
-	note: 'bg-palace-500 text-white',
+	fertilise: 'bg-fertilise text-ink',
+	prune: 'bg-prune text-ink',
+	harvest: 'bg-harvest text-ink',
+	sow: 'bg-fertilise text-ink',
+	transplant: 'bg-fertilise text-ink',
+	thin: 'bg-prune text-ink',
+	net: 'bg-rule-strong text-ink',
+	spray: 'bg-rule-strong text-ink',
+	water: 'bg-rule-strong text-ink',
+	note: 'bg-rule-strong text-ink',
 };
 
 export function actionLabel(action: string): string {
@@ -52,9 +64,9 @@ export function actionLabel(action: string): string {
 }
 
 export function actionFill(action: string): string {
-	return ACTION_FILL[action] ?? 'bg-palace-500';
+	return ACTION_FILL[action] ?? 'bg-rule-strong';
 }
 
 export function actionChip(action: string): string {
-	return ACTION_CHIP[action] ?? 'bg-palace-500 text-white';
+	return ACTION_CHIP[action] ?? 'bg-rule-strong text-ink';
 }

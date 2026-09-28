@@ -222,7 +222,7 @@ export function ProposalReview({
 						You can change any of it afterwards.
 					</span>
 					{acceptState && !acceptState.ok && (
-						<span className="text-prune text-sm">{acceptState.error}</span>
+						<span className="text-prune-deep text-sm">{acceptState.error}</span>
 					)}
 				</div>
 			</form>
@@ -232,12 +232,12 @@ export function ProposalReview({
 				<button
 					type="submit"
 					disabled={rejecting}
-					className="text-ink-soft text-sm underline hover:text-prune disabled:opacity-50"
+					className="text-ink-soft text-sm underline hover:text-prune-deep disabled:opacity-50"
 				>
 					{rejecting ? 'Discarding' : 'Throw this away'}
 				</button>
 				{rejectState && !rejectState.ok && (
-					<span className="ml-2 text-prune text-sm">{rejectState.error}</span>
+					<span className="ml-2 text-prune-deep text-sm">{rejectState.error}</span>
 				)}
 			</form>
 

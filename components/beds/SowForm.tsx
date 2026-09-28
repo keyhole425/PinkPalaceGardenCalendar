@@ -151,7 +151,7 @@ export function SowForm({
 			</div>
 
 			{clash && (
-				<p className="rounded-md border border-prune/40 bg-prune-soft p-2 text-sm">
+				<p className="rounded-md border border-prune bg-prune-soft p-2 text-sm">
 					{clash.what} ({clash.family}) was here {clash.when}. Same family two
 					seasons running invites trouble &mdash; but it is your soil.
 				</p>
@@ -162,13 +162,13 @@ export function SowForm({
 					{clash ? 'Sow it anyway' : 'Sow'}
 				</Button>
 				{state && !state.ok && (
-					<span className="text-prune text-sm">{state.error}</span>
+					<span className="text-prune-deep text-sm">{state.error}</span>
 				)}
 				{state?.ok && state.warning && (
 					<span className="text-ink-soft text-sm">{state.warning}</span>
 				)}
 				{state?.ok && !state.warning && (
-					<span className="text-fertilise text-sm">Sown.</span>
+					<span className="text-fertilise-deep text-sm">Sown.</span>
 				)}
 			</div>
 		</form>
@@ -197,7 +197,7 @@ export function ClearButton({
 				{pending ? '…' : 'Clear'}
 			</button>
 			{state && !state.ok && (
-				<span className="ml-2 text-prune text-xs">{state.error}</span>
+				<span className="ml-2 text-prune-deep text-xs">{state.error}</span>
 			)}
 		</form>
 	);

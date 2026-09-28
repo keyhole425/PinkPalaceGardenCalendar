@@ -25,7 +25,7 @@ export function HarvestForm({
 	return (
 		<form
 			action={formAction}
-			className="space-y-2 rounded-md border border-harvest/40 bg-harvest-soft p-3"
+			className="space-y-2 rounded-md border border-harvest bg-harvest-soft p-3"
 		>
 			<input type="hidden" name="plantingId" value={plantingId} />
 			<input type="hidden" name="ruleId" value={ruleId} />
@@ -56,7 +56,9 @@ export function HarvestForm({
 					Record
 				</Button>
 			</div>
-			{state && !state.ok && <p className="text-prune text-xs">{state.error}</p>}
+			{state && !state.ok && (
+				<p className="text-prune-deep text-xs">{state.error}</p>
+			)}
 		</form>
 	);
 }

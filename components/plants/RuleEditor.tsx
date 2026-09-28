@@ -208,9 +208,11 @@ export function RuleEditor({
 						</span>
 					)}
 					{saveState && !saveState.ok && (
-						<span className="text-prune text-xs">{saveState.error}</span>
+						<span className="text-prune-deep text-xs">{saveState.error}</span>
 					)}
-					{saveState?.ok && <span className="text-fertilise text-xs">Saved.</span>}
+					{saveState?.ok && (
+						<span className="text-fertilise-deep text-xs">Saved.</span>
+					)}
 				</div>
 			</form>
 
@@ -222,7 +224,7 @@ export function RuleEditor({
 					<button
 						type="submit"
 						disabled={deleting}
-						className="text-ink-soft text-xs underline hover:text-prune disabled:opacity-50"
+						className="text-ink-soft text-xs underline hover:text-prune-deep disabled:opacity-50"
 					>
 						{deleting ? 'Removing' : 'Remove this rule'}
 					</button>
@@ -230,7 +232,9 @@ export function RuleEditor({
 						Re-seeding won&rsquo;t bring it back.
 					</span>
 					{deleteState && !deleteState.ok && (
-						<span className="ml-2 text-prune text-xs">{deleteState.error}</span>
+						<span className="ml-2 text-prune-deep text-xs">
+							{deleteState.error}
+						</span>
 					)}
 				</form>
 			)}

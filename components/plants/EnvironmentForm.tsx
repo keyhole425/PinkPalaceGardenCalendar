@@ -92,9 +92,9 @@ export function EnvironmentForm() {
 					Add it
 				</Button>
 				{state && !state.ok && (
-					<span className="text-prune text-sm">{state.error}</span>
+					<span className="text-prune-deep text-sm">{state.error}</span>
 				)}
-				{state?.ok && <span className="text-fertilise text-sm">Added.</span>}
+				{state?.ok && <span className="text-fertilise-deep text-sm">Added.</span>}
 			</div>
 		</form>
 	);

@@ -65,7 +65,7 @@ export function TaskCard({
 		<li
 			className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3 rounded-md border px-3 py-2 ${
 				occurrence.state === 'overdue'
-					? 'border-prune/40 bg-prune-soft/50'
+					? 'border-prune bg-prune-soft/50'
 					: 'border-rule bg-paper'
 			}`}
 		>

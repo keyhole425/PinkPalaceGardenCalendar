@@ -128,7 +128,7 @@ export default async function NowPage() {
 								{board.harvesting.map((season) => (
 									<li
 										key={`${season.context.plantingId}-${season.rule.id}`}
-										className="flex flex-wrap items-center gap-2 rounded-md border border-harvest/40 bg-harvest-soft px-2 py-1.5"
+										className="flex flex-wrap items-center gap-2 rounded-md border border-harvest bg-harvest-soft px-2 py-1.5"
 									>
 										<ActionChip action="harvest" />
 										<Link
@@ -154,7 +154,7 @@ export default async function NowPage() {
 								{toSow.map((crop) => (
 									<li
 										key={crop.plantTypeId}
-										className="flex flex-wrap items-center gap-2 rounded-md border border-fertilise/40 bg-fertilise-soft px-2 py-1.5"
+										className="flex flex-wrap items-center gap-2 rounded-md border border-fertilise bg-fertilise-soft px-2 py-1.5"
 									>
 										<ActionChip action="sow" />
 										<Link

@@ -45,7 +45,7 @@ function StatusForm({
 				{pending ? '…' : next === 'removed' ? 'Retire' : 'Bring back'}
 			</button>
 			{state && !state.ok && (
-				<span className="ml-2 text-prune text-xs">{state.error}</span>
+				<span className="ml-2 text-prune-deep text-xs">{state.error}</span>
 			)}
 		</form>
 	);
@@ -143,7 +143,7 @@ export function PlantingManager({
 							Cancel
 						</button>
 						{state && !state.ok && (
-							<span className="text-prune text-xs">{state.error}</span>
+							<span className="text-prune-deep text-xs">{state.error}</span>
 						)}
 					</div>
 				</form>

@@ -58,7 +58,7 @@ export function BedPlan({
 
 					const className = `group flex min-h-16 flex-col justify-center rounded-md border p-2 text-left ${
 						occupant
-							? 'border-fertilise/40 bg-fertilise-soft'
+							? 'border-fertilise bg-fertilise-soft'
 							: 'border-rule border-dashed bg-paper-sunk hover:border-palace-300 hover:bg-palace-50'
 					}`;
 

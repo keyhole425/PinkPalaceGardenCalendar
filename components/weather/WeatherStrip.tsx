@@ -30,8 +30,8 @@ const SKY: Record<Condition, { icon: IconName; label: string }> = {
  */
 const SKY_TONE: Partial<Record<Condition, string>> = {
 	frost: 'text-palace-700',
-	hot: 'text-prune',
-	storm: 'text-prune',
+	hot: 'text-prune-deep',
+	storm: 'text-prune-deep',
 };
 
 const SIGNAL: Record<SignalKind, { icon: IconName; tone: string; ink: string }> = {
@@ -47,8 +47,8 @@ const SIGNAL: Record<SignalKind, { icon: IconName; tone: string; ink: string }> 
 	},
 	heat: {
 		icon: 'thermometer',
-		tone: 'border-prune/40 bg-prune-soft',
-		ink: 'text-prune',
+		tone: 'border-prune bg-prune-soft',
+		ink: 'text-prune-deep',
 	},
 	rain: {
 		icon: 'rain',

@@ -118,6 +118,16 @@ build time, which would make `npm run build` - and so the Docker image and the
 e2e suite, which builds before it runs - depend on reaching a Google server.
 `npm run build` needs no network at all.
 
+## Colour
+
+figgy is built on three named colours, all of them OPI *Wicked* lacquer shades:
+Rejoicify `#cd7baa` is the pink on the cover and the harvest, Glinda `#f0a19a`
+is pruning and every warning, and Wickedest `#abc590` is feeding and every
+confirmation. The palette, the ramps derived from it and the rules that govern
+where each one may appear all live in the comment at the top of
+[app/globals.css](app/globals.css) - that comment is the design language, and no
+component defines a colour of its own.
+
 ## Looking a plant up
 
 figgy can research a plant's care for Adelaide and propose a schedule. It needs

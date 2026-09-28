@@ -63,7 +63,9 @@ export function AskForm({
 				with its sources. Nothing is saved until you accept it. Takes about a minute
 				and costs roughly 20&ndash;40 cents.
 			</p>
-			{state && !state.ok && <p className="text-prune text-sm">{state.error}</p>}
+			{state && !state.ok && (
+				<p className="text-prune-deep text-sm">{state.error}</p>
+			)}
 		</form>
 	);
 }

@@ -17,7 +17,7 @@ export function ReviewedButton({ plantTypeId }: { plantTypeId: number }) {
 				{pending ? 'Saving' : 'This one is sorted'}
 			</button>
 			{state && !state.ok && (
-				<span className="ml-2 text-prune text-xs">{state.error}</span>
+				<span className="ml-2 text-prune-deep text-xs">{state.error}</span>
 			)}
 		</form>
 	);

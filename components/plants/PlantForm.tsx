@@ -118,9 +118,9 @@ export function PlantForm({ plant }: { plant?: PlantFormValues }) {
 					{plant?.id ? 'Save' : 'Add it'}
 				</Button>
 				{state && !state.ok && (
-					<span className="text-prune text-sm">{state.error}</span>
+					<span className="text-prune-deep text-sm">{state.error}</span>
 				)}
-				{state?.ok && <span className="text-fertilise text-sm">Saved.</span>}
+				{state?.ok && <span className="text-fertilise-deep text-sm">Saved.</span>}
 			</div>
 		</form>
 	);

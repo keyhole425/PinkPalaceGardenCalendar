@@ -52,7 +52,7 @@ export function Card({
 							// item that has no baseline of its own.
 							<span className="self-center text-ink-soft">{icon}</span>
 						)}
-						<span className={tone === 'alert' ? 'text-prune' : undefined}>
+						<span className={tone === 'alert' ? 'text-prune-deep' : undefined}>
 							{title}
 						</span>
 						{count !== undefined && (

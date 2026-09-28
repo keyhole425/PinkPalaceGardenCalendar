@@ -31,7 +31,9 @@ export function Section({
 }) {
 	const heading = (
 		<>
-			<span className={tone === 'alert' ? 'text-prune' : undefined}>{title}</span>
+			<span className={tone === 'alert' ? 'text-prune-deep' : undefined}>
+				{title}
+			</span>
 			<span className="font-normal font-sans text-ink-soft text-sm tabular-nums">
 				{count}
 			</span>

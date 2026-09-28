@@ -76,7 +76,7 @@ export function LogSentence({
 				</Button>
 				{commitState?.ok ? (
 					<span className="flex items-center gap-1.5 text-ink-soft text-sm">
-						<Icon name="check" className="h-4 w-4 text-fertilise" />
+						<Icon name="check" className="h-4 w-4 text-fertilise-deep" />
 						Recorded {commitState.written}{' '}
 						{commitState.written === 1 ? 'thing' : 'things'}.
 					</span>
@@ -135,14 +135,14 @@ export function LogSentence({
 								Dictation works. Nothing is saved until you say so.
 							</span>
 							{parseState && !parseState.ok && (
-								<span className="text-prune text-sm">{parseState.error}</span>
+								<span className="text-prune-deep text-sm">{parseState.error}</span>
 							)}
 						</div>
 					</form>
 
 					{commitState?.ok && (
-						<p className="flex items-center gap-1.5 rounded-md border border-fertilise/40 bg-fertilise-soft p-2 text-sm">
-							<Icon name="check" className="h-4 w-4 text-fertilise" />
+						<p className="flex items-center gap-1.5 rounded-md border border-fertilise bg-fertilise-soft p-2 text-sm">
+							<Icon name="check" className="h-4 w-4 text-fertilise-deep" />
 							Recorded {commitState.written}{' '}
 							{commitState.written === 1 ? 'thing' : 'things'}.
 						</p>
@@ -162,7 +162,7 @@ export function LogSentence({
 										key={`${draft.subject}-${draft.action}-${index}`}
 										className={`rounded-md border p-2 ${
 											draft.plantingId === 0
-												? 'border-prune/40 bg-prune-soft'
+												? 'border-prune bg-prune-soft'
 												: draft.keep
 													? 'border-rule bg-paper'
 													: 'border-rule border-dashed bg-paper-sunk opacity-60'
@@ -259,7 +259,9 @@ export function LogSentence({
 									Discard
 								</button>
 								{commitState && !commitState.ok && (
-									<span className="text-prune text-sm">{commitState.error}</span>
+									<span className="text-prune-deep text-sm">
+										{commitState.error}
+									</span>
 								)}
 							</form>
 						</div>

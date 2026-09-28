@@ -45,7 +45,7 @@ export function AskGarden({ available }: { available: boolean }) {
 						Claude reads your records. It cannot change them.
 					</span>
 					{state && !state.ok && (
-						<span className="text-prune text-sm">{state.error}</span>
+						<span className="text-prune-deep text-sm">{state.error}</span>
 					)}
 				</div>
 			</form>

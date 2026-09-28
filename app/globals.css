@@ -13,14 +13,20 @@
  *     border - already the idiom in eight places.
  *  3. Two inks, one emphasis step. ink for content, ink-soft for apparatus;
  *     font-medium to emphasise, font-semibold only for headings.
- *  4. The pink is the cover and the marker, not the paper. palace-200 on the
- *     header and the primary button, palace-50/100 as the "today" wash. Never
- *     a large pink field.
+ *  4. The pink is the cover and the marker, not the paper. Rejoicify is that
+ *     pink: palace-200 on the header and the primary button, palace-50/100 as
+ *     the "today" wash, palace-500 - Rejoicify itself - as the marker. Never a
+ *     large pink field.
  *  5. fertilise / prune / harvest are data, never decoration. The three action
- *     colours are the ones the orchard spreadsheet used - green to feed,
- *     orange to cut, pink to pick - so the grid reads the way it always has.
- *     Any new colour has to carry a meaning.
- *  6. Two radii. rounded-sm for things printed on the page, rounded-md for
+ *     colours still carry the orchard spreadsheet's reasoning - green to feed,
+ *     warm to cut, pink to pick - so the grid reads the way it always has.
+ *     Any new colour has to carry a meaning, and a colour without one is grey:
+ *     net, spray, water and note fill with rule-strong, not with pink.
+ *  6. Each action colour has three steps and no more. NAME-soft is the wash a
+ *     panel is written on, NAME is the filled block, NAME-deep is the one that
+ *     is dark enough to be text. A fill carries text-ink - never text-white,
+ *     which these three are far too pale to take.
+ *  7. Two radii. rounded-sm for things printed on the page, rounded-md for
  *     things you can press. rounded-full only for badges.
  *
  * Dark mode is deliberately out of scope: paper and ink IS the metaphor, and a
@@ -28,19 +34,56 @@
  * of the colours below, not a change to any component.
  */
 @theme {
-	--color-palace-50: #fff5f8;
-	--color-palace-100: #ffe8ee;
-	--color-palace-200: #fec6d3;
-	--color-palace-300: #ffb7c7;
-	--color-palace-500: #e8829b;
-	--color-palace-700: #a84b63;
+	/*
+	 * The palette, and where it comes from.
+	 *
+	 * Three named colours, all of them shades from OPI's Wicked lacquers:
+	 *
+	 *   Rejoicify  #cd7baa  mauve pink   the cover, the marker, and the harvest
+	 *   Glinda     #f0a19a  warm coral   prune, and every warning figgy gives
+	 *   Wickedest  #abc590  sage green   fertilise, and every confirmation
+	 *
+	 * The palace ramp is hue-anchored on Rejoicify at 326deg, so the pink IS
+	 * that colour rather than merely near it. palace-500 is Rejoicify exactly.
+	 *
+	 * palace-700 is deeper than a pink usually wants to be on purpose: it is
+	 * the ink of 49 labels and it sits on palace-200 in the primary button and
+	 * on the header, where the old #a84b63 only managed 3.69:1. It is 6.34:1
+	 * there now, and 9.48:1 on paper.
+	 */
+	--color-palace-50: #fcf5f9;
+	--color-palace-100: #f9e7f1;
+	--color-palace-200: #eec9de;
+	--color-palace-300: #e6b3cf;
+	--color-palace-500: #cd7baa;
+	--color-palace-700: #6d3153;
 
-	--color-fertilise: #35a63a;
-	--color-fertilise-soft: #d8f0d9;
-	--color-prune: #ef7c1b;
-	--color-prune-soft: #fde4cd;
-	--color-harvest: #f78fb8;
-	--color-harvest-soft: #fde2ed;
+	/*
+	 * The three action colours, soft / fill / deep. The middle step of each is
+	 * the named colour, untouched, because that is the one the year table and
+	 * every chip is made of.
+	 *
+	 * Two things these three cost us, recorded rather than quietly worked
+	 * around. First, text-ink on the harvest fill is 4.22:1 - just under AA for
+	 * the 11px tick - which is accepted because the tick repeats what the
+	 * cell's title and its sr-only label already say. Second, to a red-green
+	 * colourblind reader the three are very nearly one colour (CIE76 dE 3-7,
+	 * where the old green/orange/pink managed 22-133). So the year table's
+	 * meaning lives in the action word in its left-hand column and in each
+	 * cell's title, and hue is only ever the thing that makes it quick to scan.
+	 */
+	--color-fertilise-soft: #edf4e6;
+	--color-fertilise: #abc590;
+	--color-fertilise-deep: #405c2d;
+	--color-prune-soft: #fae2e0;
+	--color-prune: #f0a19a;
+	--color-prune-deep: #823226;
+	--color-harvest-soft: #f9e6f1;
+	--color-harvest: #cd7baa;
+	/*
+	 * No harvest-deep. Harvest IS the palace pink - the pink you pick is the
+	 * pink on the cover - so harvest is palace-500 and its ink is palace-700.
+	 */
 
 	--color-ink: #333333;
 	--color-ink-soft: #777777;
@@ -56,7 +99,7 @@
 	 * rule-strong for the frame around the year.
 	 */
 	--color-rule-faint: #e9e6e6;
-	--color-focus: #a84b63;
+	--color-focus: #6d3153;
 
 	/*
 	 * Typography. These are Tailwind's own token names on purpose: the app
