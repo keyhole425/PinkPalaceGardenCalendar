@@ -45,6 +45,11 @@ export function SowForm({
 	const inSeason = plants.filter((p) => p.inSeason);
 	const rest = plants.filter((p) => !p.inSeason);
 
+	// The spot numbers themselves, so the <option> lists map over a value
+	// rather than an array position.
+	const columns = Array.from({ length: cols }, (_, i) => i);
+	const rowNumbers = Array.from({ length: rows }, (_, i) => i);
+
 	// Controlled on purpose. The rotation warning comes back as a failed
 	// submit, which re-renders the form - and an uncontrolled select loses
 	// what you picked, so pressing "sow it anyway" would sow something else
@@ -108,8 +113,8 @@ export function SowForm({
 						onChange={(e) => setPosX(e.target.value)}
 						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					>
-						{Array.from({ length: cols }, (_, x) => (
-							<option key={x} value={x}>
+						{columns.map((x) => (
+							<option key={`column-${x}`} value={x}>
 								Column {x + 1}
 							</option>
 						))}
@@ -124,8 +129,8 @@ export function SowForm({
 						onChange={(e) => setPosY(e.target.value)}
 						className="mt-0.5 block min-h-tap rounded-md border border-rule bg-paper px-2 text-ink text-sm"
 					>
-						{Array.from({ length: rows }, (_, y) => (
-							<option key={y} value={y}>
+						{rowNumbers.map((y) => (
+							<option key={`row-${y}`} value={y}>
 								Row {y + 1}
 							</option>
 						))}

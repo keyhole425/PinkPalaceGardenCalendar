@@ -107,6 +107,7 @@ export function LogSentence({
 					<ul className="space-y-2">
 						{drafts.map((draft, index) => (
 							<li
+								// biome-ignore lint/suspicious/noArrayIndexKey: the parsed list is never reordered or filtered - only `keep` toggles - so position is stable
 								key={`${draft.subject}-${draft.action}-${index}`}
 								className={`rounded-md border p-2 ${
 									draft.plantingId === 0

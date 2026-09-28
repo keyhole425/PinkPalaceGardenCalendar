@@ -36,6 +36,7 @@ export function Prose({ text }: { text: string }) {
 		blocks.push(
 			<ul key={`ul-${blocks.length}`} className="list-disc space-y-1 pl-5">
 				{bullets.map((item, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: parsed markdown - position is the only identity a bullet has, and the block is rebuilt whole
 					<li key={`${item.slice(0, 20)}-${index}`}>
 						{inline(item, `li-${blocks.length}-${index}`)}
 					</li>
