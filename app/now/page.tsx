@@ -37,14 +37,19 @@ export default async function NowPage() {
 				title="What&rsquo;s on"
 			/>
 
-			{/* Above the fold at every size: the thing you came to do. */}
-			<div className="mb-rhythm max-w-measure">
-				<LogSentence available={aiAvailable()} today={when} />
-			</div>
-
-			<div className="grid gap-x-10 gap-y-rhythm lg:grid-cols-[minmax(0,1fr)_20rem]">
+			{/*
+			 * Both columns start at the top of the page. Logging used to sit
+			 * above the grid as a full-width block, which pushed the weather and
+			 * the two season lists a textarea's worth down the screen for the
+			 * sake of something you open once a visit.
+			 */}
+			<div className="grid items-start gap-x-10 gap-y-rhythm lg:grid-cols-[minmax(0,1fr)_20rem]">
 				{/* What you have to do. */}
 				<div className="space-y-rhythm">
+					<div className="max-w-measure">
+						<LogSentence available={aiAvailable()} today={when} />
+					</div>
+
 					<Section
 						title="Overdue"
 						count={board.overdue.length}
@@ -175,8 +180,8 @@ export default async function NowPage() {
 			</div>
 
 			<p className="mt-rhythm max-w-measure text-ink-soft text-xs">
-				Done today is one tap; open <em>another day, or a note</em> to back-date it
-				or say how it went. Everything also shows on' '
+				Done today is one tap; open <em>Date or note</em> to back-date it or say how
+				it went. Everything also shows on{' '}
 				<Link href="/grid" className="underline">
 					the year
 				</Link>
