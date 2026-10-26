@@ -63,12 +63,6 @@ export default async function GridPage({
 					marks={marks}
 				/>
 			</div>
-
-			<p className="mt-3 text-ink-soft text-xs">
-				Seeded from <code className="font-mono">ORCHARD SCHEDULE.numbers</code>.
-				Plants marked <em>needs review</em> have gaps the spreadsheet never filled
-				in.
-			</p>
 		</Frame>
 	);
 }
