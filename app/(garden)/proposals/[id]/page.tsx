@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProposalReview } from '@/components/ai/ProposalReview';
 import { RefreshWhileRunning } from '@/components/ai/RefreshWhileRunning';
+import { SourcesRead } from '@/components/ai/SourcesRead';
 import { Callout } from '@/components/ui/Callout';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
@@ -59,17 +60,23 @@ export default async function ProposalPage({
 				)}
 
 				{stored.status === 'accepted' && (
-					<Callout tone="good">
-						Accepted
-						{stored.reviewedAt &&
-							` on ${formatLong(stored.reviewedAt.slice(0, 10))}`}
-						.{' '}
-						{stored.plantSlug && (
-							<Link href={`/plants/${stored.plantSlug}`} className="underline">
-								See the plant
-							</Link>
+					<>
+						<Callout tone="good">
+							Accepted
+							{stored.reviewedAt &&
+								` on ${formatLong(stored.reviewedAt.slice(0, 10))}`}
+							.{' '}
+							{stored.plantSlug && (
+								<Link href={`/plants/${stored.plantSlug}`} className="underline">
+									See the plant
+								</Link>
+							)}
+						</Callout>
+						{/* The plant page links here for its sources, so they stay. */}
+						{stored.citations.length > 0 && (
+							<SourcesRead citations={stored.citations} notes={stored.notes} open />
 						)}
-					</Callout>
+					</>
 				)}
 
 				{stored.status === 'rejected' && (

@@ -108,10 +108,16 @@ export default async function PlantPage({
 						<Callout tone="note" className="whitespace-pre-line">
 							{plant.notesMd}
 						</Callout>
-						{plant.sourceRef && (
+						{plant.lookedUpIn && (
 							<p className="text-ink-soft text-xs">
-								From <code className="font-mono">{plant.sourceRef}</code>, kept word
-								for word.
+								Looked up by Claude.{' '}
+								<Link
+									href={`/proposals/${plant.lookedUpIn}`}
+									className="underline hover:text-palace-700"
+								>
+									See the pages it read
+								</Link>
+								.
 							</p>
 						)}
 					</Card>
@@ -119,8 +125,7 @@ export default async function PlantPage({
 
 				{plant.needsReview && (
 					<p className="rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
-						figgy doesn&rsquo;t have the full picture for this one &mdash; the
-						spreadsheet left gaps.{' '}
+						figgy doesn&rsquo;t know this one&rsquo;s full schedule yet.{' '}
 						<Link href={`/plants/${slug}/edit`} className="underline">
 							Fill them in
 						</Link>

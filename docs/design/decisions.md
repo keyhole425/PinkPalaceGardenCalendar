@@ -50,6 +50,22 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-26 - sources only where there is one to open
+**Context:** plant pages said where things came from even when that told
+the gardener nothing: "From ORCHARD SCHEDULE.numbers, kept word for word"
+under the notes, "from the spreadsheet" beside each starting rule, "the
+spreadsheet left gaps" on needs review, and "the spreadsheet's *or* cells" in
+the rule editor. Meanwhile a looked-up rule was labelled "yours", and an
+accepted proposal no longer showed the pages Claude read.
+**Decision:** the spreadsheet is no longer mentioned anywhere on screen.
+A rule shows "yours" if someone made it, "looked up" plus the sites it came
+from if Claude did, and nothing if figgy started with it. A looked-up plant's
+notes say so and link to its proposal, which now keeps `SourcesRead` open
+after it is accepted. `hostOf` moved to `lib/ui/` to be shared.
+**Cost:** the sites are read back out of the rule's free-text `source_ref`
+rather than stored as their own column. Good enough while accepting a
+proposal is the only thing that writes it.
+
 ### 2026-10-26 - Overdue only when something is
 **Context:** `/now` opened with an alert-toned Overdue list even when it was
 empty, so the first thing read on most visits was "Nothing missed in the last

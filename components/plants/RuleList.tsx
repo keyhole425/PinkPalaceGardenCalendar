@@ -6,11 +6,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { MonthStrip } from '@/components/ui/MonthStrip';
 import type { Month } from '@/lib/schedule/months';
 import { maskRuns, monthAbbr } from '@/lib/schedule/months';
+import { hostOf } from '@/lib/ui/hostOf';
 import { type EditableRule, RuleEditor } from './RuleEditor';
 
 export type ListedRule = EditableRule & {
 	source: string;
-	sourceRef: string | null;
+	/** The pages Claude took it from, for a rule that was looked up. */
+	sources: string[];
 	edited: boolean;
 };
 
@@ -69,16 +71,16 @@ export function RuleList({
 								{rule.environmentKind && ` · ${rule.environmentKind} only`}
 							</span>
 							<span className="ml-auto flex items-center gap-2">
-								<span
-									className="text-ink-soft text-xs"
-									title={rule.sourceRef ?? undefined}
-								>
-									{rule.source === 'seed'
-										? rule.edited
-											? 'from the spreadsheet, kept'
-											: 'from the spreadsheet'
-										: 'yours'}
-								</span>
+								{/*
+								 * Where a rule came from is said only when there is
+								 * something to say: yours, or Claude's with its pages
+								 * underneath. figgy's own starting rules carry no label.
+								 */}
+								{rule.source !== 'seed' && (
+									<span className="text-ink-soft text-xs">
+										{rule.source === 'ai' ? 'looked up' : 'yours'}
+									</span>
+								)}
 								<button
 									type="button"
 									onClick={() => setEditing(open ? null : key)}
@@ -90,6 +92,22 @@ export function RuleList({
 						</div>
 						{rule.note && !open && (
 							<p className="pl-24 text-ink-soft text-xs">{rule.note}</p>
+						)}
+						{rule.sources.length > 0 && !open && (
+							<p className="flex flex-wrap gap-x-3 pl-24 text-xs">
+								<span className="text-ink-soft">From</span>
+								{rule.sources.map((source) => (
+									<a
+										key={source}
+										href={source}
+										target="_blank"
+										rel="noreferrer noopener"
+										className="text-ink-soft underline hover:text-palace-700"
+									>
+										{hostOf(source)}
+									</a>
+								))}
+							</p>
 						)}
 						{open && (
 							<RuleEditor

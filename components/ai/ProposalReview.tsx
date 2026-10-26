@@ -12,7 +12,9 @@ import {
 	maskRuns,
 	monthAbbr,
 } from '@/lib/schedule/months';
+import { hostOf } from '@/lib/ui/hostOf';
 import { Prose } from './Prose';
+import { SourcesRead } from './SourcesRead';
 
 function windowLabel(months: number[]): string {
 	return maskRuns(maskFromMonths(months))
@@ -241,39 +243,7 @@ export function ProposalReview({
 				)}
 			</form>
 
-			<details className="rounded-md border border-rule p-3">
-				<summary className="cursor-pointer text-ink-soft text-sm">
-					Every page Claude read ({citations.length}), and its notes
-				</summary>
-				<ul className="mt-2 space-y-1 text-sm">
-					{citations.map((c) => (
-						<li key={c.url}>
-							<a
-								href={c.url}
-								target="_blank"
-								rel="noreferrer noopener"
-								className="underline hover:text-palace-700"
-							>
-								{c.title}
-							</a>
-							<span className="ml-2 text-ink-soft text-xs">{hostOf(c.url)}</span>
-						</li>
-					))}
-				</ul>
-				{notes && (
-					<div className="mt-3 border-rule border-t pt-3 text-ink-soft text-xs">
-						<Prose text={notes} />
-					</div>
-				)}
-			</details>
+			<SourcesRead citations={citations} notes={notes} />
 		</div>
 	);
-}
-
-function hostOf(url: string): string {
-	try {
-		return new URL(url).hostname.replace(/^www\./, '');
-	} catch {
-		return url;
-	}
 }

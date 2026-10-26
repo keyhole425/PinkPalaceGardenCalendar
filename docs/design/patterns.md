@@ -158,6 +158,11 @@ follow one pattern:
 6. **Pending labels say what's happening:** "Reading…", "Looking…".
 7. **Claude's prose** goes through `components/ai/Prose.tsx` - headings, bold,
    italics and bullets, no raw HTML.
+8. **What Claude looked up keeps its sources.** A looked-up rule lists the
+   sites it came from beside it ("From abc.net.au"); a looked-up plant's notes
+   link to the proposal, which keeps `SourcesRead` after it is accepted.
+   Anything figgy started with or someone typed carries no source line at all:
+   only a source someone could open is worth naming.
 
 ## The weather card
 

@@ -167,8 +167,8 @@ export function RuleEditor({
 					<span>
 						One of these months will do
 						<span className="block text-ink-soft text-xs">
-							The spreadsheet&rsquo;s <em>or</em> cells &mdash; pick a month and the
-							job is done for the season.
+							Shown as <em>or</em> on the year. Do it in any one of them and the job
+							is done for the season.
 						</span>
 					</span>
 				</label>

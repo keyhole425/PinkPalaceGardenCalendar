@@ -4,7 +4,14 @@ import type { IsoDate } from '@/lib/dates';
 import { today as todayInGarden } from '@/lib/dates';
 import type { EffectiveRule, Occurrence } from '@/lib/schedule/types';
 import { db } from '../client';
-import { careLog, careRule, environment, planting, plantType } from '../schema';
+import {
+	aiProposal,
+	careLog,
+	careRule,
+	environment,
+	planting,
+	plantType,
+} from '../schema';
 import { type HouseholdId, owns } from '../tenancy';
 import type { HarvestSeason } from './garden';
 import { getSchedule } from './garden';
@@ -41,7 +48,12 @@ export type PlantDetail = {
 	family: string | null;
 	notesMd: string | null;
 	needsReview: boolean;
-	sourceRef: string | null;
+	/**
+	 * The look-up a plant Claude added came from, whose page lists every source
+	 * it read. Null for anything figgy started with or someone typed in: those
+	 * have no source worth showing.
+	 */
+	lookedUpIn: number | null;
 	plantings: PlantPlanting[];
 	/**
 	 * The plant's own rules, shown when nothing of it is in the ground - a crop
@@ -96,10 +108,38 @@ export async function getPlant(
 		family: row.family,
 		notesMd: row.notesMd,
 		needsReview: row.needsReview,
-		sourceRef: row.sourceRef,
+		lookedUpIn: row.source === 'ai' ? await acceptedProposal(hid, row.id) : null,
 		plantings,
 		templateRules: await getEditableRules(hid, row.id),
 	};
+}
+
+async function acceptedProposal(
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<number | null> {
+	const found = await db
+		.select({ id: aiProposal.id })
+		.from(aiProposal)
+		.where(
+			and(
+				owns(aiProposal, hid),
+				eq(aiProposal.plantTypeId, plantTypeId),
+				eq(aiProposal.status, 'accepted'),
+			),
+		)
+		.orderBy(desc(aiProposal.id))
+		.get();
+	return found?.id ?? null;
+}
+
+/**
+ * The pages a looked-up rule came from. Accepting a proposal writes them into
+ * the rule's reference after the model and proposal, so they are read back
+ * out of it rather than stored twice.
+ */
+function sourcesIn(sourceRef: string | null): string[] {
+	return sourceRef?.match(/https?:\/\/\S+/g) ?? [];
 }
 
 /** Everything written down against one plant, newest first. */
@@ -174,7 +214,7 @@ export async function getEditableRules(hid: HouseholdId, plantTypeId: number) {
 			environmentKind: first.environmentKind,
 			note: members.find((m) => m.note)?.note ?? null,
 			source: first.source,
-			sourceRef: first.sourceRef,
+			sources: first.source === 'ai' ? sourcesIn(first.sourceRef) : [],
 			edited: members.some((m) => m.userModifiedAt !== null),
 		};
 	});
