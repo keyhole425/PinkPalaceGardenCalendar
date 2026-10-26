@@ -4,10 +4,16 @@ import { Card } from '@/components/ui/Card';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { aiAvailable } from '@/lib/ai/client';
+import { requireHousehold } from '@/lib/auth/context';
 
 export const dynamic = 'force-dynamic';
 
-export default function NewPlantPage() {
+/** Research is two long calls to Claude; it carries on after the redirect. */
+export const maxDuration = 300;
+
+export default async function NewPlantPage() {
+	const { householdId, role } = await requireHousehold();
+	const ai = await aiAvailable(householdId);
 	return (
 		<Frame width="measure">
 			<PageHeader
@@ -21,7 +27,7 @@ export default function NewPlantPage() {
 						Name something and Claude will research how it is grown here, then
 						propose a schedule for you to check.
 					</p>
-					<AskForm available={aiAvailable()} />
+					<AskForm available={ai} canAddKey={role === 'admin'} />
 				</Card>
 
 				<Card title="Or say what you know">

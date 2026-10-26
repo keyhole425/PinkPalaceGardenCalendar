@@ -50,6 +50,19 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-26 - each household brings its own key
+**Context:** figgy's Claude features ran on one key in the server's
+environment. With households of friends that is somebody else's bill.
+**Decision:** "Looking things up" on `/settings` is where an admin adds,
+checks, replaces and removes the household's key; the page only ever shows
+its last four characters. Every switched-off surface ends with `KeyNeeded`,
+which points an admin at Settings and anyone else at their admin, instead of
+naming an environment variable nobody using figgy can set. A proposal that is
+still researching refreshes itself every four seconds rather than asking to be
+reloaded.
+**Cost:** a household with no key has no Claude features at all, and
+somebody has to make an Anthropic account to get them.
+
 ### 2026-10-26 - accounts, and a link shown once
 **Context:** figgy is moving to the internet and will hold more than one
 garden, so it needs people to sign in, and a way in that nobody can find on

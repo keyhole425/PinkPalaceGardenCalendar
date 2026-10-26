@@ -12,6 +12,7 @@
  * goes too, and lib/db/client.ts refuses anything but a local file under
  * vitest, so a hosted database is out of reach as well.
  */
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -20,6 +21,10 @@ import { beforeEach, vi } from 'vitest';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'figgy-vitest-'));
 process.env.TURSO_DATABASE_URL = `file:${path.join(dir, 'default.db')}`;
 delete process.env.TURSO_AUTH_TOKEN;
+// A real key, as production has, rather than the development fallback.
+process.env.FIGGY_ENCRYPTION_KEY = randomBytes(32).toString('base64');
+delete process.env.ANTHROPIC_API_KEY;
+delete process.env.FIGGY_DEV_ANTHROPIC_API_KEY;
 
 /*
  * Nobody is signed in under vitest - there is no request, so no cookie - so

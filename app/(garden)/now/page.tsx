@@ -19,15 +19,19 @@ import { getForecast, signalsFrom } from '@/lib/weather';
 
 export const dynamic = 'force-dynamic';
 
+/** Reading a sentence is one call to Claude, usually quick but not always. */
+export const maxDuration = 120;
+
 export default async function NowPage() {
 	const when = today();
 	// Independent, so asked for together: the forecast may be a network call
 	// to the Bureau, and the other two are round trips to the database.
-	const { householdId } = await requireHousehold();
-	const [board, toSow, forecast] = await Promise.all([
+	const { householdId, role } = await requireHousehold();
+	const [board, toSow, forecast, ai] = await Promise.all([
 		getDashboard(householdId, when),
 		sowableThisMonth(householdId, when),
 		getForecast(when),
+		aiAvailable(householdId),
 	]);
 
 	const taskKey = (t: (typeof board.overdue)[number]) =>
@@ -53,7 +57,7 @@ export default async function NowPage() {
 				{/* What you have to do. */}
 				<div className="space-y-rhythm">
 					<div className="max-w-measure">
-						<LogSentence available={aiAvailable()} today={when} />
+						<LogSentence available={ai} canAddKey={role === 'admin'} today={when} />
 					</div>
 
 					<Section

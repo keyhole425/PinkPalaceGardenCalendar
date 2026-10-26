@@ -127,7 +127,8 @@ cannot be committed at all.
 read-only and takes enumerated arguments, so a confused question gives a
 confused answer and nothing worse.
 
-Both need `ANTHROPIC_API_KEY`. Without it they explain themselves.
+Both need the household's Anthropic key (see below). Without it they explain
+themselves.
 
 ## Weather
 
@@ -179,14 +180,22 @@ written up in [docs/design/](docs/design/README.md).
 ## Looking a plant up
 
 figgy can research a plant's care for Adelaide and propose a schedule. It needs
-an Anthropic API key:
+an Anthropic API key, and figgy has none of its own to lend: **each household
+brings its own.** An admin adds it under Settings → Looking things up, it is
+checked with a free call before it is saved, and the whole household uses it.
+It is sealed in the database with AES-256-GCM against `FIGGY_ENCRYPTION_KEY`,
+bound to that household, and only its last four characters ever leave the
+server. figgy never reads `ANTHROPIC_API_KEY` from its environment; for working
+on figgy itself, `FIGGY_DEV_ANTHROPIC_API_KEY` stands in, outside production
+only.
 
-```bash
-export ANTHROPIC_API_KEY=...
-```
+Without a key, every AI surface explains itself - to an admin, where to add
+one; to anyone else, who to ask - and the manual path works exactly as before.
+Nothing else in figgy depends on it.
 
-Without one, every AI surface explains itself and the manual path works exactly
-as before. Nothing else in figgy depends on it.
+Research runs after the response, so the proposal page opens straight away and
+fills itself in. A run is stopped at 270 seconds, under the platform's limit,
+and anything still marked running after ten minutes is given up on.
 
 It works in two passes. The first searches the web, located near the garden,
 and reports back in prose with its sources. The second turns that prose into

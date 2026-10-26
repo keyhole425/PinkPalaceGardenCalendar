@@ -23,13 +23,16 @@ import type { Month } from '@/lib/schedule/months';
 
 export const dynamic = 'force-dynamic';
 
+/** Looking a plant up again is two long calls to Claude. */
+export const maxDuration = 300;
+
 export default async function EditPlantPage({
 	params,
 }: {
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
-	const { householdId } = await requireHousehold();
+	const { householdId, role } = await requireHousehold();
 	const plant = await db
 		.select()
 		.from(plantType)
@@ -43,6 +46,7 @@ export default async function EditPlantPage({
 		getPlantings(householdId, plant.id),
 		listEnvironments(householdId),
 	]);
+	const ai = await aiAvailable(householdId);
 	const currentMonth = monthOf(today()) as Month;
 
 	return (
@@ -66,7 +70,8 @@ export default async function EditPlantPage({
 							<ReviewedButton plantTypeId={plant.id} />
 						</div>
 						<AskForm
-							available={aiAvailable()}
+							available={ai}
+							canAddKey={role === 'admin'}
 							plantTypeId={plant.id}
 							defaultQuery={plant.commonName}
 							label="Ask Claude"

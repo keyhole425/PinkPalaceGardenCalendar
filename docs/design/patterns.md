@@ -146,10 +146,11 @@ follow one pattern:
    records. It cannot change them."
 4. **Show confidence** where Claude gives it: high on `fertilise-soft`, medium
    on `palace-100`, low on `prune-soft`.
-5. **Explain when unavailable.** With no API key, the surface is an
-   `EmptyState` that says what figgy could do, what it needs
-   (`ANTHROPIC_API_KEY`), and that the manual path still works: "You can
-   always tick things off by hand."
+5. **Explain when unavailable.** With no key, the surface is an
+   `EmptyState` that says what figgy could do, who can switch it on
+   (`KeyNeeded`: an admin is pointed at Settings, anyone else at their admin),
+   and that the manual path still works: "You can always tick things off by
+   hand."
 6. **Pending labels say what's happening:** "Reading…", "Looking…".
 7. **Claude's prose** goes through `components/ai/Prose.tsx` - headings, bold,
    italics and bullets, no raw HTML.

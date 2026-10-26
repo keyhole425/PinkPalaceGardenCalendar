@@ -23,19 +23,18 @@ describe('what figgy says when Claude will not answer', () => {
 		expect(said).not.toContain('{');
 	});
 
-	it('points a refused key at the setting it lives in', () => {
+	it('points a refused key at where it can be replaced', () => {
 		const said = describeError(
 			new Anthropic.AuthenticationError(401, {}, 'nope', new Headers()),
 		);
-		expect(said).toContain('ANTHROPIC_API_KEY');
-		expect(said).toContain('environment settings');
+		expect(said).toContain('Settings');
 	});
 
 	it('explains an organisation key that names no workspace', () => {
 		const raw =
 			'400 {"type":"error","error":{"type":"invalid_request_error","message":"This API key is not scoped to a workspace, so this request must include the anthropic-workspace-id header with the ID of the workspace to use."}}';
 		const said = describeError(apiError(400, raw));
-		expect(said).toContain('ANTHROPIC_WORKSPACE_ID');
+		expect(said).toContain('workspace ID');
 		expect(said).toContain('workspace-scoped key');
 		expect(said).not.toContain('{');
 	});

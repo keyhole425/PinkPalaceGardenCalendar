@@ -572,3 +572,29 @@ export const invite = sqliteTable(
 		),
 	],
 );
+
+/**
+ * A household's own Anthropic key, for the features that ask Claude.
+ *
+ * Off until an admin adds one: figgy has no key of its own to lend. The key
+ * is sealed (lib/crypto/secretbox.ts) against FIGGY_ENCRYPTION_KEY and bound
+ * to this household, and only its last four characters ever leave the
+ * server. Kept in its own table so that reading a household never so much as
+ * fetches the ciphertext.
+ */
+export const householdAiCredential = sqliteTable('household_ai_credential', {
+	householdId: integer('household_id')
+		.primaryKey()
+		.references(() => household.id, { onDelete: 'cascade' }),
+	keySealed: text('key_sealed').notNull(),
+	keyLast4: text('key_last4').notNull(),
+	/** For an organisation-level key, which workspace to bill. */
+	workspaceId: text('workspace_id'),
+	updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+	updatedByUserId: text('updated_by_user_id').references(() => user.id, {
+		onDelete: 'set null',
+	}),
+	/** The last time an admin pressed "Check it", and whether it worked. */
+	checkedAt: text('checked_at'),
+	checkOk: integer('check_ok', { mode: 'boolean' }),
+});

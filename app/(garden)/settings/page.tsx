@@ -1,5 +1,6 @@
 import { count, eq } from 'drizzle-orm';
 import Link from 'next/link';
+import { CheckKey, RemoveKey, SaveKey } from '@/components/settings/AiKeyForms';
 import {
 	InviteForm,
 	MemberControls,
@@ -12,12 +13,19 @@ import { Card } from '@/components/ui/Card';
 import { DataList, DataRow } from '@/components/ui/DataList';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { aiAvailable, MODEL } from '@/lib/ai/client';
+import { MODEL } from '@/lib/ai/client';
 import { listProposals, totalSpendCents } from '@/lib/ai/proposals';
 import { isSiteAdmin, requireHousehold } from '@/lib/auth/context';
 import { db, dbUrl, describeDbUrl } from '@/lib/db/client';
 import { listMembers } from '@/lib/db/queries/household';
-import { careLog, careRule, household, planting, plantType } from '@/lib/db/schema';
+import {
+	careLog,
+	careRule,
+	household,
+	householdAiCredential,
+	planting,
+	plantType,
+} from '@/lib/db/schema';
 import { owns } from '@/lib/db/tenancy';
 import { listPendingInvites, type PendingInvite } from '@/lib/invites';
 
@@ -51,10 +59,19 @@ export default async function SettingsPage() {
 	const { householdId } = ctx;
 	const admin = ctx.role === 'admin';
 	const siteAdmin = await isSiteAdmin(ctx.userId);
-	const [members, invites, gardenInvites] = await Promise.all([
+	const [members, invites, gardenInvites, key] = await Promise.all([
 		listMembers(householdId),
 		admin ? listPendingInvites(householdId) : [],
 		siteAdmin ? listPendingInvites(null) : [],
+		// Never the sealed key itself: only what the page is allowed to say.
+		db
+			.select({
+				keyLast4: householdAiCredential.keyLast4,
+				checkOk: householdAiCredential.checkOk,
+			})
+			.from(householdAiCredential)
+			.where(eq(householdAiCredential.householdId, householdId))
+			.get(),
 	]);
 	// Counted in the database rather than by fetching every row: the log only
 	// grows, and every row would otherwise cross the network to be counted.
@@ -155,10 +172,17 @@ export default async function SettingsPage() {
 					</dl>
 				</Card>
 
-				<Card title="Looking things up">
-					{aiAvailable() ? (
+				<Card title="Looking things up" id="looking-things-up">
+					{key ? (
 						<p className="text-sm">
-							Switched on, using {MODEL}. Spent so far:{' '}
+							Switched on, using {MODEL} on this household&rsquo;s key ending{' '}
+							<code className="font-mono">{key.keyLast4}</code>
+							{key.checkOk === false && (
+								<Badge tone="strong" className="ml-2">
+									last check failed
+								</Badge>
+							)}
+							. Spent so far:{' '}
 							<strong>
 								{spend < 100
 									? `${spend.toFixed(1)}¢`
@@ -171,10 +195,30 @@ export default async function SettingsPage() {
 						</p>
 					) : (
 						<p className="text-sm">
-							Switched off &mdash; no{' '}
-							<code className="font-mono">ANTHROPIC_API_KEY</code>. Everything else
-							works without one.
+							Switched off. figgy can research a plant, answer questions about the
+							garden and read a sentence like &ldquo;pruned the fig&rdquo;, but each
+							of those asks Claude, and Claude needs an Anthropic API key. The whole
+							household shares one, and Anthropic bills it. Everything else works
+							without one.
 						</p>
+					)}
+
+					{admin ? (
+						<div className="space-y-3">
+							<SaveKey replacing={key !== undefined} />
+							{key && (
+								<div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+									<CheckKey />
+									<RemoveKey />
+								</div>
+							)}
+						</div>
+					) : (
+						!key && (
+							<p className="text-ink-soft text-sm">
+								An admin of this household can add one here.
+							</p>
+						)
 					)}
 
 					{proposals.length > 0 && (

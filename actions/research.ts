@@ -10,6 +10,7 @@
 import { and, eq, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { aiAvailable, describeError } from '@/lib/ai/client';
 import {
@@ -33,6 +34,9 @@ import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+/** Under the 300 seconds the pages that start research allow. */
+const RESEARCH_BUDGET_MS = 270_000;
 
 function slugify(name: string): string {
 	return name
@@ -63,11 +67,11 @@ export async function askAboutPlant(
 	form: FormData,
 ): Promise<ActionResult> {
 	const { householdId } = await requireHousehold();
-	if (!aiAvailable()) {
+	if (!(await aiAvailable(householdId))) {
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so it cannot look anything up. Add ANTHROPIC_API_KEY and redeploy.',
+				'This household has no Anthropic key yet, so figgy cannot look anything up. An admin can add one in Settings.',
 		};
 	}
 
@@ -85,24 +89,38 @@ export async function askAboutPlant(
 	}
 	const id = await startProposal(householdId, query, plantTypeId);
 
-	try {
-		const known = plantTypeId
-			? {
-					commonName: query,
-					existing: await describeExisting(householdId, plantTypeId),
-				}
-			: undefined;
+	// Two long calls to Claude, with web searches between - often longer than
+	// anyone should watch a button spin. The proposal page opens straight away
+	// and fills in when this finishes, after the response has gone.
+	after(async () => {
+		// A little under the page's maxDuration, so a run that is going to be
+		// cut off fails cleanly here rather than being killed mid-write.
+		const signal = AbortSignal.timeout(RESEARCH_BUDGET_MS);
+		try {
+			const known = plantTypeId
+				? {
+						commonName: query,
+						existing: await describeExisting(householdId, plantTypeId),
+					}
+				: undefined;
 
-		const notes = await research(householdId, query, known, id);
-		const proposal = await structure(householdId, query, notes, id);
-		await finishProposal(householdId, id, {
-			proposal,
-			notes: notes.notes,
-			citations: notes.citations,
-		});
-	} catch (error) {
-		await failProposal(householdId, id, describeError(error));
-	}
+			const notes = await research(householdId, query, known, id, signal);
+			const proposal = await structure(householdId, query, notes, id, signal);
+			await finishProposal(householdId, id, {
+				proposal,
+				notes: notes.notes,
+				citations: notes.citations,
+			});
+		} catch (error) {
+			await failProposal(
+				householdId,
+				id,
+				signal.aborted
+					? 'That took too long, so figgy stopped it.'
+					: describeError(error),
+			);
+		}
+	});
 
 	revalidatePath('/settings');
 	redirect(`/proposals/${id}`);

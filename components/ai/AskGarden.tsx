@@ -5,6 +5,7 @@ import { ask } from '@/actions/ask';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { inputClass } from '@/components/ui/Field';
+import { KeyNeeded } from './KeyNeeded';
 import { Prose } from './Prose';
 
 const SUGGESTIONS = [
@@ -14,14 +15,20 @@ const SUGGESTIONS = [
 	'What have I not done to the lemon?',
 ];
 
-export function AskGarden({ available }: { available: boolean }) {
+export function AskGarden({
+	available,
+	canAddKey,
+}: {
+	available: boolean;
+	canAddKey: boolean;
+}) {
 	const [state, formAction, pending] = useActionState(ask, null);
 
 	if (!available) {
 		return (
 			<EmptyState>
 				figgy can answer questions about your own records, but it needs an Anthropic
-				API key. Set <code>ANTHROPIC_API_KEY</code> and redeploy.
+				API key. <KeyNeeded canAddKey={canAddKey} />
 			</EmptyState>
 		);
 	}

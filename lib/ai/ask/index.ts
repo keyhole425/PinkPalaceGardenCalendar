@@ -8,7 +8,7 @@
  */
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { HouseholdId } from '@/lib/db/tenancy';
-import { anthropic, MODEL } from '../client';
+import { anthropicFor, MODEL } from '../client';
 import { localeBrief } from '../locale';
 import { recordCall } from '../usage';
 import {
@@ -75,7 +75,7 @@ export async function askGarden(
 	hid: HouseholdId,
 	question: string,
 ): Promise<AskAnswer> {
-	const client = anthropic();
+	const client = await anthropicFor(hid);
 	const summary = await gardenSummary(hid);
 
 	const runner = client.beta.messages.toolRunner({

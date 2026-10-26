@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ProposalReview } from '@/components/ai/ProposalReview';
+import { RefreshWhileRunning } from '@/components/ai/RefreshWhileRunning';
 import { Callout } from '@/components/ui/Callout';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
@@ -96,7 +97,13 @@ export default async function ProposalPage({
 				)}
 
 				{stored.status === 'running' && (
-					<EmptyState>Still reading around. Refresh in a moment.</EmptyState>
+					<>
+						<EmptyState>
+							Still reading around. This usually takes a minute or two; the page
+							fills in by itself.
+						</EmptyState>
+						<RefreshWhileRunning />
+					</>
 				)}
 			</div>
 		</Frame>

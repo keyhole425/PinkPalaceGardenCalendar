@@ -14,11 +14,11 @@ export async function ask(
 	form: FormData,
 ): Promise<AskResult> {
 	const { householdId } = await requireHousehold();
-	if (!aiAvailable()) {
+	if (!(await aiAvailable(householdId))) {
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so there is nobody to ask. Add ANTHROPIC_API_KEY and redeploy.',
+				'This household has no Anthropic key yet, so there is nobody to ask. An admin can add one in Settings.',
 		};
 	}
 

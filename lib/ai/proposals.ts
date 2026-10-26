@@ -3,7 +3,7 @@
  * away. Nothing here touches the schedule - accepting does, and that is in
  * `actions/research.ts`, where a person has to press the button.
  */
-import { and, desc, eq, sum } from 'drizzle-orm';
+import { and, desc, eq, lt, sql, sum } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { aiCall, aiProposal, careRule, plantType } from '@/lib/db/schema';
 import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
@@ -33,10 +33,33 @@ function parseProposal(raw: string | null): PlantProposal | null {
 	return parsed.success ? parsed.data : null;
 }
 
+/**
+ * A run that never finished - the function was stopped, the deploy rolled -
+ * would otherwise say "still reading around" for ever. Ten minutes is well
+ * past anything a real run takes.
+ */
+async function giveUpOnStale(hid: HouseholdId) {
+	await db
+		.update(aiProposal)
+		.set({
+			status: 'failed',
+			error: 'That never finished, so figgy gave up on it.',
+		})
+		.where(
+			and(
+				owns(aiProposal, hid),
+				eq(aiProposal.status, 'running'),
+				lt(aiProposal.createdAt, sql`datetime('now', '-10 minutes')`),
+			),
+		)
+		.run();
+}
+
 export async function getProposal(
 	hid: HouseholdId,
 	id: number,
 ): Promise<StoredProposal | null> {
+	await giveUpOnStale(hid);
 	const row = await db
 		.select()
 		.from(aiProposal)
@@ -80,6 +103,7 @@ export async function getProposal(
 }
 
 export async function listProposals(hid: HouseholdId, limit = 25) {
+	await giveUpOnStale(hid);
 	return await db
 		.select({
 			id: aiProposal.id,

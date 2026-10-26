@@ -63,11 +63,11 @@ export async function parseLog(
 	form: FormData,
 ): Promise<ParseResult> {
 	const { householdId } = await requireHousehold();
-	if (!aiAvailable()) {
+	if (!(await aiAvailable(householdId))) {
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so it cannot read a sentence. Add ANTHROPIC_API_KEY and redeploy.',
+				'This household has no Anthropic key yet, so figgy cannot read a sentence. An admin can add one in Settings.',
 		};
 	}
 
