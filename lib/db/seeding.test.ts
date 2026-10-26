@@ -68,6 +68,51 @@ describe('seeding', () => {
 		);
 	});
 
+	it('keeps every rule it already had, so work done stays done', async () => {
+		const { db, seedGarden, schema } = await freshModules();
+		await seedGarden(db);
+		const ids = (
+			await db.select({ id: schema.careRule.id }).from(schema.careRule).all()
+		)
+			.map((r) => r.id)
+			.sort();
+
+		const lemon = await db
+			.select()
+			.from(schema.planting)
+			.where(eq(schema.planting.label, 'Lemon'))
+			.get();
+		const rule = await db
+			.select()
+			.from(schema.careRule)
+			.where(eq(schema.careRule.plantTypeId, lemon?.plantTypeId ?? 0))
+			.get();
+		if (!lemon || !rule) throw new Error('no lemon');
+		await db
+			.insert(schema.careLog)
+			.values({
+				householdId: GARDEN,
+				plantingId: lemon.id,
+				careRuleId: rule.id,
+				action: rule.action,
+				seasonYear: 2026,
+				occurrenceKey: '2026-09',
+				completedOn: '2026-09-10',
+			})
+			.run();
+
+		const again = await seedGarden(db);
+		expect(again.rules).toBe(0);
+		const after = (
+			await db.select({ id: schema.careRule.id }).from(schema.careRule).all()
+		)
+			.map((r) => r.id)
+			.sort();
+		expect(after).toEqual(ids);
+		const log = await db.select().from(schema.careLog).get();
+		expect(log?.careRuleId).toBe(rule.id);
+	});
+
 	it('leaves an edited rule alone, and does not put its own back', async () => {
 		const { db, seedGarden, schema, rules, queries } = await freshModules();
 		await seedGarden(db);

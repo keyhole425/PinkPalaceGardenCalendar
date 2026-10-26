@@ -13,7 +13,7 @@
  * re-running never resurrects what you replaced or leaves you with two of
  * everything.
  */
-import { and, asc, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm';
 import type { Db, Tx } from '@/lib/db/client';
 import { deleteRules } from '@/lib/db/rules';
 import {
@@ -167,6 +167,35 @@ function ruleRows(
 	});
 }
 
+/** What makes two rules the same rule, as far as the seed is concerned. */
+function ruleKey(r: {
+	action: string;
+	monthMask: number;
+	cadence?: string | null;
+	altGroup?: string | null;
+	note?: string | null;
+	sourceRef?: string | null;
+}): string {
+	return JSON.stringify([
+		r.action,
+		r.monthMask,
+		r.cadence ?? null,
+		r.altGroup ?? null,
+		r.note ?? null,
+		r.sourceRef ?? null,
+	]);
+}
+
+/**
+ * Brings the seed's own rules for one plant in line with the seed.
+ *
+ * A rule that has not changed is left exactly where it is. That matters more
+ * than it looks: what you did is recorded against a rule's id, so deleting
+ * and re-inserting every rule - which is what this used to do - quietly
+ * un-ticked every job on every re-seed, and the container re-seeded on every
+ * start. Only a rule the seed no longer has is removed, and only one it did
+ * not have before is added.
+ */
 async function seedRulesFor(
 	db: Db,
 	hid: HouseholdId,
@@ -174,21 +203,48 @@ async function seedRulesFor(
 	pt: SeedPlantType,
 ) {
 	const owned = await userOwnedActions(db, hid, plantTypeId);
-
-	// Clear out only the rules this seed still owns, then lay them down fresh.
-	await deleteRules(
-		db,
-		and(
-			owns(careRule, hid),
-			eq(careRule.plantTypeId, plantTypeId),
-			eq(careRule.source, 'seed'),
-			isNull(careRule.userModifiedAt),
-		),
+	const seedOwned = and(
+		owns(careRule, hid),
+		eq(careRule.plantTypeId, plantTypeId),
+		eq(careRule.source, 'seed'),
+		isNull(careRule.userModifiedAt),
 	);
 
-	const rows = ruleRows(hid, plantTypeId, pt).filter((r) => !owned.has(r.action));
-	if (rows.length > 0) await db.insert(careRule).values(rows).run();
-	return { written: rows.length, owned: [...owned] };
+	const existing = await db
+		.select({
+			id: careRule.id,
+			action: careRule.action,
+			monthMask: careRule.monthMask,
+			cadence: careRule.cadence,
+			altGroup: careRule.altGroup,
+			note: careRule.note,
+			sourceRef: careRule.sourceRef,
+		})
+		.from(careRule)
+		.where(seedOwned)
+		.all();
+	const unclaimed = new Map<string, number[]>();
+	for (const rule of existing) {
+		const key = ruleKey(rule);
+		unclaimed.set(key, [...(unclaimed.get(key) ?? []), rule.id]);
+	}
+
+	const wanted = ruleRows(hid, plantTypeId, pt).filter((r) => !owned.has(r.action));
+	const toInsert = wanted.filter((rule) => {
+		const ids = unclaimed.get(ruleKey(rule));
+		if (ids && ids.length > 0) {
+			ids.shift();
+			return false;
+		}
+		return true;
+	});
+	const stale = [...unclaimed.values()].flat();
+
+	if (stale.length > 0) {
+		await deleteRules(db, and(seedOwned, inArray(careRule.id, stale)));
+	}
+	if (toInsert.length > 0) await db.insert(careRule).values(toInsert).run();
+	return { written: toInsert.length, owned: [...owned] };
 }
 
 async function seedPlantingsFor(
