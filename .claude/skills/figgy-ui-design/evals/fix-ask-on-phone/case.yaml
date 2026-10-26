@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: fix-ask-on-phone
+expected_outcome: |
+  Ask becomes reachable on a phone without breaking the four-tab bar or the
+  design rules, the change uses existing primitives and tokens with a 44px
+  target, and docs/design (patterns.md and the Open list in decisions.md) are
+  updated to match.

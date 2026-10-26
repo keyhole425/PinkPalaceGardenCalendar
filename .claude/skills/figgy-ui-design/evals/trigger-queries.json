@@ -1,0 +1,82 @@
+[
+	{
+		"query": "the plants page feels really cramped on my phone, the scientific names wrap under everything and the badges end up on their own line. can you sort it out",
+		"should_trigger": true
+	},
+	{
+		"query": "I want a screen that shows watering history for each bed - last watered, how often. what would that look like in figgy?",
+		"should_trigger": true
+	},
+	{
+		"query": "review the UI changes on this branch before I merge, I'm worried I broke some of the notebook rules",
+		"should_trigger": true
+	},
+	{
+		"query": "what colour should a 'spray' badge be? I was going to make it blue so it stands out from water",
+		"should_trigger": true
+	},
+	{
+		"query": "the empty state on Now says 'Nothing opens in the next three weeks.' which sounds weird to me, can you reword the empty states on that page",
+		"should_trigger": true
+	},
+	{
+		"query": "on my phone I can't find the Ask page anywhere, can you fix that",
+		"should_trigger": true
+	},
+	{
+		"query": "add a 'mulch' care action. it should show up on the year grid and the task cards like the others",
+		"should_trigger": true
+	},
+	{
+		"query": "the Done button on task cards is hard to hit with gloves on, make it bigger",
+		"should_trigger": true
+	},
+	{
+		"query": "is the contrast ok on the harvest chips? my mum is finding them hard to read outside",
+		"should_trigger": true
+	},
+	{
+		"query": "settings page looks a bit like a dumping ground, tidy it up so it matches the rest of the app",
+		"should_trigger": true
+	},
+	{
+		"query": "why does the year grid skip March for the fig when the rule says Feb-Apr? I think maskRuns is wrong",
+		"should_trigger": false
+	},
+	{
+		"query": "bump the node base image in ops/Dockerfile to 22 and make sure docker compose still builds",
+		"should_trigger": false
+	},
+	{
+		"query": "add a drizzle migration for a harvest weight column on the log table, nullable, in kg",
+		"should_trigger": false
+	},
+	{
+		"query": "the BOM forecast fetch is timing out and falling back to Open-Meteo every morning, can you look at lib/weather",
+		"should_trigger": false
+	},
+	{
+		"query": "when I ask 'what did the fig give us last year' Claude says it can't find any harvests even though there are some. check the ask tools",
+		"should_trigger": false
+	},
+	{
+		"query": "write a vitest for plusDays in lib/dates.ts across the April DST change in Adelaide",
+		"should_trigger": false
+	},
+	{
+		"query": "the nightly backup script is leaving .db-wal files behind in backups/, fix it",
+		"should_trigger": false
+	},
+	{
+		"query": "the research proposal for 'kaffir lime' came back with sowing months in the wrong hemisphere, tweak the prompt in lib/ai so it thinks about Adelaide",
+		"should_trigger": false
+	},
+	{
+		"query": "CI is failing on biome lint in actions/care.ts, something about useImportType",
+		"should_trigger": false
+	},
+	{
+		"query": "seed the hothouse with tomatoes and basil in db/seed so I have something to test with",
+		"should_trigger": false
+	}
+]

@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: review-plant-page
+expected_outcome: |
+  A list of design problems on the plant detail page, each with a file:line,
+  the rule or doc it breaks, and a fix in figgy's terms. It should catch the
+  hand-rolled sans-serif h2 headings and the stale /beds link, check claims
+  against the code rather than repeating docs, and should not edit any files.

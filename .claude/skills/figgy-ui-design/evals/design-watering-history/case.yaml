@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: design-watering-history
+expected_outcome: |
+  A written design for a watering-history view built from figgy's existing
+  primitives (Frame, PageHeader, Card, DataList, EmptyState), placed sensibly
+  (on a bed's page rather than a new tab), keeping water grey rather than
+  giving it a colour, with real copy in figgy's voice and a note on how it
+  works at phone width. No code is changed.
