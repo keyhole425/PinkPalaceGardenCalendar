@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { AskForm } from '@/components/ai/AskForm';
 import { PlantForm } from '@/components/plants/PlantForm';
@@ -8,6 +8,7 @@ import { RuleList } from '@/components/plants/RuleList';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { aiAvailable } from '@/lib/ai/client';
+import { requireHousehold } from '@/lib/auth/context';
 import { monthOf, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import {
@@ -17,6 +18,7 @@ import {
 	listEnvironments,
 } from '@/lib/db/queries/plant';
 import { plantType } from '@/lib/db/schema';
+import { owns } from '@/lib/db/tenancy';
 import type { Month } from '@/lib/schedule/months';
 
 export const dynamic = 'force-dynamic';
@@ -27,18 +29,19 @@ export default async function EditPlantPage({
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
+	const { householdId } = await requireHousehold();
 	const plant = await db
 		.select()
 		.from(plantType)
-		.where(eq(plantType.slug, slug))
+		.where(and(owns(plantType, householdId), eq(plantType.slug, slug)))
 		.get();
 	if (!plant) notFound();
 
 	const [rules, removed, plantings, environments] = await Promise.all([
-		getEditableRules(plant.id),
-		getRemovedActions(plant.id),
-		getPlantings(plant.id),
-		listEnvironments(),
+		getEditableRules(householdId, plant.id),
+		getRemovedActions(householdId, plant.id),
+		getPlantings(householdId, plant.id),
+		listEnvironments(householdId),
 	]);
 	const currentMonth = monthOf(today()) as Month;
 

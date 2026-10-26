@@ -1,4 +1,4 @@
-import { count } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -7,17 +7,20 @@ import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { aiAvailable, MODEL } from '@/lib/ai/client';
 import { listProposals, totalSpendCents } from '@/lib/ai/proposals';
+import { requireHousehold } from '@/lib/auth/context';
 import { db, dbUrl, describeDbUrl } from '@/lib/db/client';
-import { careLog, careRule, meta, planting, plantType } from '@/lib/db/schema';
+import { careLog, careRule, household, planting, plantType } from '@/lib/db/schema';
+import { owns } from '@/lib/db/tenancy';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
+	const { householdId } = await requireHousehold();
 	// Counted in the database rather than by fetching every row: the log only
 	// grows, and every row would otherwise cross the network to be counted.
 	const [[plants], [plantings], [rules], [log]] = await Promise.all(
 		[plantType, planting, careRule, careLog].map((table) =>
-			db.select({ n: count() }).from(table).all(),
+			db.select({ n: count() }).from(table).where(owns(table, householdId)).all(),
 		),
 	);
 	const counts = {
@@ -26,11 +29,14 @@ export default async function SettingsPage() {
 		rules: rules?.n ?? 0,
 		log: log?.n ?? 0,
 	};
-	const metaRows = await db.select().from(meta).all();
-	const seedVersion =
-		metaRows.find((m) => m.key === 'seed_version')?.value ?? 'unknown';
-	const spend = await totalSpendCents();
-	const proposals = await listProposals(10);
+	const home = await db
+		.select({ seedVersion: household.seedVersion })
+		.from(household)
+		.where(eq(household.id, householdId))
+		.get();
+	const seedVersion = home?.seedVersion ?? 'unknown';
+	const spend = await totalSpendCents(householdId);
+	const proposals = await listProposals(householdId, 10);
 
 	return (
 		<Frame width="list">

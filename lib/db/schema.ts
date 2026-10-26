@@ -21,78 +21,125 @@ import {
 	uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 
-/** Where something grows. Environments carry their own climate profile. */
-export const environment = sqliteTable('environment', {
+export const SEED_PROFILES = ['pink-palace', 'starter'] as const;
+export type SeedProfile = (typeof SEED_PROFILES)[number];
+
+/**
+ * One garden, and everyone who looks after it.
+ *
+ * Every other table hangs off this. Two households share nothing - not the
+ * plants, not the schedule, not what Claude was asked - and a household's id
+ * comes from the signed-in person, never from anything a page sends back.
+ */
+export const household = sqliteTable('household', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	slug: text('slug').notNull().unique(),
-	kind: text('kind', { enum: ['orchard', 'bed', 'hothouse', 'pot'] }).notNull(),
 	name: text('name').notNull(),
-	sortOrder: integer('sort_order').notNull().default(0),
-
-	widthCm: integer('width_cm'),
-	lengthCm: integer('length_cm'),
 	/**
-	 * How the plan view divides this place up. A bed is a grid of spots you
-	 * put things in; the orchard has no grid and is just a list of trees.
+	 * Which seed it grew from. The Pink Palace has its orchard; everyone else
+	 * starts from the vegetable catalogue and a bed.
 	 */
-	gridCols: integer('grid_cols'),
-	gridRows: integer('grid_rows'),
-
-	/** Never frosts: the hothouse, and anything else fully protected. */
-	frostFree: integer('frost_free', { mode: 'boolean' }).notNull().default(false),
-	/**
-	 * How far ahead of the open garden this environment runs, in whole months.
-	 * The hothouse is typically -1: you sow a month earlier inside.
-	 */
-	windowShiftMonths: integer('window_shift_months').notNull().default(0),
-	minTempC: integer('min_temp_c'),
-	notes: text('notes'),
+	seedProfile: text('seed_profile', { enum: SEED_PROFILES })
+		.notNull()
+		.default('starter'),
+	/** The seed version last applied, so a re-seed knows what changed. */
+	seedVersion: text('seed_version'),
+	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
+
+/** Where something grows. Environments carry their own climate profile. */
+export const environment = sqliteTable(
+	'environment',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
+		/** Unique within a household; two gardens may both have a bed-1. */
+		slug: text('slug').notNull(),
+		kind: text('kind', { enum: ['orchard', 'bed', 'hothouse', 'pot'] }).notNull(),
+		name: text('name').notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+
+		widthCm: integer('width_cm'),
+		lengthCm: integer('length_cm'),
+		/**
+		 * How the plan view divides this place up. A bed is a grid of spots you
+		 * put things in; the orchard has no grid and is just a list of trees.
+		 */
+		gridCols: integer('grid_cols'),
+		gridRows: integer('grid_rows'),
+
+		/** Never frosts: the hothouse, and anything else fully protected. */
+		frostFree: integer('frost_free', { mode: 'boolean' }).notNull().default(false),
+		/**
+		 * How far ahead of the open garden this environment runs, in whole months.
+		 * The hothouse is typically -1: you sow a month earlier inside.
+		 */
+		windowShiftMonths: integer('window_shift_months').notNull().default(0),
+		minTempC: integer('min_temp_c'),
+		notes: text('notes'),
+	},
+	(t) => [uniqueIndex('environment_household_slug_idx').on(t.householdId, t.slug)],
+);
 
 /** A kind of plant, not an individual one. The template rules hang off this. */
-export const plantType = sqliteTable('plant_type', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	slug: text('slug').notNull().unique(),
-	commonName: text('common_name').notNull(),
-	scientificName: text('scientific_name'),
-	category: text('category', {
-		enum: ['fruit_tree', 'vegetable', 'herb', 'other'],
-	})
-		.notNull()
-		.default('other'),
-	lifecycle: text('lifecycle', {
-		enum: ['perennial', 'annual', 'biennial'],
-	})
-		.notNull()
-		.default('perennial'),
-	/** Botanical family, for crop rotation warnings. */
-	family: text('family'),
-	/** Free text, kept verbatim. The orchard notes live here unedited. */
-	notesMd: text('notes_md'),
+export const plantType = sqliteTable(
+	'plant_type',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
+		/** Unique within a household. */
+		slug: text('slug').notNull(),
+		commonName: text('common_name').notNull(),
+		scientificName: text('scientific_name'),
+		category: text('category', {
+			enum: ['fruit_tree', 'vegetable', 'herb', 'other'],
+		})
+			.notNull()
+			.default('other'),
+		lifecycle: text('lifecycle', {
+			enum: ['perennial', 'annual', 'biennial'],
+		})
+			.notNull()
+			.default('perennial'),
+		/** Botanical family, for crop rotation warnings. */
+		family: text('family'),
+		/** Free text, kept verbatim. The orchard notes live here unedited. */
+		notesMd: text('notes_md'),
 
-	daysToMaturityMin: integer('days_to_maturity_min'),
-	daysToMaturityMax: integer('days_to_maturity_max'),
-	spacingCm: integer('spacing_cm'),
-	rowSpacingCm: integer('row_spacing_cm'),
+		daysToMaturityMin: integer('days_to_maturity_min'),
+		daysToMaturityMax: integer('days_to_maturity_max'),
+		spacingCm: integer('spacing_cm'),
+		rowSpacingCm: integer('row_spacing_cm'),
 
-	source: text('source', { enum: ['seed', 'user', 'ai'] })
-		.notNull()
-		.default('user'),
-	sourceRef: text('source_ref'),
-	/** Set when figgy knows the data is incomplete, so the UI can nag. */
-	needsReview: integer('needs_review', { mode: 'boolean' })
-		.notNull()
-		.default(false),
+		source: text('source', { enum: ['seed', 'user', 'ai'] })
+			.notNull()
+			.default('user'),
+		sourceRef: text('source_ref'),
+		/** Set when figgy knows the data is incomplete, so the UI can nag. */
+		needsReview: integer('needs_review', { mode: 'boolean' })
+			.notNull()
+			.default(false),
 
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-	userModifiedAt: text('user_modified_at'),
-});
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		userModifiedAt: text('user_modified_at'),
+	},
+	(t) => [uniqueIndex('plant_type_household_slug_idx').on(t.householdId, t.slug)],
+);
 
 /** An individual plant in an individual place. */
 export const planting = sqliteTable(
 	'planting',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
 		plantTypeId: integer('plant_type_id')
 			.notNull()
 			.references(() => plantType.id, { onDelete: 'cascade' }),
@@ -124,6 +171,7 @@ export const planting = sqliteTable(
 	(t) => [
 		index('planting_plant_type_idx').on(t.plantTypeId),
 		index('planting_environment_idx').on(t.environmentId),
+		index('planting_household_status_idx').on(t.householdId, t.status),
 	],
 );
 
@@ -154,6 +202,10 @@ export const careRule = sqliteTable(
 	'care_rule',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
 		plantTypeId: integer('plant_type_id').references(() => plantType.id, {
 			onDelete: 'cascade',
 		}),
@@ -192,6 +244,7 @@ export const careRule = sqliteTable(
 	(t) => [
 		index('care_rule_plant_type_idx').on(t.plantTypeId),
 		index('care_rule_planting_idx').on(t.plantingId),
+		index('care_rule_household_active_idx').on(t.householdId, t.active),
 	],
 );
 
@@ -200,6 +253,10 @@ export const careLog = sqliteTable(
 	'care_log',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
 		plantingId: integer('planting_id')
 			.notNull()
 			.references(() => planting.id, { onDelete: 'cascade' }),
@@ -232,7 +289,7 @@ export const careLog = sqliteTable(
 		uniqueIndex('care_log_occurrence_idx')
 			.on(t.plantingId, t.careRuleId, t.occurrenceKey)
 			.where(sql`${t.occurrenceKey} is not null`),
-		index('care_log_completed_idx').on(t.completedOn),
+		index('care_log_household_completed_idx').on(t.householdId, t.completedOn),
 	],
 );
 
@@ -248,6 +305,10 @@ export const aiProposal = sqliteTable(
 	'ai_proposal',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
 		kind: text('kind', { enum: ['plant_research'] })
 			.notNull()
 			.default('plant_research'),
@@ -276,30 +337,42 @@ export const aiProposal = sqliteTable(
 		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 		reviewedAt: text('reviewed_at'),
 	},
-	(t) => [index('ai_proposal_status_idx').on(t.status)],
+	(t) => [index('ai_proposal_household_status_idx').on(t.householdId, t.status)],
 );
 
 /** What each request to the model cost, so spending is visible rather than felt. */
-export const aiCall = sqliteTable('ai_call', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	proposalId: integer('proposal_id').references(() => aiProposal.id, {
-		onDelete: 'set null',
-	}),
-	purpose: text('purpose').notNull(),
-	model: text('model').notNull(),
+export const aiCall = sqliteTable(
+	'ai_call',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Whose garden this belongs to. Every read and write is scoped by it. */
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
 
-	inputTokens: integer('input_tokens').notNull().default(0),
-	outputTokens: integer('output_tokens').notNull().default(0),
-	cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
-	cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
-	webSearches: integer('web_searches').notNull().default(0),
-	/** Token cost in US cents. Web search fees are not included. */
-	costCents: real('cost_cents').notNull().default(0),
+		proposalId: integer('proposal_id').references(() => aiProposal.id, {
+			onDelete: 'set null',
+		}),
+		purpose: text('purpose').notNull(),
+		model: text('model').notNull(),
 
-	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-});
+		inputTokens: integer('input_tokens').notNull().default(0),
+		outputTokens: integer('output_tokens').notNull().default(0),
+		cacheReadTokens: integer('cache_read_tokens').notNull().default(0),
+		cacheWriteTokens: integer('cache_write_tokens').notNull().default(0),
+		webSearches: integer('web_searches').notNull().default(0),
+		/** Token cost in US cents. Web search fees are not included. */
+		costCents: real('cost_cents').notNull().default(0),
 
-/** Small key/value bag: the seed version and the cached forecast. */
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+	},
+	(t) => [index('ai_call_household_idx').on(t.householdId)],
+);
+
+/**
+ * Small key/value bag for things that belong to the whole site rather than a
+ * garden: the cached forecast, which is Adelaide's for everyone.
+ */
 export const meta = sqliteTable('meta', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),

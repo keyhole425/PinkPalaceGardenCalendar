@@ -7,6 +7,7 @@ import { type IsoDate, plusDays, today as todayInGarden } from '@/lib/dates';
 import { hasMonth, type Month, shiftMask } from '@/lib/schedule/months';
 import { db } from '../client';
 import { careRule, environment, planting, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 
 export type BedOccupant = {
 	plantingId: number;
@@ -53,7 +54,10 @@ function readyRange(
 	return { from: plusDays(sownOn, min), to: plusDays(sownOn, max ?? min) };
 }
 
-async function loadOccupants(environmentId: number): Promise<BedOccupant[]> {
+async function loadOccupants(
+	hid: HouseholdId,
+	environmentId: number,
+): Promise<BedOccupant[]> {
 	return (
 		await db
 			.select({
@@ -74,6 +78,7 @@ async function loadOccupants(environmentId: number): Promise<BedOccupant[]> {
 			.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 			.where(
 				and(
+					owns(planting, hid),
 					eq(planting.environmentId, environmentId),
 					ne(planting.status, 'removed'),
 				),
@@ -99,7 +104,10 @@ async function loadOccupants(environmentId: number): Promise<BedOccupant[]> {
 	});
 }
 
-async function toBed(e: typeof environment.$inferSelect): Promise<Bed> {
+async function toBed(
+	hid: HouseholdId,
+	e: typeof environment.$inferSelect,
+): Promise<Bed> {
 	return {
 		id: e.id,
 		slug: e.slug,
@@ -113,19 +121,19 @@ async function toBed(e: typeof environment.$inferSelect): Promise<Bed> {
 		frostFree: e.frostFree,
 		windowShiftMonths: e.windowShiftMonths,
 		notes: e.notes,
-		occupants: await loadOccupants(e.id),
+		occupants: await loadOccupants(hid, e.id),
 	};
 }
 
 /** The places you sow into: everything but the orchard. */
-export async function listBeds(): Promise<Bed[]> {
+export async function listBeds(hid: HouseholdId): Promise<Bed[]> {
 	const rows = await db
 		.select()
 		.from(environment)
-		.where(ne(environment.kind, 'orchard'))
+		.where(and(owns(environment, hid), ne(environment.kind, 'orchard')))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
-	return Promise.all(rows.map(toBed));
+	return Promise.all(rows.map((row) => toBed(hid, row)));
 }
 
 /**
@@ -135,24 +143,25 @@ export async function listBeds(): Promise<Bed[]> {
  * always said so. The app used to show them on two separate pages, which is
  * why it was unclear how Places and Beds related to each other.
  */
-export async function listPlaces(): Promise<Bed[]> {
+export async function listPlaces(hid: HouseholdId): Promise<Bed[]> {
 	const rows = await db
 		.select()
 		.from(environment)
+		.where(owns(environment, hid))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
-	return Promise.all(rows.map(toBed));
+	return Promise.all(rows.map((row) => toBed(hid, row)));
 }
 
 /** Any place by slug - the orchard included, which is why it is not filtered. */
-export async function getBed(slug: string): Promise<Bed | null> {
+export async function getBed(hid: HouseholdId, slug: string): Promise<Bed | null> {
 	const e = await db
 		.select()
 		.from(environment)
-		.where(eq(environment.slug, slug))
+		.where(and(owns(environment, hid), eq(environment.slug, slug)))
 		.get();
 	if (!e) return null;
-	return await toBed(e);
+	return await toBed(hid, e);
 }
 
 export type BedHistoryEntry = {
@@ -167,6 +176,7 @@ export type BedHistoryEntry = {
 
 /** Everything that has grown here, newest first. */
 export async function getBedHistory(
+	hid: HouseholdId,
 	environmentId: number,
 ): Promise<BedHistoryEntry[]> {
 	return await db
@@ -181,7 +191,7 @@ export async function getBedHistory(
 		})
 		.from(planting)
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
-		.where(eq(planting.environmentId, environmentId))
+		.where(and(owns(planting, hid), eq(planting.environmentId, environmentId)))
 		.orderBy(desc(planting.id))
 		.all();
 }
@@ -201,6 +211,7 @@ export type RotationWarning = {
  * trouble. This looks back two years.
  */
 export async function rotationWarningFor(
+	hid: HouseholdId,
 	environmentId: number,
 	family: string | null,
 	when: IsoDate = todayInGarden(),
@@ -219,7 +230,11 @@ export async function rotationWarningFor(
 		.from(planting)
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 		.where(
-			and(eq(planting.environmentId, environmentId), eq(plantType.family, family)),
+			and(
+				owns(planting, hid),
+				eq(planting.environmentId, environmentId),
+				eq(plantType.family, family),
+			),
 		)
 		.orderBy(desc(planting.id))
 		.all();
@@ -257,6 +272,7 @@ export type SowSuggestion = {
  * a month before the beds do.
  */
 export async function sowableThisMonth(
+	hid: HouseholdId,
 	when: IsoDate = todayInGarden(),
 ): Promise<SowSuggestion[]> {
 	const month = Number(when.slice(5, 7));
@@ -264,7 +280,7 @@ export async function sowableThisMonth(
 	const places = await db
 		.select()
 		.from(environment)
-		.where(ne(environment.kind, 'orchard'))
+		.where(and(owns(environment, hid), ne(environment.kind, 'orchard')))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 	if (places.length === 0) return [];
@@ -280,7 +296,13 @@ export async function sowableThisMonth(
 		})
 		.from(careRule)
 		.innerJoin(plantType, eq(careRule.plantTypeId, plantType.id))
-		.where(and(eq(careRule.action, 'sow'), eq(careRule.active, true)))
+		.where(
+			and(
+				owns(careRule, hid),
+				eq(careRule.action, 'sow'),
+				eq(careRule.active, true),
+			),
+		)
 		.orderBy(asc(plantType.commonName))
 		.all();
 

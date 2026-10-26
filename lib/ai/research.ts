@@ -14,6 +14,7 @@
  * accepting it.
  */
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropic, MODEL } from './client';
 import { localeBrief, SEARCH_LOCATION } from './locale';
 import { type Citation, type PlantProposal, plantProposalSchema } from './schema';
@@ -65,6 +66,7 @@ export type KnownPlant = {
 
 /** Pass one: search, read, and report back with sources. */
 export async function research(
+	hid: HouseholdId,
 	query: string,
 	known?: KnownPlant,
 	proposalId?: number,
@@ -112,6 +114,7 @@ export async function research(
 		});
 
 		await recordCall({
+			householdId: hid,
 			proposalId,
 			purpose: 'research',
 			usage: response.usage,
@@ -144,6 +147,7 @@ export async function research(
 
 /** Pass two: turn the notes into windows figgy can hold. */
 export async function structure(
+	hid: HouseholdId,
 	query: string,
 	research: ResearchNotes,
 	proposalId?: number,
@@ -208,7 +212,12 @@ export async function structure(
 		output_config: { format: zodOutputFormat(plantProposalSchema) },
 	});
 
-	await recordCall({ proposalId, purpose: 'structure', usage: response.usage });
+	await recordCall({
+		householdId: hid,
+		proposalId,
+		purpose: 'structure',
+		usage: response.usage,
+	});
 
 	const parsed = response.parsed_output;
 	if (!parsed) {

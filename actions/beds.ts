@@ -1,13 +1,14 @@
 'use server';
 
 /** Putting things in beds, and taking them out again. */
-import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { rotationWarningFor } from '@/lib/db/queries/beds';
 import { environment, planting, plantType } from '@/lib/db/schema';
+import { ownedRow } from '@/lib/db/tenancy';
 
 export type ActionResult =
 	| { ok: true; warning?: string }
@@ -42,6 +43,7 @@ export async function sowInBed(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = sowSchema.safeParse({
 		environmentId: form.get('environmentId'),
 		plantTypeId: form.get('plantTypeId'),
@@ -62,27 +64,32 @@ export async function sowInBed(
 	const plant = await db
 		.select()
 		.from(plantType)
-		.where(eq(plantType.id, plantTypeId))
+		.where(ownedRow(plantType, plantTypeId, householdId))
 		.get();
 	if (!plant) return { ok: false, error: 'No such plant.' };
 
 	const place = await db
 		.select({ slug: environment.slug })
 		.from(environment)
-		.where(eq(environment.id, environmentId))
+		.where(ownedRow(environment, environmentId, householdId))
 		.get();
 	if (!place) return { ok: false, error: 'No such bed.' };
 
 	// Rotation is advice about soil, not a rule about data, so it never
 	// refuses. The form says so before you press the button - which is the
 	// moment it is useful - and the reply records that it was said.
-	const rotation = await rotationWarningFor(environmentId, plant.family);
+	const rotation = await rotationWarningFor(
+		householdId,
+		environmentId,
+		plant.family,
+	);
 
 	const sownOn = parsed.data.sownOn || today();
 
 	await db
 		.insert(planting)
 		.values({
+			householdId,
 			plantTypeId,
 			environmentId,
 			label: parsed.data.label || plant.commonName,
@@ -112,6 +119,7 @@ export async function clearFromBed(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = clearSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		slug: form.get('slug') ?? undefined,
@@ -121,7 +129,7 @@ export async function clearFromBed(
 	await db
 		.update(planting)
 		.set({ status: 'removed', removedOn: today() })
-		.where(eq(planting.id, parsed.data.plantingId))
+		.where(ownedRow(planting, parsed.data.plantingId, householdId))
 		.run();
 
 	refresh(parsed.data.slug);

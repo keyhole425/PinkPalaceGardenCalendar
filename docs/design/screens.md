@@ -26,6 +26,7 @@ Settings is the cog in the header.
 | `/garden/[slug]` | the place's name | ← The garden | `list` | One bed or place: the plan, Sow something, Growing here now, Rotation warnings, What has grown here. |
 | `/proposals/[id]` | the plant that was looked up | ← Plants | `list` | Review what Claude proposed before any of it reaches the schedule; or see that it was accepted, rejected or failed. |
 | `/settings` | Settings | - | `list` | The database, looking things up, past look-ups. |
+| `/no-garden` | No garden here yet | - | `measure` | Where a request lands when it belongs to no household. Reads nothing, so it cannot redirect back to itself. |
 
 ## Redirects
 

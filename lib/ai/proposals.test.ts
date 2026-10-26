@@ -7,7 +7,7 @@
  */
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTempGarden, type TempGarden } from '@/lib/db/testing';
+import { createTempGarden, GARDEN, type TempGarden } from '@/lib/db/testing';
 import { monthsFromMask } from '@/lib/schedule/months';
 import { kaffirLimeProposal } from './fixtures';
 import { plantProposalSchema } from './schema';
@@ -89,8 +89,8 @@ describe('accepting a proposal', () => {
 	async function readyProposal() {
 		const mods = await freshModules();
 		await mods.seedGarden(mods.db);
-		const id = await mods.proposals.startProposal('Kaffir lime');
-		await mods.proposals.finishProposal(id, {
+		const id = await mods.proposals.startProposal(GARDEN, 'Kaffir lime');
+		await mods.proposals.finishProposal(GARDEN, id, {
 			proposal: kaffirLimeProposal,
 			notes: 'Research notes here.',
 			citations: [{ url: 'https://example.org/citrus-care', title: 'Citrus care' }],
@@ -119,7 +119,7 @@ describe('accepting a proposal', () => {
 		// Accepting it is the review, so it is not flagged as needing one.
 		expect(plant?.needsReview).toBe(false);
 
-		const rules = await queries.getEditableRules(plant?.id ?? 0);
+		const rules = await queries.getEditableRules(GARDEN, plant?.id ?? 0);
 		expect(rules).toHaveLength(4);
 
 		// "August or September" becomes two rules sharing a group, which the
@@ -155,7 +155,7 @@ describe('accepting a proposal', () => {
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'kaffir-lime'))
 			.get();
-		const actions = (await queries.getEditableRules(plant?.id ?? 0)).map(
+		const actions = (await queries.getEditableRules(GARDEN, plant?.id ?? 0)).map(
 			(r) => r.action,
 		);
 		expect(actions.sort()).toEqual(['fertilise', 'prune']);
@@ -223,7 +223,7 @@ describe('accepting a proposal', () => {
 		);
 
 		const { getDashboard } = await import('@/lib/db/queries/garden');
-		const board = await getDashboard('2026-09-15');
+		const board = await getDashboard(GARDEN, '2026-09-15');
 		expect(
 			board.due.some(
 				(t) =>
@@ -250,7 +250,7 @@ describe('accepting a proposal', () => {
 			.where(eq(schema.plantType.slug, 'kaffir-lime'))
 			.get();
 		expect(plant).toBeDefined();
-		expect(await queries.getEditableRules(plant?.id ?? 0)).toHaveLength(1);
+		expect(await queries.getEditableRules(GARDEN, plant?.id ?? 0)).toHaveLength(1);
 	});
 
 	it('will not be accepted twice', async () => {
@@ -282,8 +282,8 @@ describe('rejecting a proposal', () => {
 			plants: (await mods.db.select().from(mods.schema.plantType).all()).length,
 		};
 
-		const id = await mods.proposals.startProposal('Kaffir lime');
-		await mods.proposals.finishProposal(id, {
+		const id = await mods.proposals.startProposal(GARDEN, 'Kaffir lime');
+		await mods.proposals.finishProposal(GARDEN, id, {
 			proposal: kaffirLimeProposal,
 			notes: '',
 			citations: [],
@@ -299,7 +299,7 @@ describe('rejecting a proposal', () => {
 		expect(await mods.db.select().from(mods.schema.plantType).all()).toHaveLength(
 			before.plants,
 		);
-		expect((await mods.proposals.getProposal(id))?.status).toBe('rejected');
+		expect((await mods.proposals.getProposal(GARDEN, id))?.status).toBe('rejected');
 	});
 });
 

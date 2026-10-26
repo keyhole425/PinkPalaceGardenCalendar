@@ -7,6 +7,7 @@ import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { getProposal } from '@/lib/ai/proposals';
 import { overallConfidence } from '@/lib/ai/schema';
+import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { listEnvironments } from '@/lib/db/queries/plant';
 import type { Month } from '@/lib/schedule/months';
@@ -19,11 +20,12 @@ export default async function ProposalPage({
 	params: Promise<{ id: string }>;
 }) {
 	const { id } = await params;
-	const stored = await getProposal(Number(id));
+	const { householdId } = await requireHousehold();
+	const stored = await getProposal(householdId, Number(id));
 	if (!stored) notFound();
 
 	const currentMonth = monthOf(today()) as Month;
-	const environments = await listEnvironments();
+	const environments = await listEnvironments(householdId);
 
 	return (
 		<Frame width="list">

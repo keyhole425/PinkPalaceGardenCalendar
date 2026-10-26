@@ -20,8 +20,16 @@ import {
 	startProposal,
 } from '@/lib/ai/proposals';
 import { research, structure } from '@/lib/ai/research';
+import { requireHousehold } from '@/lib/auth/context';
 import { db } from '@/lib/db/client';
-import { aiProposal, careRule, planting, plantType } from '@/lib/db/schema';
+import {
+	aiProposal,
+	careRule,
+	environment,
+	planting,
+	plantType,
+} from '@/lib/db/schema';
+import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -54,6 +62,7 @@ export async function askAboutPlant(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	if (!aiAvailable()) {
 		return {
 			ok: false,
@@ -71,22 +80,28 @@ export async function askAboutPlant(
 	}
 
 	const { query, plantTypeId } = parsed.data;
-	const id = await startProposal(query, plantTypeId);
+	if (plantTypeId && !(await isOwned(plantType, plantTypeId, householdId))) {
+		return { ok: false, error: 'No such plant.' };
+	}
+	const id = await startProposal(householdId, query, plantTypeId);
 
 	try {
 		const known = plantTypeId
-			? { commonName: query, existing: await describeExisting(plantTypeId) }
+			? {
+					commonName: query,
+					existing: await describeExisting(householdId, plantTypeId),
+				}
 			: undefined;
 
-		const notes = await research(query, known, id);
-		const proposal = await structure(query, notes, id);
-		await finishProposal(id, {
+		const notes = await research(householdId, query, known, id);
+		const proposal = await structure(householdId, query, notes, id);
+		await finishProposal(householdId, id, {
 			proposal,
 			notes: notes.notes,
 			citations: notes.citations,
 		});
 	} catch (error) {
-		await failProposal(id, describeError(error));
+		await failProposal(householdId, id, describeError(error));
 	}
 
 	revalidatePath('/settings');
@@ -105,6 +120,7 @@ export async function acceptProposal(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = acceptSchema.safeParse({
 		proposalId: form.get('proposalId'),
 		accept: form.getAll('accept').map((v) => Number(v)),
@@ -115,12 +131,16 @@ export async function acceptProposal(
 		return { ok: false, error: 'Nothing to accept.' };
 	}
 
-	const stored = await getProposal(parsed.data.proposalId);
+	const stored = await getProposal(householdId, parsed.data.proposalId);
 	if (!stored?.proposal) {
 		return { ok: false, error: 'That proposal has nothing in it.' };
 	}
 	if (stored.status === 'accepted') {
 		return { ok: false, error: 'That one has already been accepted.' };
+	}
+	const { environmentId } = parsed.data;
+	if (environmentId && !(await isOwned(environment, environmentId, householdId))) {
+		return { ok: false, error: 'No such place.' };
 	}
 
 	const chosen = parsed.data.accept
@@ -140,7 +160,7 @@ export async function acceptProposal(
 			? await tx
 					.select()
 					.from(plantType)
-					.where(eq(plantType.id, stored.plantTypeId))
+					.where(ownedRow(plantType, stored.plantTypeId, householdId))
 					.get()
 			: undefined;
 		if (stored.plantTypeId && !existing) {
@@ -150,7 +170,12 @@ export async function acceptProposal(
 		const claimed = await tx
 			.update(aiProposal)
 			.set({ status: 'accepted', reviewedAt: now })
-			.where(and(eq(aiProposal.id, stored.id), ne(aiProposal.status, 'accepted')))
+			.where(
+				and(
+					ownedRow(aiProposal, stored.id, householdId),
+					ne(aiProposal.status, 'accepted'),
+				),
+			)
 			.returning({ id: aiProposal.id })
 			.get();
 		if (!claimed) {
@@ -173,7 +198,7 @@ export async function acceptProposal(
 					notesMd: row?.notesMd || proposal.notesMd,
 					userModifiedAt: now,
 				})
-				.where(eq(plantType.id, plantTypeId))
+				.where(ownedRow(plantType, plantTypeId, householdId))
 				.run();
 		} else {
 			slug = slugify(proposal.commonName) || slugify(stored.query);
@@ -182,7 +207,7 @@ export async function acceptProposal(
 				await tx
 					.select({ id: plantType.id })
 					.from(plantType)
-					.where(eq(plantType.slug, slug))
+					.where(and(owns(plantType, householdId), eq(plantType.slug, slug)))
 					.get()
 			) {
 				attempt++;
@@ -193,6 +218,7 @@ export async function acceptProposal(
 				await tx
 					.insert(plantType)
 					.values({
+						householdId,
 						slug,
 						commonName: proposal.commonName,
 						scientificName: proposal.scientificName || null,
@@ -223,6 +249,7 @@ export async function acceptProposal(
 				.join(' - ');
 
 			const common = {
+				householdId,
 				plantTypeId,
 				action: rule.action,
 				cadence: rule.alternatives ? ('once_in_window' as const) : rule.cadence,
@@ -250,12 +277,13 @@ export async function acceptProposal(
 		}
 
 		// A plant with nowhere to grow has no schedule, so offer to plant it too.
-		if (parsed.data.plantAs && parsed.data.environmentId) {
+		if (parsed.data.plantAs && environmentId) {
 			await tx
 				.insert(planting)
 				.values({
+					householdId,
 					plantTypeId,
-					environmentId: parsed.data.environmentId,
+					environmentId,
 					label: parsed.data.plantAs,
 					status: 'active',
 				})
@@ -265,7 +293,7 @@ export async function acceptProposal(
 		await tx
 			.update(aiProposal)
 			.set({ plantTypeId })
-			.where(eq(aiProposal.id, stored.id))
+			.where(ownedRow(aiProposal, stored.id, householdId))
 			.run();
 
 		return { ok: true as const, slug };
@@ -280,6 +308,7 @@ export async function rejectProposal(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const id = Number(form.get('proposalId'));
 	if (!Number.isInteger(id) || id <= 0) {
 		return { ok: false, error: 'Nothing to reject.' };
@@ -288,7 +317,7 @@ export async function rejectProposal(
 	await db
 		.update(aiProposal)
 		.set({ status: 'rejected', reviewedAt: new Date().toISOString() })
-		.where(eq(aiProposal.id, id))
+		.where(ownedRow(aiProposal, id, householdId))
 		.run();
 
 	revalidatePath(`/proposals/${id}`);

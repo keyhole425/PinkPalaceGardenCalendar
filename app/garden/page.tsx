@@ -6,6 +6,7 @@ import { DataList, DataRow } from '@/components/ui/DataList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { requireHousehold } from '@/lib/auth/context';
 import type { Bed } from '@/lib/db/queries/beds';
 import { listPlaces } from '@/lib/db/queries/beds';
 
@@ -24,7 +25,8 @@ function hasPlan(place: Bed): boolean {
 }
 
 export default async function GardenPage() {
-	const places = await listPlaces();
+	const { householdId } = await requireHousehold();
+	const places = await listPlaces(householdId);
 
 	return (
 		<Frame width="page">

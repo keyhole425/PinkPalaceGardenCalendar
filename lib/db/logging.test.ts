@@ -7,7 +7,7 @@
  */
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTempGarden, type TempGarden } from './testing';
+import { createTempGarden, GARDEN, type TempGarden } from './testing';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 
@@ -62,7 +62,7 @@ describe('recording what you wrote down', () => {
 		expect(result).toEqual({ ok: true, written: 1 });
 
 		// Not merely recorded - the August pruning is answered.
-		const board = await g.getDashboard('2026-09-25');
+		const board = await g.getDashboard(GARDEN, '2026-09-25');
 		expect(board.overdue.some((t) => t.context.label === 'Mulberry')).toBe(false);
 	});
 
@@ -78,7 +78,7 @@ describe('recording what you wrote down', () => {
 			]),
 		);
 
-		const board = await g.getDashboard('2026-09-25');
+		const board = await g.getDashboard(GARDEN, '2026-09-25');
 		expect(board.overdue.some((t) => t.context.label === 'Mulberry')).toBe(false);
 		expect(board.recentlyDone.some((t) => t.context.label === 'Mulberry')).toBe(
 			true,

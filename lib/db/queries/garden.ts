@@ -5,7 +5,7 @@
  * dozen plantings that is faster than the joins would be, and it keeps the
  * engine working on plain data it can be tested against.
  */
-import { asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { today as todayInGarden } from '@/lib/dates';
 import { expandOccurrences, openSeasons } from '@/lib/schedule/expand';
@@ -19,6 +19,7 @@ import type {
 } from '@/lib/schedule/types';
 import { db } from '../client';
 import { careLog, careRule, environment, planting, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 
 export type PlantingContext = {
 	plantingId: number;
@@ -41,7 +42,7 @@ export type HarvestSeason = {
 	closesOn: IsoDate;
 };
 
-async function loadPlantings() {
+async function loadPlantings(hid: HouseholdId) {
 	return await db
 		.select({
 			plantingId: planting.id,
@@ -59,7 +60,7 @@ async function loadPlantings() {
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 		.innerJoin(environment, eq(planting.environmentId, environment.id))
 		// A tree that has been pulled out needs nothing.
-		.where(ne(planting.status, 'removed'))
+		.where(and(owns(planting, hid), ne(planting.status, 'removed')))
 		.orderBy(asc(plantType.id), asc(planting.id))
 		.all();
 }
@@ -85,7 +86,7 @@ function toContext(
 
 type LoadedRule = RuleInput & { plantTypeId: number | null };
 
-async function loadRules(): Promise<LoadedRule[]> {
+async function loadRules(hid: HouseholdId): Promise<LoadedRule[]> {
 	return (await db
 		.select({
 			id: careRule.id,
@@ -99,12 +100,14 @@ async function loadRules(): Promise<LoadedRule[]> {
 			note: careRule.note,
 		})
 		.from(careRule)
-		.where(eq(careRule.active, true))
+		.where(and(owns(careRule, hid), eq(careRule.active, true)))
 		.orderBy(asc(careRule.id))
 		.all()) as LoadedRule[];
 }
 
-async function loadLogs(): Promise<(LogInput & { plantingId: number })[]> {
+async function loadLogs(
+	hid: HouseholdId,
+): Promise<(LogInput & { plantingId: number })[]> {
 	return await db
 		.select({
 			id: careLog.id,
@@ -114,6 +117,7 @@ async function loadLogs(): Promise<(LogInput & { plantingId: number })[]> {
 			completedOn: careLog.completedOn,
 		})
 		.from(careLog)
+		.where(owns(careLog, hid))
 		.all();
 }
 
@@ -140,13 +144,14 @@ export type GardenSchedule = {
  * was written would show the job as still due after it.
  */
 export async function getSchedule(
+	hid: HouseholdId,
 	when: IsoDate = todayInGarden(),
 ): Promise<GardenSchedule> {
 	// Independent reads, so they go out together rather than one after another.
 	const [rows, allRules, allLogs] = await Promise.all([
-		await loadPlantings(),
-		await loadRules(),
-		await loadLogs(),
+		loadPlantings(hid),
+		loadRules(hid),
+		loadLogs(hid),
 	]);
 
 	const plantings: PlantingSchedule[] = [];
@@ -185,12 +190,13 @@ export async function getSchedule(
  * a stale page cannot invent a job that does not exist.
  */
 export async function findOccurrence(
+	hid: HouseholdId,
 	plantingId: number,
 	ruleId: number,
 	occurrenceKey: string,
 	when: IsoDate = todayInGarden(),
 ): Promise<Task | null> {
-	const { plantings } = await getSchedule(when);
+	const { plantings } = await getSchedule(hid, when);
 	const entry = plantings.find((p) => p.context.plantingId === plantingId);
 	if (!entry) return null;
 
@@ -202,10 +208,11 @@ export async function findOccurrence(
 
 /** The harvest seasons open for one plant right now. */
 export async function openSeasonsFor(
+	hid: HouseholdId,
 	plantingId: number,
 	when: IsoDate = todayInGarden(),
 ): Promise<HarvestSeason[]> {
-	return (await getSchedule(when)).harvesting.filter(
+	return (await getSchedule(hid, when)).harvesting.filter(
 		(h) => h.context.plantingId === plantingId,
 	);
 }
@@ -225,9 +232,10 @@ export type Dashboard = {
 };
 
 export async function getDashboard(
+	hid: HouseholdId,
 	when: IsoDate = todayInGarden(),
 ): Promise<Dashboard> {
-	const { tasks, harvesting } = await getSchedule(when);
+	const { tasks, harvesting } = await getSchedule(hid, when);
 	const overdueFloor = shiftIso(when, -OVERDUE_LOOKBACK_DAYS);
 	const doneFloor = shiftIso(when, -RECENT_DONE_DAYS);
 

@@ -12,6 +12,7 @@
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import { type IsoDate, today as todayInGarden } from '@/lib/dates';
+import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropic, MODEL } from './client';
 import { localeBrief } from './locale';
 import { recordCall } from './usage';
@@ -57,6 +58,7 @@ export type KnownPlanting = {
 };
 
 export async function parseLogSentence(
+	hid: HouseholdId,
 	sentence: string,
 	plantings: KnownPlanting[],
 	when: IsoDate = todayInGarden(),
@@ -116,7 +118,11 @@ export async function parseLogSentence(
 		output_config: { format: zodOutputFormat(parsedLogSchema) },
 	});
 
-	await recordCall({ purpose: 'parse-log', usage: response.usage });
+	await recordCall({
+		householdId: hid,
+		purpose: 'parse-log',
+		usage: response.usage,
+	});
 
 	const parsed = response.parsed_output;
 	if (!parsed) {

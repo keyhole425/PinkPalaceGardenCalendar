@@ -5,7 +5,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hasMonth, shiftMask } from '@/lib/schedule/months';
-import { createTempGarden, type TempGarden } from './testing';
+import { createTempGarden, GARDEN, type TempGarden } from './testing';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 
@@ -37,7 +37,7 @@ beforeEach(async () => {
 describe('sowing', () => {
 	it('puts a crop in a bed with a date and a spot', async () => {
 		const { db, schema, beds, actions } = await freshGarden();
-		const bed = await beds.getBed('bed-1');
+		const bed = await beds.getBed(GARDEN, 'bed-1');
 		const tomato = await db
 			.select()
 			.from(schema.plantType)
@@ -56,7 +56,7 @@ describe('sowing', () => {
 		);
 		expect(result.ok).toBe(true);
 
-		const after = await beds.getBed('bed-1');
+		const after = await beds.getBed(GARDEN, 'bed-1');
 		expect(after?.occupants).toHaveLength(1);
 		expect(after?.occupants[0]).toMatchObject({
 			plantName: 'Tomato',
@@ -68,7 +68,7 @@ describe('sowing', () => {
 
 	it('works out roughly when it will be ready', async () => {
 		const { db, schema, beds, actions } = await freshGarden();
-		const bed = await beds.getBed('bed-1');
+		const bed = await beds.getBed(GARDEN, 'bed-1');
 		const tomato = await db
 			.select()
 			.from(schema.plantType)
@@ -85,14 +85,14 @@ describe('sowing', () => {
 		);
 
 		// Tomato is seeded at 70-90 days.
-		const occupant = (await beds.getBed('bed-1'))?.occupants[0];
+		const occupant = (await beds.getBed(GARDEN, 'bed-1'))?.occupants[0];
 		expect(occupant?.readyFrom).toBe('2026-12-04');
 		expect(occupant?.readyTo).toBe('2026-12-24');
 	});
 
 	it('gives no estimate for something with no sowing date', async () => {
 		const { db, schema, beds } = await freshGarden();
-		const bed = await beds.getBed('bed-1');
+		const bed = await beds.getBed(GARDEN, 'bed-1');
 		const tomato = await db
 			.select()
 			.from(schema.plantType)
@@ -102,6 +102,7 @@ describe('sowing', () => {
 		await db
 			.insert(schema.planting)
 			.values({
+				householdId: GARDEN,
 				plantTypeId: tomato?.id ?? 0,
 				environmentId: bed?.id ?? 0,
 				label: 'Tomato',
@@ -109,14 +110,14 @@ describe('sowing', () => {
 			})
 			.run();
 
-		expect((await beds.getBed('bed-1'))?.occupants[0].readyFrom).toBeNull();
+		expect((await beds.getBed(GARDEN, 'bed-1'))?.occupants[0].readyFrom).toBeNull();
 	});
 });
 
 describe('rotation', () => {
 	async function sowThen(sownOn: string) {
 		const mods = await freshGarden();
-		const bed = await mods.beds.getBed('bed-1');
+		const bed = await mods.beds.getBed(GARDEN, 'bed-1');
 		const tomato = await mods.db
 			.select()
 			.from(mods.schema.plantType)
@@ -136,6 +137,7 @@ describe('rotation', () => {
 	it('notices the same family going back in too soon', async () => {
 		const { beds, bedId } = await sowThen('2026-09-25');
 		const warning = await beds.rotationWarningFor(
+			GARDEN,
 			bedId,
 			'Solanaceae',
 			'2026-10-01',
@@ -146,22 +148,27 @@ describe('rotation', () => {
 	it('stops minding after two years', async () => {
 		const { beds, bedId } = await sowThen('2022-09-25');
 		expect(
-			await beds.rotationWarningFor(bedId, 'Solanaceae', '2026-10-01'),
+			await beds.rotationWarningFor(GARDEN, bedId, 'Solanaceae', '2026-10-01'),
 		).toBeNull();
 	});
 
 	it('does not mind a different family', async () => {
 		const { beds, bedId } = await sowThen('2026-09-25');
 		expect(
-			await beds.rotationWarningFor(bedId, 'Fabaceae', '2026-10-01'),
+			await beds.rotationWarningFor(GARDEN, bedId, 'Fabaceae', '2026-10-01'),
 		).toBeNull();
 	});
 
 	it('does not mind a different bed', async () => {
 		const { beds } = await sowThen('2026-09-25');
-		const other = await beds.getBed('bed-2');
+		const other = await beds.getBed(GARDEN, 'bed-2');
 		expect(
-			await beds.rotationWarningFor(other?.id ?? 0, 'Solanaceae', '2026-10-01'),
+			await beds.rotationWarningFor(
+				GARDEN,
+				other?.id ?? 0,
+				'Solanaceae',
+				'2026-10-01',
+			),
 		).toBeNull();
 	});
 
@@ -229,7 +236,7 @@ describe('the hothouse runs ahead', () => {
 describe('what could go in now', () => {
 	it('offers the hothouse alone in the depths of winter', async () => {
 		const { beds } = await freshGarden();
-		const july = await beds.sowableThisMonth('2026-07-15');
+		const july = await beds.sowableThisMonth(GARDEN, '2026-07-15');
 
 		expect(july.length).toBeGreaterThan(0);
 		// Nothing goes in the open ground in July here.
@@ -242,7 +249,7 @@ describe('what could go in now', () => {
 
 	it('offers everywhere once the season opens, with no fanfare', async () => {
 		const { beds } = await freshGarden();
-		const september = await beds.sowableThisMonth('2026-09-25');
+		const september = await beds.sowableThisMonth(GARDEN, '2026-09-25');
 
 		const tomato = september.find((c) => c.commonName === 'Tomato');
 		expect(tomato?.places.length).toBeGreaterThan(1);
@@ -253,7 +260,7 @@ describe('what could go in now', () => {
 	it('says nothing when nothing is in season', async () => {
 		const { beds } = await freshGarden();
 		// June: everything in the starter set is shut, inside and out.
-		expect(await beds.sowableThisMonth('2026-06-15')).toEqual([]);
+		expect(await beds.sowableThisMonth(GARDEN, '2026-06-15')).toEqual([]);
 	});
 });
 
@@ -261,7 +268,7 @@ describe('clearing a bed', () => {
 	it('frees the spot but keeps the record', async () => {
 		const { beds, actions, bedId } = await (async () => {
 			const mods = await freshGarden();
-			const bed = await mods.beds.getBed('bed-1');
+			const bed = await mods.beds.getBed(GARDEN, 'bed-1');
 			const lettuce = await mods.db
 				.select()
 				.from(mods.schema.plantType)
@@ -278,15 +285,15 @@ describe('clearing a bed', () => {
 			return { ...mods, bedId: bed?.id ?? 0 };
 		})();
 
-		const occupant = (await beds.getBed('bed-1'))?.occupants[0];
+		const occupant = (await beds.getBed(GARDEN, 'bed-1'))?.occupants[0];
 		await actions.clearFromBed(
 			null,
 			form({ plantingId: String(occupant?.plantingId), slug: 'bed-1' }),
 		);
 
-		expect((await beds.getBed('bed-1'))?.occupants).toHaveLength(0);
+		expect((await beds.getBed(GARDEN, 'bed-1'))?.occupants).toHaveLength(0);
 		// Still in the history, which is what rotation reads.
-		expect(await beds.getBedHistory(bedId)).toHaveLength(1);
-		expect((await beds.getBedHistory(bedId))[0].status).toBe('removed');
+		expect(await beds.getBedHistory(GARDEN, bedId)).toHaveLength(1);
+		expect((await beds.getBedHistory(GARDEN, bedId))[0].status).toBe('removed');
 	});
 });

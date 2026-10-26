@@ -10,6 +10,7 @@ import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { WeatherStrip } from '@/components/weather/WeatherStrip';
 import { aiAvailable } from '@/lib/ai/client';
+import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { sowableThisMonth } from '@/lib/db/queries/beds';
 import { getDashboard } from '@/lib/db/queries/garden';
@@ -22,9 +23,10 @@ export default async function NowPage() {
 	const when = today();
 	// Independent, so asked for together: the forecast may be a network call
 	// to the Bureau, and the other two are round trips to the database.
+	const { householdId } = await requireHousehold();
 	const [board, toSow, forecast] = await Promise.all([
-		getDashboard(when),
-		sowableThisMonth(when),
+		getDashboard(householdId, when),
+		sowableThisMonth(householdId, when),
 		getForecast(when),
 	]);
 

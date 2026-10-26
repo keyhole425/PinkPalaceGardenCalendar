@@ -20,6 +20,7 @@ import {
 	type ParsedLog,
 	parseLogSentence,
 } from '@/lib/ai/parse-log';
+import { requireHousehold } from '@/lib/auth/context';
 import { type IsoDate, isIsoDate, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { getSchedule, OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
@@ -30,6 +31,7 @@ import {
 	planting,
 	plantType,
 } from '@/lib/db/schema';
+import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ParseResult =
 	| { ok: true; parsed: ParsedLog; sentence: string }
@@ -39,7 +41,8 @@ export type CommitResult =
 	| { ok: true; written: number }
 	| { ok: false; error: string };
 
-async function knownPlantings(): Promise<KnownPlanting[]> {
+/** The plants a sentence may name: this household's, and nobody else's. */
+async function knownPlantings(hid: HouseholdId): Promise<KnownPlanting[]> {
 	return await db
 		.select({
 			id: planting.id,
@@ -50,7 +53,7 @@ async function knownPlantings(): Promise<KnownPlanting[]> {
 		.from(planting)
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 		.innerJoin(environment, eq(planting.environmentId, environment.id))
-		.where(ne(planting.status, 'removed'))
+		.where(and(owns(planting, hid), ne(planting.status, 'removed')))
 		.orderBy(asc(planting.label))
 		.all();
 }
@@ -59,6 +62,7 @@ export async function parseLog(
 	_previous: ParseResult | null,
 	form: FormData,
 ): Promise<ParseResult> {
+	const { householdId } = await requireHousehold();
 	if (!aiAvailable()) {
 		return {
 			ok: false,
@@ -76,7 +80,11 @@ export async function parseLog(
 	}
 
 	try {
-		const parsed = await parseLogSentence(sentence, await knownPlantings());
+		const parsed = await parseLogSentence(
+			householdId,
+			sentence,
+			await knownPlantings(householdId),
+		);
 		if (parsed.entries.length === 0) {
 			return {
 				ok: false,
@@ -122,11 +130,12 @@ const commitSchema = z.object({
  * only answer a job the dashboard would still be nagging about.
  */
 async function matchOccurrence(
+	hid: HouseholdId,
 	plantingId: number,
 	action: string,
 	on: IsoDate,
 ): Promise<{ key: string; ruleId: number; seasonYear: number } | null> {
-	const entry = (await getSchedule(on)).plantings.find(
+	const entry = (await getSchedule(hid, on)).plantings.find(
 		(p) => p.context.plantingId === plantingId,
 	);
 	if (!entry) return null;
@@ -163,6 +172,7 @@ export async function commitLog(
 	_previous: CommitResult | null,
 	form: FormData,
 ): Promise<CommitResult> {
+	const { householdId } = await requireHousehold();
 	const raw = form.get('entries')?.toString() ?? '[]';
 	let parsed: z.infer<typeof commitSchema>;
 	try {
@@ -173,14 +183,17 @@ export async function commitLog(
 
 	let written = 0;
 	for (const entry of parsed.entries) {
+		// The sheet came back from the browser, so every planting id in it is
+		// checked against this household before anything is written.
 		const exists = await db
 			.select({ id: planting.id })
 			.from(planting)
-			.where(eq(planting.id, entry.plantingId))
+			.where(ownedRow(planting, entry.plantingId, householdId))
 			.get();
 		if (!exists) continue;
 
 		const match = await matchOccurrence(
+			householdId,
 			entry.plantingId,
 			entry.action,
 			entry.completedOn,
@@ -196,6 +209,7 @@ export async function commitLog(
 				.from(careLog)
 				.where(
 					and(
+						owns(careLog, householdId),
 						eq(careLog.plantingId, entry.plantingId),
 						eq(careLog.action, entry.action),
 						eq(careLog.completedOn, entry.completedOn),
@@ -208,6 +222,7 @@ export async function commitLog(
 		const inserted = await db
 			.insert(careLog)
 			.values({
+				householdId,
 				plantingId: entry.plantingId,
 				careRuleId: match?.ruleId ?? null,
 				action: entry.action,

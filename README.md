@@ -23,6 +23,17 @@ Turso when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set. Every query is
 async, and nothing relies on a foreign-key cascade, because a hosted
 connection may not enforce one.
 
+## Households
+
+Every garden is a **household**, and every row in the database belongs to one.
+Two households share nothing: not the plants, not the schedule, not what
+Claude was asked. The household always comes from whoever is signed in, never
+from a form, and every query and action is scoped by it. The database holds
+the same line with triggers that refuse a row pointing into another garden.
+
+The Pink Palace is household 1, with its orchard. A new household starts from
+the vegetable catalogue and one bed.
+
 ## How the schedule is stored
 
 A care window is a **12-bit month mask** — bit `m-1` set means month `m`. The

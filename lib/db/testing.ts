@@ -10,6 +10,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { createDb } from './client';
+import { asHouseholdId } from './tenancy';
+
+/**
+ * The household seedGarden() makes in an empty database - which every test
+ * database is. lib/db/tenancy.test.ts holds it to that.
+ */
+export const GARDEN = asHouseholdId(1);
 
 export type TempGarden = {
 	file: string;

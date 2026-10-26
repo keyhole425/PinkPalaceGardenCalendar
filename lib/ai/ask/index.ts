@@ -7,6 +7,7 @@
  * as information rather than instruction.
  */
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
+import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropic, MODEL } from '../client';
 import { localeBrief } from '../locale';
 import { recordCall } from '../usage';
@@ -21,53 +22,61 @@ import {
 	whatToSow,
 } from './tools';
 
-const tools = [
+/**
+ * The tools for one household's question. Built per request so the household
+ * is fixed before the model gets them: nothing it sends can widen the view.
+ */
+const toolsFor = (hid: HouseholdId) => [
 	betaZodTool({
 		name: 'list_plants',
 		description: 'Every plant figgy knows about, with its slug.',
 		inputSchema: askToolSchemas.list_plants,
-		run: async () => JSON.stringify(await listPlants()),
+		run: async () => JSON.stringify(await listPlants(hid)),
 	}),
 	betaZodTool({
 		name: 'whats_due',
 		description:
 			'What needs doing on a given date: overdue, due now, coming up, and what is in season.',
 		inputSchema: askToolSchemas.whats_due,
-		run: async ({ on }) => JSON.stringify(await whatsDue(on)),
+		run: async ({ on }) => JSON.stringify(await whatsDue(hid, on)),
 	}),
 	betaZodTool({
 		name: 'plant_schedule',
 		description: "One plant's care windows, notes, and where it is growing.",
 		inputSchema: askToolSchemas.plant_schedule,
-		run: async ({ slug }) => JSON.stringify(await plantSchedule(slug)),
+		run: async ({ slug }) => JSON.stringify(await plantSchedule(hid, slug)),
 	}),
 	betaZodTool({
 		name: 'plant_history',
 		description:
 			'Everything recorded against one plant: what was done, when, and how much was picked.',
 		inputSchema: askToolSchemas.plant_history,
-		run: async ({ slug, limit }) => JSON.stringify(await plantHistory(slug, limit)),
+		run: async ({ slug, limit }) =>
+			JSON.stringify(await plantHistory(hid, slug, limit)),
 	}),
 	betaZodTool({
 		name: 'list_beds',
 		description:
 			'The beds and the hothouse, what is in them, and when it should be ready.',
 		inputSchema: askToolSchemas.list_beds,
-		run: async () => JSON.stringify(await beds()),
+		run: async () => JSON.stringify(await beds(hid)),
 	}),
 	betaZodTool({
 		name: 'what_to_sow',
 		description: 'Which crops could go in the ground in a given month.',
 		inputSchema: askToolSchemas.what_to_sow,
-		run: async ({ on }) => JSON.stringify(await whatToSow(on)),
+		run: async ({ on }) => JSON.stringify(await whatToSow(hid, on)),
 	}),
 ];
 
 export type AskAnswer = { answer: string; toolsUsed: string[] };
 
-export async function askGarden(question: string): Promise<AskAnswer> {
+export async function askGarden(
+	hid: HouseholdId,
+	question: string,
+): Promise<AskAnswer> {
 	const client = anthropic();
-	const summary = await gardenSummary();
+	const summary = await gardenSummary(hid);
 
 	const runner = client.beta.messages.toolRunner({
 		model: MODEL,
@@ -93,7 +102,7 @@ export async function askGarden(question: string): Promise<AskAnswer> {
 				cache_control: { type: 'ephemeral' },
 			},
 		],
-		tools,
+		tools: toolsFor(hid),
 		messages: [
 			{
 				role: 'user',
@@ -124,7 +133,7 @@ export async function askGarden(question: string): Promise<AskAnswer> {
 	}
 
 	const final = await runner.done();
-	await recordCall({ purpose: 'ask', usage: final.usage });
+	await recordCall({ householdId: hid, purpose: 'ask', usage: final.usage });
 
 	const answer = final.content
 		.filter((block) => block.type === 'text')

@@ -14,9 +14,11 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { requireHousehold } from '@/lib/auth/context';
 import { db, type Tx } from '@/lib/db/client';
 import { deleteRules } from '@/lib/db/rules';
 import { CADENCES, CARE_ACTIONS, careRule, plantType } from '@/lib/db/schema';
+import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -68,11 +70,15 @@ function refresh(slug?: string) {
 	}
 }
 
-async function slugFor(plantTypeId: number): Promise<string | undefined> {
+/** The plant's slug, and proof that it is this household's to edit. */
+async function slugFor(
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<string | undefined> {
 	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, plantTypeId))
+		.where(ownedRow(plantType, plantTypeId, hid))
 		.get();
 	return row?.slug;
 }
@@ -89,6 +95,7 @@ async function slugFor(plantTypeId: number): Promise<string | undefined> {
  */
 async function adoptRemaining(
 	tx: Tx,
+	hid: HouseholdId,
 	plantTypeId: number,
 	action: string,
 	when: string,
@@ -98,6 +105,7 @@ async function adoptRemaining(
 		.set({ userModifiedAt: when })
 		.where(
 			and(
+				owns(careRule, hid),
 				eq(careRule.plantTypeId, plantTypeId),
 				eq(careRule.action, action as (typeof CARE_ACTIONS)[number]),
 				isNull(careRule.userModifiedAt),
@@ -110,6 +118,7 @@ export async function saveRule(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = saveSchema.safeParse({
 		plantTypeId: form.get('plantTypeId'),
 		replacing: readIds(form, 'replacing'),
@@ -140,10 +149,11 @@ export async function saveRule(
 	const cadence = alternatives ? 'once_in_window' : parsed.data.cadence;
 	const now = new Date().toISOString();
 
-	const slug = await slugFor(plantTypeId);
+	const slug = await slugFor(householdId, plantTypeId);
 	if (!slug) return { ok: false, error: 'No such plant.' };
 
 	const common = {
+		householdId,
 		plantTypeId,
 		action,
 		cadence,
@@ -171,11 +181,15 @@ export async function saveRule(
 		if (replacing.length > 0) {
 			await deleteRules(
 				tx,
-				and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
+				and(
+					owns(careRule, householdId),
+					eq(careRule.plantTypeId, plantTypeId),
+					inArray(careRule.id, replacing),
+				),
 			);
 		}
 		await tx.insert(careRule).values(rows).run();
-		await adoptRemaining(tx, plantTypeId, action, now);
+		await adoptRemaining(tx, householdId, plantTypeId, action, now);
 	});
 	refresh(slug);
 	return { ok: true };
@@ -191,6 +205,7 @@ export async function deleteRule(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = deleteSchema.safeParse({
 		plantTypeId: form.get('plantTypeId'),
 		replacing: readIds(form, 'replacing'),
@@ -199,7 +214,7 @@ export async function deleteRule(
 	if (!parsed.success) return { ok: false, error: 'Nothing to remove.' };
 
 	const { plantTypeId, replacing, action } = parsed.data;
-	const slug = await slugFor(plantTypeId);
+	const slug = await slugFor(householdId, plantTypeId);
 	if (!slug) return { ok: false, error: 'No such plant.' };
 
 	const now = new Date().toISOString();
@@ -207,13 +222,18 @@ export async function deleteRule(
 	await db.transaction(async (tx) => {
 		await deleteRules(
 			tx,
-			and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
+			and(
+				owns(careRule, householdId),
+				eq(careRule.plantTypeId, plantTypeId),
+				inArray(careRule.id, replacing),
+			),
 		);
 
 		// The tombstone. Without it the next re-seed would put this rule back.
 		await tx
 			.insert(careRule)
 			.values({
+				householdId,
 				plantTypeId,
 				action,
 				monthMask: 0,
@@ -225,7 +245,7 @@ export async function deleteRule(
 			})
 			.run();
 
-		await adoptRemaining(tx, plantTypeId, action, now);
+		await adoptRemaining(tx, householdId, plantTypeId, action, now);
 	});
 	refresh(slug);
 	return { ok: true };

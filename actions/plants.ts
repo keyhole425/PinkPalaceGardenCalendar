@@ -5,9 +5,11 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { environment, planting, plantType } from '@/lib/db/schema';
+import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -39,6 +41,7 @@ export async function createPlantType(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = plantSchema.safeParse({
 		commonName: form.get('commonName'),
 		scientificName: form.get('scientificName') || undefined,
@@ -63,7 +66,7 @@ export async function createPlantType(
 		await db
 			.select({ id: plantType.id })
 			.from(plantType)
-			.where(eq(plantType.slug, slug))
+			.where(and(owns(plantType, householdId), eq(plantType.slug, slug)))
 			.get()
 	) {
 		attempt++;
@@ -73,6 +76,7 @@ export async function createPlantType(
 	await db
 		.insert(plantType)
 		.values({
+			householdId,
 			slug,
 			...parsed.data,
 			source: 'user',
@@ -90,6 +94,7 @@ export async function updatePlantType(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const id = Number(form.get('plantTypeId'));
 	if (!Number.isInteger(id) || id <= 0) {
 		return { ok: false, error: 'No such plant.' };
@@ -112,7 +117,7 @@ export async function updatePlantType(
 	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.get();
 	if (!row) return { ok: false, error: 'No such plant.' };
 
@@ -126,7 +131,7 @@ export async function updatePlantType(
 			// From here on the seed keeps its hands off this plant's details.
 			userModifiedAt: new Date().toISOString(),
 		})
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.run();
 
 	refresh(row.slug);
@@ -138,18 +143,22 @@ export async function markReviewed(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const id = Number(form.get('plantTypeId'));
+	if (!Number.isInteger(id) || id <= 0) {
+		return { ok: false, error: 'No such plant.' };
+	}
 	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.get();
 	if (!row) return { ok: false, error: 'No such plant.' };
 
 	await db
 		.update(plantType)
 		.set({ needsReview: false, userModifiedAt: new Date().toISOString() })
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.run();
 
 	refresh(row.slug);
@@ -173,6 +182,7 @@ export async function createPlanting(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = plantingSchema.safeParse({
 		plantTypeId: form.get('plantTypeId'),
 		environmentId: form.get('environmentId'),
@@ -191,15 +201,19 @@ export async function createPlanting(
 	const plant = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, parsed.data.plantTypeId))
+		.where(ownedRow(plantType, parsed.data.plantTypeId, householdId))
 		.get();
 	if (!plant) return { ok: false, error: 'No such plant.' };
+	if (!(await isOwned(environment, parsed.data.environmentId, householdId))) {
+		return { ok: false, error: 'No such place.' };
+	}
 
 	const clash = await db
 		.select({ id: planting.id })
 		.from(planting)
 		.where(
 			and(
+				owns(planting, householdId),
 				eq(planting.plantTypeId, parsed.data.plantTypeId),
 				eq(planting.label, parsed.data.label),
 			),
@@ -212,6 +226,7 @@ export async function createPlanting(
 	await db
 		.insert(planting)
 		.values({
+			householdId,
 			plantTypeId: parsed.data.plantTypeId,
 			environmentId: parsed.data.environmentId,
 			label: parsed.data.label,
@@ -240,6 +255,7 @@ export async function setPlantingStatus(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = retireSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		status: form.get('status'),
@@ -258,7 +274,7 @@ export async function setPlantingStatus(
 						// Adelaide, UTC is still on yesterday.
 						today(),
 		})
-		.where(eq(planting.id, parsed.data.plantingId))
+		.where(ownedRow(planting, parsed.data.plantingId, householdId))
 		.run();
 
 	refresh(parsed.data.slug);
@@ -277,6 +293,7 @@ export async function createEnvironment(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = environmentSchema.safeParse({
 		name: form.get('name'),
 		kind: form.get('kind'),
@@ -298,7 +315,7 @@ export async function createEnvironment(
 		await db
 			.select({ id: environment.id })
 			.from(environment)
-			.where(eq(environment.slug, slug))
+			.where(and(owns(environment, householdId), eq(environment.slug, slug)))
 			.get()
 	) {
 		attempt++;
@@ -307,7 +324,7 @@ export async function createEnvironment(
 
 	await db
 		.insert(environment)
-		.values({ slug, ...parsed.data })
+		.values({ householdId, slug, ...parsed.data })
 		.run();
 	revalidatePath('/environments');
 	refresh();

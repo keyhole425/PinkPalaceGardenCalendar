@@ -5,7 +5,7 @@
  * is the part that matters for safety. Every one of them reads.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTempGarden, type TempGarden } from '@/lib/db/testing';
+import { createTempGarden, GARDEN, type TempGarden } from '@/lib/db/testing';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 
@@ -31,22 +31,22 @@ beforeEach(async () => {
 describe('what the chat can see', () => {
 	it('lists the plants with their slugs', async () => {
 		const { tools } = await freshGarden();
-		const plants = await tools.listPlants();
+		const plants = await tools.listPlants(GARDEN);
 		expect(plants.map((p) => p.slug)).toContain('lemon');
 		expect(plants.find((p) => p.slug === 'lemon')?.name).toBe('Lemon');
 	});
 
 	it('reports what is due on a given day', async () => {
 		const { tools } = await freshGarden();
-		const august = await tools.whatsDue('2026-08-20');
+		const august = await tools.whatsDue(GARDEN, '2026-08-20');
 		expect(august.due.some((d) => d.action === 'prune')).toBe(true);
-		const june = await tools.whatsDue('2026-06-15');
+		const june = await tools.whatsDue(GARDEN, '2026-06-15');
 		expect(june.harvesting.length).toBeGreaterThan(0);
 	});
 
 	it('gives one plant its windows and its notes', async () => {
 		const { tools } = await freshGarden();
-		const fig = await tools.plantSchedule('fig');
+		const fig = await tools.plantSchedule(GARDEN, 'fig');
 		if ('error' in fig) throw new Error(fig.error);
 		expect(fig.rules.length).toBeGreaterThan(0);
 		expect(fig.notes).toContain('dormancy');
@@ -54,8 +54,10 @@ describe('what the chat can see', () => {
 
 	it('says plainly when it does not know a plant', async () => {
 		const { tools } = await freshGarden();
-		expect(await tools.plantSchedule('dragonfruit')).toHaveProperty('error');
-		expect(await tools.plantHistory('dragonfruit')).toHaveProperty('error');
+		expect(await tools.plantSchedule(GARDEN, 'dragonfruit')).toHaveProperty(
+			'error',
+		);
+		expect(await tools.plantHistory(GARDEN, 'dragonfruit')).toHaveProperty('error');
 	});
 
 	it('reads back what was recorded', async () => {
@@ -67,6 +69,7 @@ describe('what the chat can see', () => {
 		await db
 			.insert(schema.careLog)
 			.values({
+				householdId: GARDEN,
 				plantingId: lemon?.id ?? 0,
 				action: 'harvest',
 				seasonYear: 2026,
@@ -75,7 +78,7 @@ describe('what the chat can see', () => {
 			})
 			.run();
 
-		const history = await tools.plantHistory('lemon');
+		const history = await tools.plantHistory(GARDEN, 'lemon');
 		if ('error' in history) throw new Error(history.error);
 		expect(history.entries[0]).toMatchObject({
 			action: 'harvest',
@@ -85,7 +88,7 @@ describe('what the chat can see', () => {
 
 	it('knows what could go in this month, and where', async () => {
 		const { tools } = await freshGarden();
-		const july = await tools.whatToSow('2026-07-15');
+		const july = await tools.whatToSow(GARDEN, '2026-07-15');
 		expect(july.crops.length).toBeGreaterThan(0);
 		expect(july.crops.every((c) => c.places.includes('The Hothouse'))).toBe(true);
 	});
@@ -105,7 +108,7 @@ describe('what the chat can see', () => {
 		form.append('sownOn', '2026-09-25');
 		await beds.sowInBed(null, form);
 
-		const plan = await tools.beds();
+		const plan = await tools.beds(GARDEN);
 		const bedOne = plan.find((b) => b.name === 'Bed 1');
 		expect(bedOne?.growing[0]).toMatchObject({ what: 'Tomato' });
 		expect(bedOne?.growing[0].readyFrom).toBe('2026-12-04');
@@ -113,7 +116,9 @@ describe('what the chat can see', () => {
 
 	it('reports the hothouse as running ahead', async () => {
 		const { tools } = await freshGarden();
-		const hothouse = (await tools.beds()).find((b) => b.name === 'The Hothouse');
+		const hothouse = (await tools.beds(GARDEN)).find(
+			(b) => b.name === 'The Hothouse',
+		);
 		expect(hothouse?.runsAheadByMonths).toBe(1);
 		expect(hothouse?.frostFree).toBe(true);
 	});

@@ -7,7 +7,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { monthsFromMask } from '@/lib/schedule/months';
-import { createTempGarden, type TempGarden } from './testing';
+import { createTempGarden, GARDEN, type TempGarden } from './testing';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 
@@ -79,7 +79,7 @@ describe('seeding', () => {
 			.get();
 		if (!lemon) throw new Error('no lemon');
 
-		const prune = (await queries.getEditableRules(lemon.id)).find(
+		const prune = (await queries.getEditableRules(GARDEN, lemon.id)).find(
 			(r) => r.action === 'prune',
 		);
 		if (!prune) throw new Error('no prune rule');
@@ -101,7 +101,7 @@ describe('seeding', () => {
 
 		await seedGarden(db);
 
-		const after = (await queries.getEditableRules(lemon.id)).filter(
+		const after = (await queries.getEditableRules(GARDEN, lemon.id)).filter(
 			(r) => r.action === 'prune',
 		);
 		expect(after).toHaveLength(1);
@@ -122,7 +122,7 @@ describe('seeding', () => {
 			.get();
 		if (!cherry) throw new Error('no cherry');
 
-		const prune = (await queries.getEditableRules(cherry.id)).find(
+		const prune = (await queries.getEditableRules(GARDEN, cherry.id)).find(
 			(r) => r.action === 'prune',
 		);
 		if (!prune) throw new Error('no prune rule');
@@ -139,11 +139,11 @@ describe('seeding', () => {
 		await seedGarden(db);
 
 		expect(
-			(await queries.getEditableRules(cherry.id)).filter(
+			(await queries.getEditableRules(GARDEN, cherry.id)).filter(
 				(r) => r.action === 'prune',
 			),
 		).toHaveLength(0);
-		expect(await queries.getRemovedActions(cherry.id)).toContain('prune');
+		expect(await queries.getRemovedActions(GARDEN, cherry.id)).toContain('prune');
 	});
 
 	it('keeps what was done when the rule it answered is removed', async () => {
@@ -165,7 +165,7 @@ describe('seeding', () => {
 			.where(eq(schema.planting.plantTypeId, cherry.id))
 			.get();
 		if (!tree) throw new Error('no cherry tree');
-		const prune = (await queries.getEditableRules(cherry.id)).find(
+		const prune = (await queries.getEditableRules(GARDEN, cherry.id)).find(
 			(r) => r.action === 'prune',
 		);
 		if (!prune) throw new Error('no prune rule');
@@ -174,6 +174,7 @@ describe('seeding', () => {
 		await db
 			.insert(schema.careLog)
 			.values({
+				householdId: GARDEN,
 				plantingId: tree.id,
 				careRuleId: ruleId,
 				action: 'prune',
@@ -216,7 +217,7 @@ describe('seeding', () => {
 			.get();
 		if (!cumquat) throw new Error('no cumquat');
 
-		const feeds = (await queries.getEditableRules(cumquat.id)).filter(
+		const feeds = (await queries.getEditableRules(GARDEN, cumquat.id)).filter(
 			(r) => r.action === 'fertilise',
 		);
 		expect(feeds).toHaveLength(2);
@@ -237,7 +238,7 @@ describe('seeding', () => {
 
 		// September survives. Without adoption the re-seed would have taken it
 		// as its own and deleted it, having been told feeding is now yours.
-		const after = (await queries.getEditableRules(cumquat.id)).filter(
+		const after = (await queries.getEditableRules(GARDEN, cumquat.id)).filter(
 			(r) => r.action === 'fertilise',
 		);
 		expect(after).toHaveLength(1);
@@ -295,7 +296,9 @@ describe('editing rules', () => {
 
 		// The spreadsheet never said when to prune a plum.
 		expect(
-			(await queries.getEditableRules(plum.id)).some((r) => r.action === 'prune'),
+			(await queries.getEditableRules(GARDEN, plum.id)).some(
+				(r) => r.action === 'prune',
+			),
 		).toBe(false);
 
 		await rules.saveRule(
@@ -309,7 +312,7 @@ describe('editing rules', () => {
 			}),
 		);
 
-		const prune = (await queries.getEditableRules(plum.id)).find(
+		const prune = (await queries.getEditableRules(GARDEN, plum.id)).find(
 			(r) => r.action === 'prune',
 		);
 		expect(prune?.alternatives).toBe(true);
@@ -362,7 +365,7 @@ describe('editing rules', () => {
 		);
 
 		const { getDashboard } = await import('./queries/garden');
-		const board = await getDashboard('2026-07-15');
+		const board = await getDashboard(GARDEN, '2026-07-15');
 		expect(
 			board.due.some(
 				(t) =>

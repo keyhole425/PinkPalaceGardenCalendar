@@ -5,6 +5,7 @@ import { today as todayInGarden } from '@/lib/dates';
 import type { EffectiveRule, Occurrence } from '@/lib/schedule/types';
 import { db } from '../client';
 import { careLog, careRule, environment, planting, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 import type { HarvestSeason } from './garden';
 import { getSchedule } from './garden';
 
@@ -50,19 +51,20 @@ export type PlantDetail = {
 };
 
 export async function getPlant(
+	hid: HouseholdId,
 	slug: string,
 	when: IsoDate = todayInGarden(),
 ): Promise<PlantDetail | null> {
 	const row = await db
 		.select()
 		.from(plantType)
-		.where(eq(plantType.slug, slug))
+		.where(and(owns(plantType, hid), eq(plantType.slug, slug)))
 		.get();
 	if (!row) return null;
 
 	// The schedule already resolves overrides and environment shifts for every
 	// planting; picking this plant's out of it keeps one code path.
-	const schedule = await getSchedule(when);
+	const schedule = await getSchedule(hid, when);
 
 	const plantings: PlantPlanting[] = (
 		await Promise.all(
@@ -79,7 +81,7 @@ export async function getPlant(
 					openSeasons: schedule.harvesting.filter(
 						(h) => h.context.plantingId === p.context.plantingId,
 					),
-					history: await getHistory(p.context.plantingId),
+					history: await getHistory(hid, p.context.plantingId),
 				})),
 		)
 	).sort((a, b) => a.label.localeCompare(b.label));
@@ -96,12 +98,15 @@ export async function getPlant(
 		needsReview: row.needsReview,
 		sourceRef: row.sourceRef,
 		plantings,
-		templateRules: await getEditableRules(row.id),
+		templateRules: await getEditableRules(hid, row.id),
 	};
 }
 
 /** Everything written down against one plant, newest first. */
-export async function getHistory(plantingId: number): Promise<HistoryEntry[]> {
+export async function getHistory(
+	hid: HouseholdId,
+	plantingId: number,
+): Promise<HistoryEntry[]> {
 	return await db
 		.select({
 			id: careLog.id,
@@ -112,7 +117,7 @@ export async function getHistory(plantingId: number): Promise<HistoryEntry[]> {
 			notesMd: careLog.notesMd,
 		})
 		.from(careLog)
-		.where(eq(careLog.plantingId, plantingId))
+		.where(and(owns(careLog, hid), eq(careLog.plantingId, plantingId)))
 		.orderBy(desc(careLog.completedOn), desc(careLog.id))
 		.all();
 }
@@ -124,7 +129,7 @@ export async function getHistory(plantingId: number): Promise<HistoryEntry[]> {
  * Unlike the schedule's view these are unshifted and unresolved - the editor
  * edits what is written down, not what a particular environment makes of it.
  */
-export async function getEditableRules(plantTypeId: number) {
+export async function getEditableRules(hid: HouseholdId, plantTypeId: number) {
 	const rows = await db
 		.select({
 			id: careRule.id,
@@ -141,6 +146,7 @@ export async function getEditableRules(plantTypeId: number) {
 		.from(careRule)
 		.where(
 			and(
+				owns(careRule, hid),
 				eq(careRule.plantTypeId, plantTypeId),
 				isNull(careRule.plantingId),
 				eq(careRule.active, true),
@@ -175,20 +181,30 @@ export async function getEditableRules(plantTypeId: number) {
 }
 
 /** Whether a rule for this action has been deliberately removed. */
-export async function getRemovedActions(plantTypeId: number): Promise<string[]> {
+export async function getRemovedActions(
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<string[]> {
 	return (
 		await db
 			.select({ action: careRule.action })
 			.from(careRule)
-			.where(and(eq(careRule.plantTypeId, plantTypeId), eq(careRule.active, false)))
+			.where(
+				and(
+					owns(careRule, hid),
+					eq(careRule.plantTypeId, plantTypeId),
+					eq(careRule.active, false),
+				),
+			)
 			.all()
 	).map((r) => r.action);
 }
 
-export async function listEnvironments() {
+export async function listEnvironments(hid: HouseholdId) {
 	return await db
 		.select()
 		.from(environment)
+		.where(owns(environment, hid))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 }
@@ -200,7 +216,7 @@ export async function listEnvironments() {
  * cannot say whether it is describing the world or your garden, which is
  * exactly how it used to read.
  */
-export async function listPlants() {
+export async function listPlants(hid: HouseholdId) {
 	return await db
 		.select({
 			id: plantType.id,
@@ -218,12 +234,13 @@ export async function listPlants() {
 			planting,
 			and(eq(planting.plantTypeId, plantType.id), ne(planting.status, 'removed')),
 		)
+		.where(owns(plantType, hid))
 		.groupBy(plantType.id)
 		.orderBy(asc(plantType.commonName))
 		.all();
 }
 
-export async function getPlantings(plantTypeId: number) {
+export async function getPlantings(hid: HouseholdId, plantTypeId: number) {
 	return await db
 		.select({
 			id: planting.id,
@@ -235,7 +252,7 @@ export async function getPlantings(plantTypeId: number) {
 		})
 		.from(planting)
 		.innerJoin(environment, eq(planting.environmentId, environment.id))
-		.where(eq(planting.plantTypeId, plantTypeId))
+		.where(and(owns(planting, hid), eq(planting.plantTypeId, plantTypeId)))
 		.orderBy(asc(planting.label))
 		.all();
 }

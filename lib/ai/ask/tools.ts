@@ -6,8 +6,11 @@
  * confused question can therefore be unhelpful, but it cannot damage anything,
  * which is the whole reason the chat is built this way rather than as a
  * general query interface.
+ *
+ * Every tool takes the household as its first argument, bound in before the
+ * model sees the tool. The model can name a plant; it cannot name a garden.
  */
-import { asc, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import { type IsoDate, today as todayInGarden } from '@/lib/dates';
 import { db } from '@/lib/db/client';
@@ -15,6 +18,7 @@ import { listBeds, sowableThisMonth } from '@/lib/db/queries/beds';
 import { getDashboard, getSchedule } from '@/lib/db/queries/garden';
 import { getEditableRules } from '@/lib/db/queries/plant';
 import { careLog, environment, planting, plantType } from '@/lib/db/schema';
+import { type HouseholdId, owns } from '@/lib/db/tenancy';
 import { monthsFromMask } from '@/lib/schedule/months';
 
 export const askToolSchemas = {
@@ -38,7 +42,7 @@ export const askToolSchemas = {
 	}),
 } as const;
 
-export async function listPlants() {
+export async function listPlants(hid: HouseholdId) {
 	return await db
 		.select({
 			slug: plantType.slug,
@@ -47,13 +51,14 @@ export async function listPlants() {
 			family: plantType.family,
 		})
 		.from(plantType)
+		.where(owns(plantType, hid))
 		.orderBy(asc(plantType.commonName))
 		.all();
 }
 
-export async function whatsDue(on?: string) {
+export async function whatsDue(hid: HouseholdId, on?: string) {
 	const when = (on || todayInGarden()) as IsoDate;
-	const board = await getDashboard(when);
+	const board = await getDashboard(hid, when);
 	const describe = (list: typeof board.due) =>
 		list.map((t) => ({
 			plant: t.context.label,
@@ -73,11 +78,11 @@ export async function whatsDue(on?: string) {
 	};
 }
 
-export async function plantSchedule(slug: string) {
+export async function plantSchedule(hid: HouseholdId, slug: string) {
 	const plant = await db
 		.select()
 		.from(plantType)
-		.where(eq(plantType.slug, slug))
+		.where(and(owns(plantType, hid), eq(plantType.slug, slug)))
 		.get();
 	if (!plant) return { error: `No plant with the slug "${slug}".` };
 
@@ -85,7 +90,7 @@ export async function plantSchedule(slug: string) {
 		name: plant.commonName,
 		scientificName: plant.scientificName,
 		notes: plant.notesMd,
-		rules: (await getEditableRules(plant.id)).map((r) => ({
+		rules: (await getEditableRules(hid, plant.id)).map((r) => ({
 			action: r.action,
 			months: monthsFromMask(r.monthMask),
 			alternatives: r.alternatives,
@@ -101,16 +106,16 @@ export async function plantSchedule(slug: string) {
 			})
 			.from(planting)
 			.innerJoin(environment, eq(planting.environmentId, environment.id))
-			.where(eq(planting.plantTypeId, plant.id))
+			.where(and(owns(planting, hid), eq(planting.plantTypeId, plant.id)))
 			.all(),
 	};
 }
 
-export async function plantHistory(slug: string, limit = 50) {
+export async function plantHistory(hid: HouseholdId, slug: string, limit = 50) {
 	const plant = await db
 		.select()
 		.from(plantType)
-		.where(eq(plantType.slug, slug))
+		.where(and(owns(plantType, hid), eq(plantType.slug, slug)))
 		.get();
 	if (!plant) return { error: `No plant with the slug "${slug}".` };
 
@@ -126,15 +131,15 @@ export async function plantHistory(slug: string, limit = 50) {
 			})
 			.from(careLog)
 			.innerJoin(planting, eq(careLog.plantingId, planting.id))
-			.where(eq(planting.plantTypeId, plant.id))
+			.where(and(owns(careLog, hid), eq(planting.plantTypeId, plant.id)))
 			.orderBy(desc(careLog.completedOn))
 			.limit(limit)
 			.all(),
 	};
 }
 
-export async function beds() {
-	return (await listBeds()).map((b) => ({
+export async function beds(hid: HouseholdId) {
+	return (await listBeds(hid)).map((b) => ({
 		name: b.name,
 		kind: b.kind,
 		frostFree: b.frostFree,
@@ -149,11 +154,11 @@ export async function beds() {
 	}));
 }
 
-export async function whatToSow(on?: string) {
+export async function whatToSow(hid: HouseholdId, on?: string) {
 	const when = (on || todayInGarden()) as IsoDate;
 	return {
 		date: when,
-		crops: (await sowableThisMonth(when)).map((c) => ({
+		crops: (await sowableThisMonth(hid, when)).map((c) => ({
 			what: c.commonName,
 			places: c.places.map((p) => p.name),
 			broughtForward: c.places.some((p) => p.shifted),
@@ -162,8 +167,8 @@ export async function whatToSow(on?: string) {
 }
 
 /** Every planting figgy knows, for questions about the garden as a whole. */
-export async function gardenSummary() {
-	const schedule = await getSchedule();
+export async function gardenSummary(hid: HouseholdId) {
+	const schedule = await getSchedule(hid);
 	return {
 		today: schedule.today,
 		plantings: await db
@@ -176,7 +181,7 @@ export async function gardenSummary() {
 			.from(planting)
 			.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 			.innerJoin(environment, eq(planting.environmentId, environment.id))
-			.where(ne(planting.status, 'removed'))
+			.where(and(owns(planting, hid), ne(planting.status, 'removed')))
 			.all(),
 	};
 }

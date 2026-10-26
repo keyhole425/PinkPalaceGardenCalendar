@@ -6,6 +6,7 @@ import { DataList, DataRow } from '@/components/ui/DataList';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScientificName } from '@/components/ui/ScientificName';
+import { requireHousehold } from '@/lib/auth/context';
 import { listPlants } from '@/lib/db/queries/plant';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,8 @@ const CATEGORIES = [
 ] as const;
 
 export default async function PlantsPage() {
-	const plants = await listPlants();
+	const { householdId } = await requireHousehold();
+	const plants = await listPlants(householdId);
 
 	const byCategory = CATEGORIES.map(([key, label]) => ({
 		key,

@@ -11,10 +11,12 @@ import { DataList, DataRow } from '@/components/ui/DataList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { getBed, getBedHistory, rotationWarningFor } from '@/lib/db/queries/beds';
 import { careRule, plantType } from '@/lib/db/schema';
+import { type HouseholdId, owns } from '@/lib/db/tenancy';
 import { hasMonth, type Month, shiftMask } from '@/lib/schedule/months';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +29,7 @@ export const dynamic = 'force-dynamic';
  * point of having a hothouse.
  */
 async function sowableNow(
+	hid: HouseholdId,
 	environmentKind: string,
 	shiftMonths: number,
 	month: Month,
@@ -44,11 +47,13 @@ async function sowableNow(
 			careRule,
 			and(
 				eq(careRule.plantTypeId, plantType.id),
+				owns(careRule, hid),
 				eq(careRule.action, 'sow'),
 				isNull(careRule.plantingId),
 				eq(careRule.active, true),
 			),
 		)
+		.where(owns(plantType, hid))
 		.orderBy(asc(plantType.commonName))
 		.all();
 
@@ -87,13 +92,19 @@ export default async function BedPage({
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
-	const bed = await getBed(slug);
+	const { householdId } = await requireHousehold();
+	const bed = await getBed(householdId, slug);
 	if (!bed) notFound();
 
 	const when = today();
 	const month = monthOf(when);
-	const history = await getBedHistory(bed.id);
-	const plants = await sowableNow(bed.kind, bed.windowShiftMonths, month);
+	const history = await getBedHistory(householdId, bed.id);
+	const plants = await sowableNow(
+		householdId,
+		bed.kind,
+		bed.windowShiftMonths,
+		month,
+	);
 
 	// Every family grown here lately, so the form can say so before you plant a
 	// cousin rather than after.
@@ -102,7 +113,9 @@ export default async function BedPage({
 	] as string[];
 	const warnings = (
 		await Promise.all(
-			families.map((family) => rotationWarningFor(bed.id, family, when)),
+			families.map((family) =>
+				rotationWarningFor(householdId, bed.id, family, when),
+			),
 		)
 	).filter((w) => w !== null);
 	const recentFamilies = warnings.map((w) => ({

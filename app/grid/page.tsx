@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { MonthGrid } from '@/components/grid/MonthGrid';
 import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { requireHousehold } from '@/lib/auth/context';
 import { monthOf, today } from '@/lib/dates';
 import { getGrid, getGridMarks } from '@/lib/db/queries/grid';
 import { type Month, monthName } from '@/lib/schedule/months';
@@ -24,7 +25,11 @@ export default async function GridPage({
 	const { start } = await searchParams;
 	const startMonth: Month = start === '1' ? 1 : DEFAULT_START;
 	const currentMonth = monthOf(today());
-	const [plants, marks] = await Promise.all([getGrid(), getGridMarks(today())]);
+	const { householdId } = await requireHousehold();
+	const [plants, marks] = await Promise.all([
+		getGrid(householdId),
+		getGridMarks(householdId, today()),
+	]);
 
 	return (
 		<Frame width="wide">

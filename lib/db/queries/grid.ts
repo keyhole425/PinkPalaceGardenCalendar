@@ -4,13 +4,14 @@
  * This is deliberately one query and a group-by rather than a query per plant -
  * the whole orchard is a few dozen rows.
  */
-import { asc, isNull } from 'drizzle-orm';
+import { and, asc, isNull } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { monthOf, today as todayInGarden } from '@/lib/dates';
 import type { Month } from '@/lib/schedule/months';
 import { db } from '../client';
 import type { Cadence } from '../schema';
 import { careRule, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 import { getSchedule } from './garden';
 
 /** The order the spreadsheet used, and the order the grid shows. */
@@ -69,7 +70,7 @@ export function noteSummary(notes: string | null): string | null {
 	return `${flat.slice(0, cut === -1 ? 120 : cut).trim()}\u2026`;
 }
 
-export async function getGrid(): Promise<GridPlant[]> {
+export async function getGrid(hid: HouseholdId): Promise<GridPlant[]> {
 	const plants = await db
 		.select({
 			id: plantType.id,
@@ -80,6 +81,7 @@ export async function getGrid(): Promise<GridPlant[]> {
 			needsReview: plantType.needsReview,
 		})
 		.from(plantType)
+		.where(owns(plantType, hid))
 		.orderBy(asc(plantType.id))
 		.all();
 
@@ -96,7 +98,7 @@ export async function getGrid(): Promise<GridPlant[]> {
 		.from(careRule)
 		// Template rules only. Per-planting overrides belong on a planting's own
 		// page, not in the plant-level year view.
-		.where(isNull(careRule.plantingId))
+		.where(and(owns(careRule, hid), isNull(careRule.plantingId)))
 		.orderBy(asc(careRule.id))
 		.all();
 
@@ -149,9 +151,10 @@ export async function getGrid(): Promise<GridPlant[]> {
 export type CellMark = { done: number; total: number };
 
 export async function getGridMarks(
+	hid: HouseholdId,
 	when: IsoDate = todayInGarden(),
 ): Promise<Map<string, CellMark>> {
-	const { plantings } = await getSchedule(when);
+	const { plantings } = await getSchedule(hid, when);
 	const marks = new Map<string, CellMark>();
 
 	// Only the last twelve months count, so the grid shows this year round,

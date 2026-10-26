@@ -7,14 +7,18 @@
  * trusting what the form says it is. The action, the season and the window all
  * come from the engine; the form only says which job, when it was done, and
  * anything you want to remember about it.
+ *
+ * The schedule it re-runs is the signed-in household's, so a planting id from
+ * another garden simply is not on it.
  */
-import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { findOccurrence, openSeasonsFor } from '@/lib/db/queries/garden';
 import { careLog } from '@/lib/db/schema';
+import { ownedRow } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -40,6 +44,7 @@ export async function completeTask(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = completeSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		ruleId: form.get('ruleId'),
@@ -52,7 +57,7 @@ export async function completeTask(
 	}
 
 	const { plantingId, ruleId, occurrenceKey, completedOn, notes } = parsed.data;
-	const task = await findOccurrence(plantingId, ruleId, occurrenceKey);
+	const task = await findOccurrence(householdId, plantingId, ruleId, occurrenceKey);
 	if (!task) {
 		return {
 			ok: false,
@@ -63,6 +68,7 @@ export async function completeTask(
 	const written = await db
 		.insert(careLog)
 		.values({
+			householdId,
 			plantingId,
 			// Always the representative rule. The engine treats any member of
 			// a set of alternatives as satisfying the whole set.
@@ -104,6 +110,7 @@ export async function logHarvest(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = harvestSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		ruleId: form.get('ruleId'),
@@ -116,7 +123,7 @@ export async function logHarvest(
 	}
 
 	const { plantingId, ruleId, completedOn, quantityNote, notes } = parsed.data;
-	const season = (await openSeasonsFor(plantingId)).find((s) =>
+	const season = (await openSeasonsFor(householdId, plantingId)).find((s) =>
 		s.rule.ruleIds.includes(ruleId),
 	);
 	if (!season) {
@@ -126,6 +133,7 @@ export async function logHarvest(
 	await db
 		.insert(careLog)
 		.values({
+			householdId,
 			plantingId,
 			careRuleId: season.rule.id,
 			action: season.rule.action,
@@ -150,6 +158,7 @@ export async function undoCompletion(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = undoSchema.safeParse({
 		logId: form.get('logId'),
 		slug: form.get('slug') ?? undefined,
@@ -158,7 +167,10 @@ export async function undoCompletion(
 		return { ok: false, error: 'Nothing to undo.' };
 	}
 
-	await db.delete(careLog).where(eq(careLog.id, parsed.data.logId)).run();
+	await db
+		.delete(careLog)
+		.where(ownedRow(careLog, parsed.data.logId, householdId))
+		.run();
 	refresh(parsed.data.slug);
 	return { ok: true };
 }

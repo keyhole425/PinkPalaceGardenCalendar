@@ -11,6 +11,7 @@ import { Frame } from '@/components/ui/Frame';
 import { MonthStrip } from '@/components/ui/MonthStrip';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScientificName } from '@/components/ui/ScientificName';
+import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
 import { OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import { getPlant } from '@/lib/db/queries/plant';
@@ -73,7 +74,8 @@ export default async function PlantPage({
 }) {
 	const { slug } = await params;
 	const when = today();
-	const plant = await getPlant(slug, when);
+	const { householdId } = await requireHousehold();
+	const plant = await getPlant(householdId, slug, when);
 	if (!plant) notFound();
 
 	const currentMonth = monthOf(when) as Month;
