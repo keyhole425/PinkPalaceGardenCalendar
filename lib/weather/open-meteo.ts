@@ -12,6 +12,9 @@
 import { GARDEN_LOCALE } from '@/lib/ai/locale';
 import type { ForecastDay, Sky } from './types';
 
+/** Short: /now waits on this, and the other provider can stand in. */
+const FETCH_TIMEOUT_MS = 4000;
+
 /** The WMO code table, collapsed onto the six skies figgy can draw. */
 export function skyFromCode(code: number | undefined): Sky | undefined {
 	if (code === undefined) return undefined;
@@ -36,7 +39,9 @@ export async function fetchOpenMeteo(): Promise<ForecastDay[] | null> {
 	url.searchParams.set('forecast_days', '7');
 
 	try {
-		const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+		const response = await fetch(url, {
+			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+		});
 		if (!response.ok) return null;
 		const body = (await response.json()) as {
 			daily?: {

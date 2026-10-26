@@ -8,6 +8,8 @@ picks up the right knowledge on its own when a request touches that area.
 |---|---|---|---|
 | Design | [design/](design/README.md) | `figgy-ui-design` | how figgy looks, reads and behaves: screens, components, colour, type, copy, accessibility |
 
+Deploying, backups and secrets: [DEPLOY.md](DEPLOY.md).
+
 ## Adding an area
 
 The split is always the same: **docs hold the knowledge** (what and why),

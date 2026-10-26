@@ -1,0 +1,53 @@
+name: backup
+
+# A nightly copy of the production database, kept outside Turso.
+#
+# Turso keeps its own point-in-time history; this is the copy that survives
+# losing the Turso account itself. The dump is encrypted with age before it
+# is stored, so the artifact is useless to anyone without the private key -
+# which lives with you, not in GitHub. A failed run emails the repo owner,
+# which is how a quietly broken backup gets noticed.
+#
+# Needs three repository secrets:
+#   TURSO_API_TOKEN   turso auth api-tokens mint figgy-backup
+#   TURSO_DATABASE    the database's name, e.g. figgy
+#   AGE_RECIPIENT     the public half of an age key (age-keygen), age1...
+
+on:
+  schedule:
+    # 03:30 Adelaide, give or take daylight saving.
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install the Turso CLI and age
+        run: |
+          curl -sSfL https://get.tur.so/install.sh | bash
+          sudo apt-get update && sudo apt-get install -y age
+          echo "$HOME/.turso" >> "$GITHUB_PATH"
+
+      - name: Dump and encrypt
+        env:
+          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
+          TURSO_DATABASE: ${{ secrets.TURSO_DATABASE }}
+          AGE_RECIPIENT: ${{ secrets.AGE_RECIPIENT }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y-%m-%d)
+          turso db shell "$TURSO_DATABASE" .dump | gzip -9 | age -r "$AGE_RECIPIENT" > "figgy-$stamp.sql.gz.age"
+          # An empty dump encrypts to a small file; a real garden does not.
+          test "$(stat -c %s "figgy-$stamp.sql.gz.age")" -gt 2048
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: figgy-${{ env.STAMP }}
+          path: figgy-*.sql.gz.age
+          retention-days: 30
+          if-no-files-found: error

@@ -148,6 +148,12 @@ enough rain that watering is a waste. Those judgements are made here rather
 than asked of a model: frost is frost, and an answer that works offline and
 costs nothing beats a clever one that needs an API key.
 
+## Deploying
+
+figgy runs on Vercel with its data on Turso. [docs/DEPLOY.md](docs/DEPLOY.md)
+has all of it: setting both up, moving the garden across from the home server,
+getting the first person in, backups, and changing secrets.
+
 ## Layout
 
 ```

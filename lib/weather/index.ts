@@ -35,6 +35,10 @@ export type {
  * not worth a migration.
  */
 const CACHE_KEY = 'weather.v2';
+/** When both providers last failed together. */
+const FAILED_KEY = 'weather.failed-at';
+/** How long to leave them alone after that, rather than make every page wait. */
+const RETRY_AFTER_MS = 30 * 60 * 1000;
 
 async function cacheRead(when: IsoDate): Promise<Forecast | null> {
 	const row = await db.select().from(meta).where(eq(meta.key, CACHE_KEY)).get();
@@ -98,6 +102,9 @@ export async function getForecast(
 	const cached = await cacheRead(when);
 	if (cached) return cached;
 
+	const failed = await db.select().from(meta).where(eq(meta.key, FAILED_KEY)).get();
+	if (failed && Date.now() - Date.parse(failed.value) < RETRY_AFTER_MS) return null;
+
 	// Asked together: the Bureau's wind gap is filled from the same round trip.
 	const [bureau, openMeteo] = await Promise.all([fetchBom(), fetchOpenMeteo()]);
 
@@ -112,7 +119,15 @@ export async function getForecast(
 		forecast = { fetchedFor: when, source: 'open-meteo', days: openMeteo };
 	}
 
-	if (!forecast) return null;
+	if (!forecast) {
+		const at = new Date().toISOString();
+		await db
+			.insert(meta)
+			.values({ key: FAILED_KEY, value: at })
+			.onConflictDoUpdate({ target: meta.key, set: { value: at } })
+			.run();
+		return null;
+	}
 	await cacheWrite(forecast);
 	return forecast;
 }
