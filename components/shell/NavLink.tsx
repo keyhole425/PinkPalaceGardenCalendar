@@ -16,10 +16,13 @@ export function NavLink({
 	href,
 	children,
 	className,
+	tour,
 }: {
 	href: string;
 	children: React.ReactNode;
 	className?: string;
+	/** What the first-run tour calls this link. */
+	tour?: string;
 }) {
 	const pathname = usePathname();
 	const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -27,6 +30,7 @@ export function NavLink({
 	return (
 		<Link
 			href={href}
+			data-tour={tour}
 			aria-current={active ? 'page' : undefined}
 			className={cx(
 				'-mb-[9px] border-b-2 pb-2 text-sm',
@@ -45,9 +49,11 @@ export function NavLink({
 export function TabLink({
 	href,
 	children,
+	tour,
 }: {
 	href: string;
 	children: React.ReactNode;
+	tour?: string;
 }) {
 	const pathname = usePathname();
 	const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -55,6 +61,7 @@ export function TabLink({
 	return (
 		<Link
 			href={href}
+			data-tour={tour}
 			aria-current={active ? 'page' : undefined}
 			className={cx(
 				'flex min-h-tap flex-1 items-center justify-center text-sm',

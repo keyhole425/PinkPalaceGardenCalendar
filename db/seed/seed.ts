@@ -1,5 +1,10 @@
 /**
- * Seeding the garden. Safe to re-run at any time.
+ * Seeding a household's garden. Safe to re-run at any time.
+ *
+ * Each household grew from a profile. The Pink Palace has its orchard - the
+ * spreadsheet this app began as - plus the beds and the hothouse. Every other
+ * household starts from the vegetable catalogue and one bed, and makes the
+ * rest its own.
  *
  * The rule that makes it safe: seeding only ever touches what it still owns.
  * A rule is the seed's while `source = 'seed'` and nobody has edited it. The
@@ -8,9 +13,18 @@
  * re-running never resurrects what you replaced or leaves you with two of
  * everything.
  */
-import { and, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
-import type { Db } from '@/lib/db/client';
-import { careRule, environment, meta, planting, plantType } from '@/lib/db/schema';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm';
+import type { Db, Tx } from '@/lib/db/client';
+import { deleteRules } from '@/lib/db/rules';
+import {
+	careRule,
+	environment,
+	household,
+	planting,
+	plantType,
+	type SeedProfile,
+} from '@/lib/db/schema';
+import { asHouseholdId, type HouseholdId, owns } from '@/lib/db/tenancy';
 import { maskFromMonths } from '@/lib/schedule/months';
 import {
 	environments as orchardEnvironments,
@@ -19,13 +33,16 @@ import {
 	SEED_VERSION,
 } from './orchard';
 import {
+	type SeedEnvironmentInput,
 	type SeedPlantType,
+	type SeedPlantTypeInput,
 	seedEnvironmentSchema,
 	seedPlantTypeSchema,
 } from './schema';
 import { vegEnvironments, vegPlantTypes } from './veg';
 
 export type SeedReport = {
+	householdId: HouseholdId;
 	version: string;
 	environments: number;
 	plantTypes: number;
@@ -34,21 +51,39 @@ export type SeedReport = {
 	leftAlone: string[];
 };
 
-const environments = [...orchardEnvironments, ...vegEnvironments];
-const plantTypes = [...orchardPlantTypes, ...vegPlantTypes];
+type Profile = {
+	environments: SeedEnvironmentInput[];
+	plantTypes: SeedPlantTypeInput[];
+	/** Where the profile's own plantings go, if it has any. */
+	plantingsIn: string | null;
+};
 
-function seedEnvironments(db: Db) {
+const PROFILES: Record<SeedProfile, Profile> = {
+	'pink-palace': {
+		environments: [...orchardEnvironments, ...vegEnvironments],
+		plantTypes: [...orchardPlantTypes, ...vegPlantTypes],
+		plantingsIn: 'orchard',
+	},
+	starter: {
+		environments: vegEnvironments.filter((e) => e.slug === 'bed-1'),
+		plantTypes: vegPlantTypes,
+		plantingsIn: null,
+	},
+};
+
+async function seedEnvironments(db: Db, hid: HouseholdId, profile: Profile) {
 	let created = 0;
-	for (const raw of environments) {
+	for (const raw of profile.environments) {
 		const env = seedEnvironmentSchema.parse(raw);
-		const existing = db
+		const existing = await db
 			.select({ id: environment.id })
 			.from(environment)
-			.where(eq(environment.slug, env.slug))
+			.where(and(owns(environment, hid), eq(environment.slug, env.slug)))
 			.get();
 
 		if (existing) {
-			db.update(environment)
+			await db
+				.update(environment)
 				.set({
 					kind: env.kind,
 					name: env.name,
@@ -64,7 +99,10 @@ function seedEnvironments(db: Db) {
 				.where(eq(environment.id, existing.id))
 				.run();
 		} else {
-			db.insert(environment).values(env).run();
+			await db
+				.insert(environment)
+				.values({ ...env, householdId: hid })
+				.run();
 			created++;
 		}
 	}
@@ -78,12 +116,17 @@ function seedEnvironments(db: Db) {
  * counts - including a tombstone, the disabled row left behind when a rule is
  * deleted, which is how "this tree needs no pruning" survives a re-seed.
  */
-function userOwnedActions(db: Db, plantTypeId: number): Set<string> {
-	const rows = db
+async function userOwnedActions(
+	db: Db,
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<Set<string>> {
+	const rows = await db
 		.select({ action: careRule.action })
 		.from(careRule)
 		.where(
 			and(
+				owns(careRule, hid),
 				eq(careRule.plantTypeId, plantTypeId),
 				or(ne(careRule.source, 'seed'), isNotNull(careRule.userModifiedAt)),
 			),
@@ -92,99 +135,184 @@ function userOwnedActions(db: Db, plantTypeId: number): Set<string> {
 	return new Set(rows.map((r) => r.action));
 }
 
-function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
-	const owned = userOwnedActions(db, plantTypeId);
-
-	// Clear out only the rules this seed still owns, then lay them down fresh.
-	db.delete(careRule)
-		.where(
-			and(
-				eq(careRule.plantTypeId, plantTypeId),
-				eq(careRule.source, 'seed'),
-				isNull(careRule.userModifiedAt),
-			),
-		)
-		.run();
-
-	let written = 0;
-	for (const rule of pt.rules) {
-		if (owned.has(rule.action)) continue;
-
+/** The rows a seed rule becomes: one, or one per alternative month set. */
+function ruleRows(
+	hid: HouseholdId,
+	plantTypeId: number,
+	pt: SeedPlantType,
+): (typeof careRule.$inferInsert)[] {
+	return pt.rules.flatMap((rule): (typeof careRule.$inferInsert)[] => {
 		const sourceRef = `${SEED_SOURCE} / ${pt.commonName} / ${rule.action}`;
-
+		const common = {
+			householdId: hid,
+			plantTypeId,
+			action: rule.action,
+			cadence: rule.cadence,
+			note: rule.note,
+			source: 'seed' as const,
+			sourceRef,
+		};
 		if (rule.months) {
-			db.insert(careRule)
-				.values({
-					plantTypeId,
-					action: rule.action,
-					monthMask: maskFromMonths(rule.months),
-					cadence: rule.cadence,
-					note: rule.note,
-					source: 'seed',
-					sourceRef,
-				})
-				.run();
-			written++;
-			continue;
+			return [
+				{ ...common, monthMask: maskFromMonths(rule.months), altGroup: null },
+			];
 		}
-
 		// Alternatives: one rule per option, tied together by a shared group.
 		const altGroup = `${pt.slug}:${rule.action}`;
-		for (const option of rule.anyOf ?? []) {
-			db.insert(careRule)
-				.values({
-					plantTypeId,
-					action: rule.action,
-					monthMask: maskFromMonths(option),
-					cadence: rule.cadence,
-					altGroup,
-					note: rule.note,
-					source: 'seed',
-					sourceRef,
-				})
-				.run();
-			written++;
-		}
-	}
-	return { written, owned: [...owned] };
+		return (rule.anyOf ?? []).map((option) => ({
+			...common,
+			monthMask: maskFromMonths(option),
+			altGroup,
+		}));
+	});
 }
 
-function seedPlantingsFor(
+/** What makes two rules the same rule, as far as the seed is concerned. */
+function ruleKey(r: {
+	action: string;
+	monthMask: number;
+	cadence?: string | null;
+	altGroup?: string | null;
+	note?: string | null;
+	sourceRef?: string | null;
+}): string {
+	return JSON.stringify([
+		r.action,
+		r.monthMask,
+		r.cadence ?? null,
+		r.altGroup ?? null,
+		r.note ?? null,
+		r.sourceRef ?? null,
+	]);
+}
+
+/**
+ * Brings the seed's own rules for one plant in line with the seed.
+ *
+ * A rule that has not changed is left exactly where it is. That matters more
+ * than it looks: what you did is recorded against a rule's id, so deleting
+ * and re-inserting every rule - which is what this used to do - quietly
+ * un-ticked every job on every re-seed, and the container re-seeded on every
+ * start. Only a rule the seed no longer has is removed, and only one it did
+ * not have before is added.
+ */
+async function seedRulesFor(
 	db: Db,
+	hid: HouseholdId,
+	plantTypeId: number,
+	pt: SeedPlantType,
+) {
+	const owned = await userOwnedActions(db, hid, plantTypeId);
+	const seedOwned = and(
+		owns(careRule, hid),
+		eq(careRule.plantTypeId, plantTypeId),
+		eq(careRule.source, 'seed'),
+		isNull(careRule.userModifiedAt),
+	);
+
+	const existing = await db
+		.select({
+			id: careRule.id,
+			action: careRule.action,
+			monthMask: careRule.monthMask,
+			cadence: careRule.cadence,
+			altGroup: careRule.altGroup,
+			note: careRule.note,
+			sourceRef: careRule.sourceRef,
+		})
+		.from(careRule)
+		.where(seedOwned)
+		.all();
+	const unclaimed = new Map<string, number[]>();
+	for (const rule of existing) {
+		const key = ruleKey(rule);
+		unclaimed.set(key, [...(unclaimed.get(key) ?? []), rule.id]);
+	}
+
+	const wanted = ruleRows(hid, plantTypeId, pt).filter((r) => !owned.has(r.action));
+	const toInsert = wanted.filter((rule) => {
+		const ids = unclaimed.get(ruleKey(rule));
+		if (ids && ids.length > 0) {
+			ids.shift();
+			return false;
+		}
+		return true;
+	});
+	const stale = [...unclaimed.values()].flat();
+
+	if (stale.length > 0) {
+		await deleteRules(db, and(seedOwned, inArray(careRule.id, stale)));
+	}
+	if (toInsert.length > 0) await db.insert(careRule).values(toInsert).run();
+	return { written: toInsert.length, owned: [...owned] };
+}
+
+async function seedPlantingsFor(
+	db: Db,
+	hid: HouseholdId,
 	plantTypeId: number,
 	pt: SeedPlantType,
 	environmentId: number,
 ) {
 	let created = 0;
 	for (const label of pt.plantings) {
-		const existing = db
+		const existing = await db
 			.select({ id: planting.id })
 			.from(planting)
-			.where(and(eq(planting.plantTypeId, plantTypeId), eq(planting.label, label)))
+			.where(
+				and(
+					owns(planting, hid),
+					eq(planting.plantTypeId, plantTypeId),
+					eq(planting.label, label),
+				),
+			)
 			.get();
 		if (existing) continue;
 
-		db.insert(planting)
-			.values({ plantTypeId, environmentId, label, status: 'active' })
+		await db
+			.insert(planting)
+			.values({
+				householdId: hid,
+				plantTypeId,
+				environmentId,
+				label,
+				status: 'active',
+			})
 			.run();
 		created++;
 	}
 	return created;
 }
 
-export function seedGarden(db: Db): SeedReport {
-	const newEnvironments = seedEnvironments(db);
+/**
+ * Brings one household up to date with its profile, leaving alone everything
+ * its people have made their own.
+ */
+export async function seedHousehold(
+	db: Db,
+	hid: HouseholdId,
+	profileName: SeedProfile,
+): Promise<SeedReport> {
+	const profile = PROFILES[profileName];
+	const newEnvironments = await seedEnvironments(db, hid, profile);
 
-	const orchard = db
-		.select({ id: environment.id })
-		.from(environment)
-		.where(eq(environment.slug, 'orchard'))
-		.get();
-	if (!orchard) {
-		throw new Error('The orchard environment is missing after seeding.');
+	const home = profile.plantingsIn
+		? await db
+				.select({ id: environment.id })
+				.from(environment)
+				.where(
+					and(owns(environment, hid), eq(environment.slug, profile.plantingsIn)),
+				)
+				.get()
+		: undefined;
+	if (profile.plantingsIn && !home) {
+		throw new Error(
+			`The ${profile.plantingsIn} environment is missing after seeding.`,
+		);
 	}
 
 	const report: SeedReport = {
+		householdId: hid,
 		version: SEED_VERSION,
 		environments: newEnvironments,
 		plantTypes: 0,
@@ -193,7 +321,7 @@ export function seedGarden(db: Db): SeedReport {
 		leftAlone: [],
 	};
 
-	for (const raw of plantTypes) {
+	for (const raw of profile.plantTypes) {
 		const pt = seedPlantTypeSchema.parse(raw);
 		const fields = {
 			commonName: pt.commonName,
@@ -210,42 +338,171 @@ export function seedGarden(db: Db): SeedReport {
 			sourceRef: pt.category === 'fruit_tree' ? SEED_SOURCE : 'Starter set',
 		};
 
-		const existing = db
+		const existing = await db
 			.select({ id: plantType.id, userModifiedAt: plantType.userModifiedAt })
 			.from(plantType)
-			.where(eq(plantType.slug, pt.slug))
+			.where(and(owns(plantType, hid), eq(plantType.slug, pt.slug)))
 			.get();
 
 		let plantTypeId: number;
 		if (!existing) {
-			plantTypeId = db
-				.insert(plantType)
-				.values({ slug: pt.slug, ...fields })
-				.returning({ id: plantType.id })
-				.get().id;
+			plantTypeId = (
+				await db
+					.insert(plantType)
+					.values({ householdId: hid, slug: pt.slug, ...fields })
+					.returning({ id: plantType.id })
+					.get()
+			).id;
 			report.plantTypes++;
 		} else {
 			plantTypeId = existing.id;
 			if (existing.userModifiedAt) {
 				report.leftAlone.push(pt.slug);
 			} else {
-				db.update(plantType).set(fields).where(eq(plantType.id, plantTypeId)).run();
+				await db
+					.update(plantType)
+					.set(fields)
+					.where(and(owns(plantType, hid), eq(plantType.id, plantTypeId)))
+					.run();
 			}
 		}
 
-		const rules = seedRulesFor(db, plantTypeId, pt);
+		const rules = await seedRulesFor(db, hid, plantTypeId, pt);
 		report.rules += rules.written;
 		for (const action of rules.owned) {
 			report.leftAlone.push(`${pt.slug}:${action}`);
 		}
 
-		report.plantings += seedPlantingsFor(db, plantTypeId, pt, orchard.id);
+		if (home) {
+			report.plantings += await seedPlantingsFor(db, hid, plantTypeId, pt, home.id);
+		}
 	}
 
-	db.insert(meta)
-		.values({ key: 'seed_version', value: SEED_VERSION })
-		.onConflictDoUpdate({ target: meta.key, set: { value: SEED_VERSION } })
+	await db
+		.update(household)
+		.set({ seedVersion: SEED_VERSION })
+		.where(eq(household.id, hid))
 		.run();
 
 	return report;
+}
+
+/**
+ * A brand-new household, filled in a handful of statements.
+ *
+ * Nothing exists yet, so there is nothing to leave alone and no reason to ask
+ * the database about each plant in turn - which matters because this runs
+ * inside the sign-up transaction, and a hosted database holds the write lock
+ * for as long as that takes. A test holds it to the same result as
+ * seedHousehold.
+ */
+export async function createSeededHousehold(
+	tx: Db | Tx,
+	name: string,
+	profileName: SeedProfile,
+): Promise<HouseholdId> {
+	const profile = PROFILES[profileName];
+	const created = await tx
+		.insert(household)
+		.values({ name, seedProfile: profileName, seedVersion: SEED_VERSION })
+		.returning({ id: household.id })
+		.get();
+	const hid = asHouseholdId(created.id);
+
+	const environments = profile.environments.map((raw) => ({
+		...seedEnvironmentSchema.parse(raw),
+		householdId: hid,
+	}));
+	const places = await tx
+		.insert(environment)
+		.values(environments)
+		.returning({ id: environment.id, slug: environment.slug })
+		.all();
+
+	const parsed = profile.plantTypes.map((raw) => seedPlantTypeSchema.parse(raw));
+	const types = await tx
+		.insert(plantType)
+		.values(
+			parsed.map((pt) => ({
+				householdId: hid,
+				slug: pt.slug,
+				commonName: pt.commonName,
+				scientificName: pt.scientificName,
+				category: pt.category,
+				lifecycle: pt.lifecycle,
+				family: pt.family,
+				notesMd: pt.notesMd,
+				needsReview: pt.needsReview,
+				daysToMaturityMin: pt.daysToMaturityMin,
+				daysToMaturityMax: pt.daysToMaturityMax,
+				spacingCm: pt.spacingCm,
+				source: 'seed' as const,
+				sourceRef: pt.category === 'fruit_tree' ? SEED_SOURCE : 'Starter set',
+			})),
+		)
+		.returning({ id: plantType.id, slug: plantType.slug })
+		.all();
+	const idOf = new Map(types.map((t) => [t.slug, t.id]));
+
+	const rules = parsed.flatMap((pt) => ruleRows(hid, idOf.get(pt.slug)!, pt));
+	if (rules.length > 0) await tx.insert(careRule).values(rules).run();
+
+	const home = places.find((p) => p.slug === profile.plantingsIn);
+	const plantings = home
+		? parsed.flatMap((pt) =>
+				pt.plantings.map((label) => ({
+					householdId: hid,
+					plantTypeId: idOf.get(pt.slug)!,
+					environmentId: home.id,
+					label,
+					status: 'active' as const,
+				})),
+			)
+		: [];
+	if (plantings.length > 0) await tx.insert(planting).values(plantings).run();
+
+	return hid;
+}
+
+/**
+ * The Pink Palace, for development and the tests: found if it exists, made if
+ * it does not, then brought up to date.
+ */
+export async function seedGarden(db: Db): Promise<SeedReport> {
+	const existing = await db
+		.select({ id: household.id })
+		.from(household)
+		.where(eq(household.seedProfile, 'pink-palace'))
+		.orderBy(asc(household.id))
+		.get();
+	const hid = existing
+		? asHouseholdId(existing.id)
+		: asHouseholdId(
+				(
+					await db
+						.insert(household)
+						.values({ name: 'Pink Palace', seedProfile: 'pink-palace' })
+						.returning({ id: household.id })
+						.get()
+				).id,
+			);
+	return seedHousehold(db, hid, 'pink-palace');
+}
+
+/** Every household, each from its own profile. What `npm run db:seed` runs. */
+export async function seedAll(db: Db): Promise<SeedReport[]> {
+	const households = await db
+		.select({ id: household.id, profile: household.seedProfile })
+		.from(household)
+		.orderBy(asc(household.id))
+		.all();
+	// An empty database is a development one: give it the Pink Palace, so
+	// there is a garden to look at.
+	if (households.length === 0) return [await seedGarden(db)];
+
+	const reports: SeedReport[] = [];
+	for (const h of households) {
+		reports.push(await seedHousehold(db, asHouseholdId(h.id), h.profile));
+	}
+	return reports;
 }

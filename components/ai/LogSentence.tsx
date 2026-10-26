@@ -10,6 +10,7 @@ import { textareaClass } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import type { ParsedEntry } from '@/lib/ai/parse-log';
 import type { IsoDate } from '@/lib/dates';
+import { KeyNeeded } from './KeyNeeded';
 
 const CONFIDENCE_CLASS: Record<string, string> = {
 	high: 'bg-fertilise-soft text-ink',
@@ -33,9 +34,11 @@ type Draft = ParsedEntry & { keep: boolean };
  */
 export function LogSentence({
 	available,
+	canAddKey,
 	today,
 }: {
 	available: boolean;
+	canAddKey: boolean;
 	today: IsoDate;
 }) {
 	const [parseState, parseAction, parsing] = useActionState(parseLog, null);
@@ -111,9 +114,9 @@ export function LogSentence({
 			{!available ? (
 				<EmptyState>
 					figgy can turn &ldquo;netted the cherries and picked 2 kg of lemons&rdquo;
-					into records, but it needs an Anthropic API key. Set{' '}
-					<code>ANTHROPIC_API_KEY</code> and restart. You can always tick things off
-					by hand.
+					into records, but it needs an Anthropic API key.{' '}
+					<KeyNeeded canAddKey={canAddKey} /> You can always tick things off by
+					hand.
 				</EmptyState>
 			) : (
 				<div className="space-y-3">

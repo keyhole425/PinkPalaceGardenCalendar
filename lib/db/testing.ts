@@ -1,16 +1,22 @@
 /**
  * A throwaway database for tests.
  *
- * Points GARDEN_DB_PATH at a temp file and re-imports the modules that read
- * it, so tests exercise the real query and action code rather than a parallel
- * implementation of it.
+ * Points TURSO_DATABASE_URL at a temp file and re-imports the modules that
+ * read it, so tests exercise the real query and action code rather than a
+ * parallel implementation of it.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { migrate } from 'drizzle-orm/libsql/migrator';
+import { createDb } from './client';
+import { asHouseholdId } from './tenancy';
+
+/**
+ * The household seedGarden() makes in an empty database - which every test
+ * database is. lib/db/tenancy.test.ts holds it to that.
+ */
+export const GARDEN = asHouseholdId(1);
 
 export type TempGarden = {
 	file: string;
@@ -18,17 +24,16 @@ export type TempGarden = {
 };
 
 /** Creates an empty, migrated database and makes it the one modules will open. */
-export function createTempGarden(): TempGarden {
+export async function createTempGarden(): Promise<TempGarden> {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'figgy-test-'));
 	const file = path.join(dir, 'garden.db');
+	const url = `file:${file}`;
 
-	const sqlite = new Database(file);
-	sqlite.pragma('journal_mode = WAL');
-	sqlite.pragma('foreign_keys = ON');
-	migrate(drizzle(sqlite), { migrationsFolder: './db/migrations' });
-	sqlite.close();
+	const db = createDb(url);
+	await migrate(db, { migrationsFolder: './db/migrations' });
+	db.$client.close();
 
-	process.env.GARDEN_DB_PATH = file;
+	process.env.TURSO_DATABASE_URL = url;
 
 	return {
 		file,

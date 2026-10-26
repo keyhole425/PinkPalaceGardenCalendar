@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { askAboutPlant } from '@/actions/research';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { KeyNeeded } from './KeyNeeded';
 
 /**
  * Looking something up costs real money and takes the better part of a minute,
@@ -11,12 +12,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
  */
 export function AskForm({
 	available,
+	canAddKey = false,
 	plantTypeId,
 	defaultQuery,
 	label = 'Look it up',
 	placeholder = 'Kaffir lime',
 }: {
 	available: boolean;
+	/** Whether this person can add the key, which decides who the message points at. */
+	canAddKey?: boolean;
 	plantTypeId?: number;
 	defaultQuery?: string;
 	label?: string;
@@ -28,9 +32,8 @@ export function AskForm({
 		return (
 			<EmptyState>
 				figgy can research a plant&rsquo;s care for Adelaide and propose a schedule,
-				but it needs an Anthropic API key to do it. Set{' '}
-				<code>ANTHROPIC_API_KEY</code> and restart. Everything else works without
-				one.
+				but it needs an Anthropic API key to do it.{' '}
+				<KeyNeeded canAddKey={canAddKey} /> Everything else works without one.
 			</EmptyState>
 		);
 	}

@@ -20,6 +20,9 @@
 import type { IsoDate } from '@/lib/dates';
 import type { Sky } from './types';
 
+/** Short: /now waits on this, and the other provider can stand in. */
+const FETCH_TIMEOUT_MS = 4000;
+
 /**
  * The South Australian precis forecast, and Adelaide's area within it.
  *
@@ -145,7 +148,9 @@ export function parseBom(xml: string): BomDay[] {
 /** The week from the Bureau, or nothing at all - which is survivable. */
 export async function fetchBom(): Promise<BomDay[] | null> {
 	try {
-		const response = await fetch(URL, { signal: AbortSignal.timeout(8000) });
+		const response = await fetch(URL, {
+			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+		});
 		if (!response.ok) return null;
 		const days = parseBom(await response.text());
 		return days.length > 0 ? days : null;

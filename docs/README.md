@@ -8,7 +8,7 @@ picks up the right knowledge on its own when a request touches that area.
 |---|---|---|---|
 | Design | [design/](design/README.md) | `figgy-ui-design` | how figgy looks, reads and behaves: screens, components, colour, type, copy, accessibility |
 
-Ops has its own page already: [ops/DEPLOY.md](../ops/DEPLOY.md).
+Deploying, backups and secrets: [DEPLOY.md](DEPLOY.md).
 
 ## Adding an area
 
@@ -39,4 +39,4 @@ Likely next areas:
 | `figgy-schedule` | month masks, care windows, alternatives, environment shifts - `lib/schedule/` |
 | `figgy-ai` | the Claude features: parsing a log, asking the garden, researching a plant - `lib/ai/`, `actions/` |
 | `figgy-data` | the Drizzle schema, migrations, seed - `lib/db/`, `db/` |
-| `figgy-ops` | Docker, backups, deploying at home - `ops/`, `scripts/` |
+| `figgy-ops` | deploying to Vercel, the hosted database, backups, secrets |

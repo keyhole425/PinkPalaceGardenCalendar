@@ -15,8 +15,59 @@ actions each, twelve months across. That grid is now the seed data.
 npm install
 npm run db:migrate   # creates data/garden.db
 npm run db:seed      # loads the orchard
+FIGGY_DEV_EMAIL=gardener@figgy.test FIGGY_DEV_PASSWORD='a long e2e password' \
+  npm run admin:dev-user   # someone to sign in as
 npm run dev          # http://localhost:3000
 ```
+
+The database is libSQL: a local SQLite file at `data/garden.db` by default, or
+Turso when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set. Every query is
+async, and nothing relies on a foreign-key cascade, because a hosted
+connection may not enforce one.
+
+## Households
+
+Every garden is a **household**, and every row in the database belongs to one.
+Two households share nothing: not the plants, not the schedule, not what
+Claude was asked. The household always comes from whoever is signed in, never
+from a form, and every query and action is scoped by it. The database holds
+the same line with triggers that refuse a row pointing into another garden.
+
+The Pink Palace is household 1, with its orchard. A new household starts from
+the vegetable catalogue and one bed.
+
+## The first visit
+
+Everyone new is offered a tour: setting up, for whoever runs a household
+(name it, lay out the places, decide about Claude, invite people), then a look
+round, for everyone. The steps are data in `lib/tour/steps.ts`, each pointing
+at a `data-tour` element. It can be put off, declined for good, or brought back
+from Settings.
+
+## Getting in
+
+figgy is invite-only. There is no sign-up form: an account is only ever made
+from an invite link, which works once, for a week, and is stored only as a
+hash. Three kinds:
+
+- **Join a household**, made by that household's admins on `/settings`.
+- **Start a new garden**, made only by a site admin.
+- **Choose a new password**, made from the command line - figgy sends no
+  email, so this is what "forgot my password" means.
+
+Site admin is granted and revoked from the command line only, and every check
+reads it from the database rather than trusting a cookie.
+
+| | |
+|---|---|
+| `npm run admin:invite -- --new-garden` | an invite to start a garden |
+| `npm run admin:invite -- --household 1 --role admin` | an invite into household 1 |
+| `npm run admin:invite -- --reset them@example.com` | a new-password link |
+| `npm run admin:grant -- you@example.com` / `admin:revoke` | site admin on or off |
+| `npm run admin:list` | every household and who is in it |
+
+They act on whatever `TURSO_DATABASE_URL` points at, and build links from
+`BETTER_AUTH_URL`.
 
 ## How the schedule is stored
 
@@ -38,11 +89,14 @@ bugs; the timezone is consulted in exactly one place, `lib/dates.ts`.
 | | |
 |---|---|
 | `npm run dev` | development server |
+| `npm run build` / `npm start` | production build, and serving it |
+| `npm run db:generate` | write a migration after changing `lib/db/schema.ts` |
 | `npm run db:migrate` | apply migrations |
 | `npm run db:seed` | load seed data (safe to re-run; never overwrites your edits) |
 | `npm run db:reset` | delete the database and rebuild it from scratch |
 | `npm run db:studio` | browse the database |
 | `npm test` | unit tests |
+| `npm run test:e2e` | Playwright smoke flows against a production build |
 | `npm run lint` / `npm run format` | Biome |
 | `npm run typecheck` | `tsc --noEmit` |
 
@@ -81,42 +135,47 @@ cannot be committed at all.
 read-only and takes enumerated arguments, so a confused question gives a
 confused answer and nothing worse.
 
-Both need `ANTHROPIC_API_KEY`. Without it they explain themselves.
+Both need the household's Anthropic key (see below). Without it they explain
+themselves.
 
 ## Weather
 
-`/now` shows the week from [Open-Meteo](https://open-meteo.com) — free, no key
-— and says the two things worth saying: frost coming, a scorcher on Thursday,
+`/now` shows the week from the Bureau of Meteorology's Adelaide forecast, with
+[Open-Meteo](https://open-meteo.com) — free, no key — filling in the wind the
+Bureau leaves out and standing in for it when it can't be reached. The card
+says which one answered. It then says the two things worth saying: frost coming, a scorcher on Thursday,
 enough rain that watering is a waste. Those judgements are made here rather
 than asked of a model: frost is frost, and an answer that works offline and
 costs nothing beats a clever one that needs an API key.
 
-## Running it at home
+## Deploying
 
-See [ops/DEPLOY.md](ops/DEPLOY.md). Short version:
-
-```bash
-npm run docker:up
-```
+figgy runs on Vercel with its data on Turso. [docs/DEPLOY.md](docs/DEPLOY.md)
+has all of it: setting both up, moving the garden across from the home server,
+getting the first person in, backups, and changing secrets.
 
 ## Layout
 
 ```
 app/          routes
 app/fonts/    the two typefaces, committed as .woff2
+actions/      server actions: everything that writes
 components/   UI
 components/ui/ the primitives everything else is built from
+lib/ai/       the Claude features: research, asking, reading a sentence
 lib/db/       schema, client, queries
-lib/schedule/ month masks and (soon) the due-date engine
+lib/schedule/ month masks and the due-date engine
+lib/weather/  the Bureau and Open-Meteo, and what to say about them
 lib/ui/       class-name helpers and the action colours
 db/seed/      the orchard, transcribed from the spreadsheet
 db/migrations SQL, generated by drizzle-kit
+e2e/          Playwright smoke flows
 docs/         written-down knowledge, one folder per area (docs/README.md)
 ```
 
 The fonts are committed rather than fetched. `next/font/google` downloads at
-build time, which would make `npm run build` - and so the Docker image and the
-e2e suite, which builds before it runs - depend on reaching a Google server.
+build time, which would make `npm run build` - and so the e2e suite, which
+builds before it runs - depend on reaching a Google server.
 `npm run build` needs no network at all.
 
 ## Colour
@@ -135,14 +194,22 @@ written up in [docs/design/](docs/design/README.md).
 ## Looking a plant up
 
 figgy can research a plant's care for Adelaide and propose a schedule. It needs
-an Anthropic API key:
+an Anthropic API key, and figgy has none of its own to lend: **each household
+brings its own.** An admin adds it under Settings → Looking things up, it is
+checked with a free call before it is saved, and the whole household uses it.
+It is sealed in the database with AES-256-GCM against `FIGGY_ENCRYPTION_KEY`,
+bound to that household, and only its last four characters ever leave the
+server. figgy never reads `ANTHROPIC_API_KEY` from its environment; for working
+on figgy itself, `FIGGY_DEV_ANTHROPIC_API_KEY` stands in, outside production
+only.
 
-```bash
-export ANTHROPIC_API_KEY=...
-```
+Without a key, every AI surface explains itself - to an admin, where to add
+one; to anyone else, who to ask - and the manual path works exactly as before.
+Nothing else in figgy depends on it.
 
-Without one, every AI surface explains itself and the manual path works exactly
-as before. Nothing else in figgy depends on it.
+Research runs after the response, so the proposal page opens straight away and
+fills itself in. A run is stopped at 270 seconds, under the platform's limit,
+and anything still marked running after ten minutes is given up on.
 
 It works in two passes. The first searches the web, located near the garden,
 and reports back in prose with its sources. The second turns that prose into

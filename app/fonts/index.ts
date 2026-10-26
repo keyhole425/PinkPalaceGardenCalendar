@@ -7,9 +7,9 @@
  * Its figures are properly tabular, which Inter's are not.
  *
  * The .woff2 files are committed rather than fetched. next/font/google
- * downloads at *build* time, which quietly made `npm run build` - and so both
- * the Docker image and the e2e suite, which builds before it runs - depend on
- * reaching fonts.gstatic.com. Vendoring them also pins the exact bytes, so a
+ * downloads at *build* time, which quietly made `npm run build` - and so the
+ * e2e suite, which builds before it runs - depend on reaching
+ * fonts.gstatic.com. Vendoring them also pins the exact bytes, so a
  * font revision upstream cannot change how figgy looks between builds.
  *
  * These are the Google Fonts `latin` subsets, which cover U+0000-00FF plus the

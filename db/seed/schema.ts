@@ -59,9 +59,7 @@ export const seedEnvironmentSchema = z.object({
 	notes: z.string().optional(),
 });
 
-export type SeedRule = z.infer<typeof seedRuleSchema>;
 export type SeedPlantType = z.infer<typeof seedPlantTypeSchema>;
-export type SeedEnvironment = z.infer<typeof seedEnvironmentSchema>;
 
 /**
  * What the seed files themselves are written as: defaults may be left out,

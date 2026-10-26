@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { askGarden } from '@/lib/ai/ask';
 import { aiAvailable, describeError } from '@/lib/ai/client';
+import { requireHousehold } from '@/lib/auth/context';
 
 export type AskResult =
 	| { ok: true; question: string; answer: string; toolsUsed: string[] }
@@ -12,11 +13,12 @@ export async function ask(
 	_previous: AskResult | null,
 	form: FormData,
 ): Promise<AskResult> {
-	if (!aiAvailable()) {
+	const { householdId } = await requireHousehold();
+	if (!(await aiAvailable(householdId))) {
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so there is nobody to ask. Add ANTHROPIC_API_KEY and restart.',
+				'This household has no Anthropic key yet, so there is nobody to ask. An admin can add one in Settings.',
 		};
 	}
 
@@ -27,7 +29,7 @@ export async function ask(
 	}
 
 	try {
-		const result = await askGarden(question);
+		const result = await askGarden(householdId, question);
 		revalidatePath('/settings');
 		return { ok: true, question, ...result };
 	} catch (error) {

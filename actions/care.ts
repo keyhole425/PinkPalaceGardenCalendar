@@ -7,14 +7,18 @@
  * trusting what the form says it is. The action, the season and the window all
  * come from the engine; the form only says which job, when it was done, and
  * anything you want to remember about it.
+ *
+ * The schedule it re-runs is the signed-in household's, so a planting id from
+ * another garden simply is not on it.
  */
-import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { findOccurrence, openSeasonsFor } from '@/lib/db/queries/garden';
-import { careLog, planting } from '@/lib/db/schema';
+import { careLog } from '@/lib/db/schema';
+import { ownedRow } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -40,6 +44,7 @@ export async function completeTask(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = completeSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		ruleId: form.get('ruleId'),
@@ -52,7 +57,7 @@ export async function completeTask(
 	}
 
 	const { plantingId, ruleId, occurrenceKey, completedOn, notes } = parsed.data;
-	const task = findOccurrence(plantingId, ruleId, occurrenceKey);
+	const task = await findOccurrence(householdId, plantingId, ruleId, occurrenceKey);
 	if (!task) {
 		return {
 			ok: false,
@@ -60,26 +65,28 @@ export async function completeTask(
 		};
 	}
 
-	try {
-		db.insert(careLog)
-			.values({
-				plantingId,
-				// Always the representative rule. The engine treats any member of
-				// a set of alternatives as satisfying the whole set.
-				careRuleId: task.occurrence.rule.id,
-				action: task.occurrence.rule.action,
-				seasonYear: task.occurrence.seasonYear,
-				occurrenceKey,
-				completedOn,
-				notesMd: notes || null,
-			})
-			.run();
-	} catch (error) {
-		// The unique index means this is almost always a double submit.
-		if (String(error).includes('UNIQUE')) {
-			return { ok: false, error: 'That one is already marked done.' };
-		}
-		throw error;
+	const written = await db
+		.insert(careLog)
+		.values({
+			householdId,
+			plantingId,
+			// Always the representative rule. The engine treats any member of
+			// a set of alternatives as satisfying the whole set.
+			careRuleId: task.occurrence.rule.id,
+			action: task.occurrence.rule.action,
+			seasonYear: task.occurrence.seasonYear,
+			occurrenceKey,
+			completedOn,
+			notesMd: notes || null,
+		})
+		// The unique index on the occurrence means a clash is almost always a
+		// double submit. Asked for in the statement rather than read out of an
+		// error message, which the driver is free to word however it likes.
+		.onConflictDoNothing()
+		.returning({ id: careLog.id })
+		.get();
+	if (!written) {
+		return { ok: false, error: 'That one is already marked done.' };
 	}
 
 	refresh(task.context.plantSlug);
@@ -103,6 +110,7 @@ export async function logHarvest(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = harvestSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		ruleId: form.get('ruleId'),
@@ -115,15 +123,17 @@ export async function logHarvest(
 	}
 
 	const { plantingId, ruleId, completedOn, quantityNote, notes } = parsed.data;
-	const season = openSeasonsFor(plantingId).find((s) =>
+	const season = (await openSeasonsFor(householdId, plantingId)).find((s) =>
 		s.rule.ruleIds.includes(ruleId),
 	);
 	if (!season) {
 		return { ok: false, error: 'Nothing is in season on that plant.' };
 	}
 
-	db.insert(careLog)
+	await db
+		.insert(careLog)
 		.values({
+			householdId,
 			plantingId,
 			careRuleId: season.rule.id,
 			action: season.rule.action,
@@ -148,6 +158,7 @@ export async function undoCompletion(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = undoSchema.safeParse({
 		logId: form.get('logId'),
 		slug: form.get('slug') ?? undefined,
@@ -156,49 +167,10 @@ export async function undoCompletion(
 		return { ok: false, error: 'Nothing to undo.' };
 	}
 
-	db.delete(careLog).where(eq(careLog.id, parsed.data.logId)).run();
-	refresh(parsed.data.slug);
-	return { ok: true };
-}
-
-const noteSchema = z.object({
-	plantingId: z.coerce.number().int().positive(),
-	notes: z.string().trim().min(1).max(2000),
-});
-
-/** A note against a plant with no job attached: "looking sorry for itself". */
-export async function addPlantingNote(
-	_previous: ActionResult | null,
-	form: FormData,
-): Promise<ActionResult> {
-	const parsed = noteSchema.safeParse({
-		plantingId: form.get('plantingId'),
-		notes: form.get('notes'),
-	});
-	if (!parsed.success) {
-		return { ok: false, error: 'Write something first.' };
-	}
-
-	const row = db
-		.select({ id: planting.id })
-		.from(planting)
-		.where(and(eq(planting.id, parsed.data.plantingId)))
-		.get();
-	if (!row) return { ok: false, error: 'No such plant.' };
-
-	const when = today();
-	db.insert(careLog)
-		.values({
-			plantingId: parsed.data.plantingId,
-			careRuleId: null,
-			action: 'note',
-			seasonYear: yearOf(when),
-			occurrenceKey: null,
-			completedOn: when,
-			notesMd: parsed.data.notes,
-		})
+	await db
+		.delete(careLog)
+		.where(ownedRow(careLog, parsed.data.logId, householdId))
 		.run();
-
-	refresh(form.get('slug')?.toString());
+	refresh(parsed.data.slug);
 	return { ok: true };
 }

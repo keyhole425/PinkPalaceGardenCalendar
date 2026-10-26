@@ -4,6 +4,24 @@ import { Icon } from '@/components/ui/Icon';
 import { ROUTES, TABS } from '@/lib/nav';
 import { NavLink, TabLink } from './NavLink';
 
+/**
+ * The cover with only the wordmark on it, for pages outside a garden. Not a
+ * link: there is nowhere to go until you are in.
+ */
+export function CoverHeader() {
+	return (
+		<header className="border-palace-300 border-b bg-palace-200">
+			<Frame width="page">
+				<div className="flex min-h-13 items-center py-2">
+					<span className="font-semibold font-serif text-lg text-palace-700">
+						figgy
+					</span>
+				</div>
+			</Frame>
+		</header>
+	);
+}
+
 /** The notebook's pink cover: the one place saturated pink belongs. */
 export function SiteHeader() {
 	return (
@@ -18,7 +36,7 @@ export function SiteHeader() {
 					</Link>
 					<div className="hidden items-center gap-x-5 sm:flex">
 						{ROUTES.map((route) => (
-							<NavLink key={route.href} href={route.href}>
+							<NavLink key={route.href} href={route.href} tour={`nav${route.href}`}>
 								{route.short}
 							</NavLink>
 						))}
@@ -30,6 +48,7 @@ export function SiteHeader() {
 					 */}
 					<Link
 						href="/settings"
+						data-tour="settings"
 						title="Settings"
 						aria-label="Settings"
 						className="-mr-1.5 ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-palace-700 hover:bg-palace-300"
@@ -57,7 +76,7 @@ export function TabBar() {
 			className="fixed inset-x-0 bottom-0 z-50 flex border-rule border-t bg-paper pb-[env(safe-area-inset-bottom)] sm:hidden"
 		>
 			{TABS.map((route) => (
-				<TabLink key={route.href} href={route.href}>
+				<TabLink key={route.href} href={route.href} tour={`nav${route.href}`}>
 					{route.short}
 				</TabLink>
 			))}

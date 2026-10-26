@@ -5,9 +5,10 @@ export default defineConfig({
 	dialect: 'sqlite',
 	schema: './lib/db/schema.ts',
 	out: './db/migrations',
+	// Studio browses the local file. The hosted database has Turso's own
+	// shell; migrations reach it through `npm run db:migrate`, not drizzle-kit.
 	dbCredentials: {
-		url:
-			process.env.GARDEN_DB_PATH ?? path.join(process.cwd(), 'data', 'garden.db'),
+		url: path.join(process.cwd(), 'data', 'garden.db'),
 	},
 	strict: true,
 	verbose: true,

@@ -5,9 +5,11 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { isIsoDate } from '@/lib/dates';
+import { requireHousehold } from '@/lib/auth/context';
+import { isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { environment, planting, plantType } from '@/lib/db/schema';
+import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -39,6 +41,7 @@ export async function createPlantType(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = plantSchema.safeParse({
 		commonName: form.get('commonName'),
 		scientificName: form.get('scientificName') || undefined,
@@ -60,18 +63,20 @@ export async function createPlantType(
 	// Two mandarins would collide; give the second one a number.
 	let attempt = 1;
 	while (
-		db
+		await db
 			.select({ id: plantType.id })
 			.from(plantType)
-			.where(eq(plantType.slug, slug))
+			.where(and(owns(plantType, householdId), eq(plantType.slug, slug)))
 			.get()
 	) {
 		attempt++;
 		slug = `${slugify(parsed.data.commonName)}-${attempt}`;
 	}
 
-	db.insert(plantType)
+	await db
+		.insert(plantType)
 		.values({
+			householdId,
 			slug,
 			...parsed.data,
 			source: 'user',
@@ -89,6 +94,7 @@ export async function updatePlantType(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const id = Number(form.get('plantTypeId'));
 	if (!Number.isInteger(id) || id <= 0) {
 		return { ok: false, error: 'No such plant.' };
@@ -108,14 +114,15 @@ export async function updatePlantType(
 		};
 	}
 
-	const row = db
+	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.get();
 	if (!row) return { ok: false, error: 'No such plant.' };
 
-	db.update(plantType)
+	await db
+		.update(plantType)
 		.set({
 			...parsed.data,
 			scientificName: parsed.data.scientificName ?? null,
@@ -124,7 +131,7 @@ export async function updatePlantType(
 			// From here on the seed keeps its hands off this plant's details.
 			userModifiedAt: new Date().toISOString(),
 		})
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.run();
 
 	refresh(row.slug);
@@ -136,17 +143,22 @@ export async function markReviewed(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const id = Number(form.get('plantTypeId'));
-	const row = db
+	if (!Number.isInteger(id) || id <= 0) {
+		return { ok: false, error: 'No such plant.' };
+	}
+	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.get();
 	if (!row) return { ok: false, error: 'No such plant.' };
 
-	db.update(plantType)
+	await db
+		.update(plantType)
 		.set({ needsReview: false, userModifiedAt: new Date().toISOString() })
-		.where(eq(plantType.id, id))
+		.where(ownedRow(plantType, id, householdId))
 		.run();
 
 	refresh(row.slug);
@@ -170,6 +182,7 @@ export async function createPlanting(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = plantingSchema.safeParse({
 		plantTypeId: form.get('plantTypeId'),
 		environmentId: form.get('environmentId'),
@@ -185,18 +198,22 @@ export async function createPlanting(
 		};
 	}
 
-	const plant = db
+	const plant = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
-		.where(eq(plantType.id, parsed.data.plantTypeId))
+		.where(ownedRow(plantType, parsed.data.plantTypeId, householdId))
 		.get();
 	if (!plant) return { ok: false, error: 'No such plant.' };
+	if (!(await isOwned(environment, parsed.data.environmentId, householdId))) {
+		return { ok: false, error: 'No such place.' };
+	}
 
-	const clash = db
+	const clash = await db
 		.select({ id: planting.id })
 		.from(planting)
 		.where(
 			and(
+				owns(planting, householdId),
 				eq(planting.plantTypeId, parsed.data.plantTypeId),
 				eq(planting.label, parsed.data.label),
 			),
@@ -206,8 +223,10 @@ export async function createPlanting(
 		return { ok: false, error: 'There is already one by that name.' };
 	}
 
-	db.insert(planting)
+	await db
+		.insert(planting)
 		.values({
+			householdId,
 			plantTypeId: parsed.data.plantTypeId,
 			environmentId: parsed.data.environmentId,
 			label: parsed.data.label,
@@ -236,6 +255,7 @@ export async function setPlantingStatus(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = retireSchema.safeParse({
 		plantingId: form.get('plantingId'),
 		status: form.get('status'),
@@ -243,15 +263,18 @@ export async function setPlantingStatus(
 	});
 	if (!parsed.success) return { ok: false, error: 'Nothing to change.' };
 
-	db.update(planting)
+	await db
+		.update(planting)
 		.set({
 			status: parsed.data.status,
 			removedOn:
 				parsed.data.status === 'active'
 					? null
-					: new Date().toISOString().slice(0, 10),
+					: // The garden's date, not UTC's: before 9:30 in the morning in
+						// Adelaide, UTC is still on yesterday.
+						today(),
 		})
-		.where(eq(planting.id, parsed.data.plantingId))
+		.where(ownedRow(planting, parsed.data.plantingId, householdId))
 		.run();
 
 	refresh(parsed.data.slug);
@@ -270,6 +293,7 @@ export async function createEnvironment(
 	_previous: ActionResult | null,
 	form: FormData,
 ): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
 	const parsed = environmentSchema.safeParse({
 		name: form.get('name'),
 		kind: form.get('kind'),
@@ -288,18 +312,19 @@ export async function createEnvironment(
 	if (!slug) return { ok: false, error: 'That name has no letters in it.' };
 	let attempt = 1;
 	while (
-		db
+		await db
 			.select({ id: environment.id })
 			.from(environment)
-			.where(eq(environment.slug, slug))
+			.where(and(owns(environment, householdId), eq(environment.slug, slug)))
 			.get()
 	) {
 		attempt++;
 		slug = `${slugify(parsed.data.name)}-${attempt}`;
 	}
 
-	db.insert(environment)
-		.values({ slug, ...parsed.data })
+	await db
+		.insert(environment)
+		.values({ householdId, slug, ...parsed.data })
 		.run();
 	revalidatePath('/environments');
 	refresh();

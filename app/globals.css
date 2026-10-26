@@ -103,8 +103,8 @@
 
 	/*
 	 * Typography. These are Tailwind's own token names on purpose: the app
-	 * already says text-sm 161 times and text-xs 97 times, so retuning the
-	 * scale here retunes every one of them without touching a component.
+	 * says text-sm and text-xs on nearly every screen, so retuning the scale
+	 * here retunes every one of them without touching a component.
 	 */
 	--text-2xs: 0.6875rem;
 	--text-2xs--line-height: 1.2;
@@ -152,7 +152,7 @@
 
 	--radius-sm: 0.125rem;
 	--radius-md: 0.3125rem;
-	--radius-lg: 0.5rem;
+	--radius-lg: initial;
 	--radius-xl: initial;
 	--radius-2xl: initial;
 	--radius-3xl: initial;
@@ -196,4 +196,15 @@ body {
 :focus-visible {
 	outline: 2px solid var(--color-focus);
 	outline-offset: 2px;
+}
+
+/*
+ * The tour's pointer: the marker ring, round whatever the tour is talking
+ * about. Palace-500 is already the marker (the ring round the current month),
+ * and an outline rather than a shadow keeps rule 1.
+ */
+[data-tour-active] {
+	outline: 3px solid var(--color-palace-500);
+	outline-offset: 4px;
+	border-radius: var(--radius-md);
 }

@@ -5,7 +5,7 @@
  * dozen plantings that is faster than the joins would be, and it keeps the
  * engine working on plain data it can be tested against.
  */
-import { asc, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, ne } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { today as todayInGarden } from '@/lib/dates';
 import { expandOccurrences, openSeasons } from '@/lib/schedule/expand';
@@ -19,6 +19,7 @@ import type {
 } from '@/lib/schedule/types';
 import { db } from '../client';
 import { careLog, careRule, environment, planting, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 
 export type PlantingContext = {
 	plantingId: number;
@@ -41,32 +42,32 @@ export type HarvestSeason = {
 	closesOn: IsoDate;
 };
 
-function loadPlantings() {
-	return (
-		db
-			.select({
-				plantingId: planting.id,
-				label: planting.label,
-				plantTypeId: planting.plantTypeId,
-				plantSlug: plantType.slug,
-				plantName: plantType.commonName,
-				environmentId: environment.id,
-				environmentKind: environment.kind,
-				environmentName: environment.name,
-				frostFree: environment.frostFree,
-				windowShiftMonths: environment.windowShiftMonths,
-			})
-			.from(planting)
-			.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
-			.innerJoin(environment, eq(planting.environmentId, environment.id))
-			// A tree that has been pulled out needs nothing.
-			.where(ne(planting.status, 'removed'))
-			.orderBy(asc(plantType.id), asc(planting.id))
-			.all()
-	);
+async function loadPlantings(hid: HouseholdId) {
+	return await db
+		.select({
+			plantingId: planting.id,
+			label: planting.label,
+			plantTypeId: planting.plantTypeId,
+			plantSlug: plantType.slug,
+			plantName: plantType.commonName,
+			environmentId: environment.id,
+			environmentKind: environment.kind,
+			environmentName: environment.name,
+			frostFree: environment.frostFree,
+			windowShiftMonths: environment.windowShiftMonths,
+		})
+		.from(planting)
+		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
+		.innerJoin(environment, eq(planting.environmentId, environment.id))
+		// A tree that has been pulled out needs nothing.
+		.where(and(owns(planting, hid), ne(planting.status, 'removed')))
+		.orderBy(asc(plantType.id), asc(planting.id))
+		.all();
 }
 
-function toContext(row: ReturnType<typeof loadPlantings>[number]): PlantingContext {
+function toContext(
+	row: Awaited<ReturnType<typeof loadPlantings>>[number],
+): PlantingContext {
 	return {
 		plantingId: row.plantingId,
 		label: row.label,
@@ -83,8 +84,10 @@ function toContext(row: ReturnType<typeof loadPlantings>[number]): PlantingConte
 	};
 }
 
-function loadRules(): RuleInput[] {
-	return db
+type LoadedRule = RuleInput & { plantTypeId: number | null };
+
+async function loadRules(hid: HouseholdId): Promise<LoadedRule[]> {
+	return (await db
 		.select({
 			id: careRule.id,
 			plantTypeId: careRule.plantTypeId,
@@ -97,13 +100,15 @@ function loadRules(): RuleInput[] {
 			note: careRule.note,
 		})
 		.from(careRule)
-		.where(eq(careRule.active, true))
+		.where(and(owns(careRule, hid), eq(careRule.active, true)))
 		.orderBy(asc(careRule.id))
-		.all() as (RuleInput & { plantTypeId: number | null })[];
+		.all()) as LoadedRule[];
 }
 
-function loadLogs(): (LogInput & { plantingId: number })[] {
-	return db
+async function loadLogs(
+	hid: HouseholdId,
+): Promise<(LogInput & { plantingId: number })[]> {
+	return await db
 		.select({
 			id: careLog.id,
 			plantingId: careLog.plantingId,
@@ -112,6 +117,7 @@ function loadLogs(): (LogInput & { plantingId: number })[] {
 			completedOn: careLog.completedOn,
 		})
 		.from(careLog)
+		.where(owns(careLog, hid))
 		.all();
 }
 
@@ -130,11 +136,23 @@ export type GardenSchedule = {
 	harvesting: HarvestSeason[];
 };
 
-/** Every job in the garden, in whatever state it is in. */
-export function getSchedule(when: IsoDate = todayInGarden()): GardenSchedule {
-	const rows = loadPlantings();
-	const allRules = loadRules() as (RuleInput & { plantTypeId: number | null })[];
-	const allLogs = loadLogs();
+/**
+ * Every job in the garden, in whatever state it is in.
+ *
+ * Deliberately not cached per request. A server action and the render that
+ * follows it can share a request, and a schedule cached before a completion
+ * was written would show the job as still due after it.
+ */
+export async function getSchedule(
+	hid: HouseholdId,
+	when: IsoDate = todayInGarden(),
+): Promise<GardenSchedule> {
+	// Independent reads, so they go out together rather than one after another.
+	const [rows, allRules, allLogs] = await Promise.all([
+		loadPlantings(hid),
+		loadRules(hid),
+		loadLogs(hid),
+	]);
 
 	const plantings: PlantingSchedule[] = [];
 	const tasks: Task[] = [];
@@ -171,13 +189,14 @@ export function getSchedule(when: IsoDate = todayInGarden()): GardenSchedule {
  * says: the engine decides which action and which season a job belongs to, so
  * a stale page cannot invent a job that does not exist.
  */
-export function findOccurrence(
+export async function findOccurrence(
+	hid: HouseholdId,
 	plantingId: number,
 	ruleId: number,
 	occurrenceKey: string,
 	when: IsoDate = todayInGarden(),
-): Task | null {
-	const { plantings } = getSchedule(when);
+): Promise<Task | null> {
+	const { plantings } = await getSchedule(hid, when);
 	const entry = plantings.find((p) => p.context.plantingId === plantingId);
 	if (!entry) return null;
 
@@ -188,11 +207,12 @@ export function findOccurrence(
 }
 
 /** The harvest seasons open for one plant right now. */
-export function openSeasonsFor(
+export async function openSeasonsFor(
+	hid: HouseholdId,
 	plantingId: number,
 	when: IsoDate = todayInGarden(),
-): HarvestSeason[] {
-	return getSchedule(when).harvesting.filter(
+): Promise<HarvestSeason[]> {
+	return (await getSchedule(hid, when)).harvesting.filter(
 		(h) => h.context.plantingId === plantingId,
 	);
 }
@@ -211,8 +231,11 @@ export type Dashboard = {
 	recentlyDone: Task[];
 };
 
-export function getDashboard(when: IsoDate = todayInGarden()): Dashboard {
-	const { tasks, harvesting } = getSchedule(when);
+export async function getDashboard(
+	hid: HouseholdId,
+	when: IsoDate = todayInGarden(),
+): Promise<Dashboard> {
+	const { tasks, harvesting } = await getSchedule(hid, when);
 	const overdueFloor = shiftIso(when, -OVERDUE_LOOKBACK_DAYS);
 	const doneFloor = shiftIso(when, -RECENT_DONE_DAYS);
 

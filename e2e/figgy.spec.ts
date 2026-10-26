@@ -70,3 +70,45 @@ test('something sown in a bed shows up with a harvest estimate', async ({
 	await expect(sowForm.getByText(/invites trouble/)).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Sow it anyway' })).toBeVisible();
 });
+
+test('every page carries the security headers and breaks none of its own policy', async ({
+	page,
+}) => {
+	const violations: string[] = [];
+	page.on('console', (message) => {
+		if (
+			/Content Security Policy|Refused to (load|execute|apply)/i.test(
+				message.text(),
+			)
+		) {
+			violations.push(message.text());
+		}
+	});
+
+	for (const path of [
+		'/now',
+		'/grid',
+		'/garden',
+		'/plants',
+		'/plants/lemon',
+		'/settings',
+		'/ask',
+	]) {
+		const response = await page.goto(path);
+		const headers = response?.headers() ?? {};
+		expect(headers['content-security-policy'], path).toMatch(
+			/script-src 'self' 'nonce-/,
+		);
+		expect(headers['x-frame-options'], path).toBe('DENY');
+		expect(headers['x-content-type-options'], path).toBe('nosniff');
+		expect(headers['x-powered-by'], path).toBeUndefined();
+		// Next only sets this once its scripts have run - which they do only if
+		// the nonce reached them.
+		await expect
+			.poll(() => page.evaluate(() => typeof (window as { next?: unknown }).next), {
+				message: path,
+			})
+			.toBe('object');
+	}
+	expect(violations).toEqual([]);
+});

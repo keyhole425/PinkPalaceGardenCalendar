@@ -29,6 +29,41 @@
       "when": 1790333237153,
       "tag": "0003_wealthy_micromax",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793006513048,
+      "tag": "0004_households",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793006566586,
+      "tag": "0005_tenancy_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793007560870,
+      "tag": "0006_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793008477082,
+      "tag": "0007_household_ai_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793008957936,
+      "tag": "0008_tours",
+      "breakpoints": true
     }
   ]
 }

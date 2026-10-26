@@ -3,9 +3,10 @@
  * away. Nothing here touches the schedule - accepting does, and that is in
  * `actions/research.ts`, where a person has to press the button.
  */
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt, sql, sum } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { aiCall, aiProposal, careRule, plantType } from '@/lib/db/schema';
+import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 import { monthsFromMask } from '@/lib/schedule/months';
 import { MODEL } from './client';
 import { type Citation, type PlantProposal, plantProposalSchema } from './schema';
@@ -32,24 +33,57 @@ function parseProposal(raw: string | null): PlantProposal | null {
 	return parsed.success ? parsed.data : null;
 }
 
-export function getProposal(id: number): StoredProposal | null {
-	const row = db.select().from(aiProposal).where(eq(aiProposal.id, id)).get();
+/**
+ * A run that never finished - the function was stopped, the deploy rolled -
+ * would otherwise say "still reading around" for ever. Ten minutes is well
+ * past anything a real run takes.
+ */
+async function giveUpOnStale(hid: HouseholdId) {
+	await db
+		.update(aiProposal)
+		.set({
+			status: 'failed',
+			error: 'That never finished, so figgy gave up on it.',
+		})
+		.where(
+			and(
+				owns(aiProposal, hid),
+				eq(aiProposal.status, 'running'),
+				lt(aiProposal.createdAt, sql`datetime('now', '-10 minutes')`),
+			),
+		)
+		.run();
+}
+
+export async function getProposal(
+	hid: HouseholdId,
+	id: number,
+): Promise<StoredProposal | null> {
+	await giveUpOnStale(hid);
+	const row = await db
+		.select()
+		.from(aiProposal)
+		.where(ownedRow(aiProposal, id, hid))
+		.get();
 	if (!row) return null;
 
 	const slug = row.plantTypeId
-		? (db
-				.select({ slug: plantType.slug })
-				.from(plantType)
-				.where(eq(plantType.id, row.plantTypeId))
-				.get()?.slug ?? null)
+		? ((
+				await db
+					.select({ slug: plantType.slug })
+					.from(plantType)
+					.where(ownedRow(plantType, row.plantTypeId, hid))
+					.get()
+			)?.slug ?? null)
 		: null;
 
-	const spend = db
-		.select({ cost: aiCall.costCents })
-		.from(aiCall)
-		.where(eq(aiCall.proposalId, id))
-		.all()
-		.reduce((total, c) => total + c.cost, 0);
+	const spend = (
+		await db
+			.select({ cost: aiCall.costCents })
+			.from(aiCall)
+			.where(and(owns(aiCall, hid), eq(aiCall.proposalId, id)))
+			.all()
+	).reduce((total, c) => total + c.cost, 0);
 
 	return {
 		id: row.id,
@@ -68,8 +102,9 @@ export function getProposal(id: number): StoredProposal | null {
 	};
 }
 
-export function listProposals(limit = 25) {
-	return db
+export async function listProposals(hid: HouseholdId, limit = 25) {
+	await giveUpOnStale(hid);
+	return await db
 		.select({
 			id: aiProposal.id,
 			query: aiProposal.query,
@@ -77,25 +112,34 @@ export function listProposals(limit = 25) {
 			createdAt: aiProposal.createdAt,
 		})
 		.from(aiProposal)
+		.where(owns(aiProposal, hid))
 		.orderBy(desc(aiProposal.id))
 		.limit(limit)
 		.all();
 }
 
-export function startProposal(query: string, plantTypeId?: number): number {
-	return db
-		.insert(aiProposal)
-		.values({
-			query,
-			plantTypeId: plantTypeId ?? null,
-			model: MODEL,
-			status: 'running',
-		})
-		.returning({ id: aiProposal.id })
-		.get().id;
+export async function startProposal(
+	hid: HouseholdId,
+	query: string,
+	plantTypeId?: number,
+): Promise<number> {
+	return (
+		await db
+			.insert(aiProposal)
+			.values({
+				householdId: hid,
+				query,
+				plantTypeId: plantTypeId ?? null,
+				model: MODEL,
+				status: 'running',
+			})
+			.returning({ id: aiProposal.id })
+			.get()
+	).id;
 }
 
-export function finishProposal(
+export async function finishProposal(
+	hid: HouseholdId,
 	id: number,
 	result: {
 		proposal: PlantProposal;
@@ -103,44 +147,52 @@ export function finishProposal(
 		citations: Citation[];
 	},
 ) {
-	db.update(aiProposal)
+	await db
+		.update(aiProposal)
 		.set({
 			status: 'ready',
 			payload: JSON.stringify(result.proposal),
 			notes: result.notes,
 			citations: JSON.stringify(result.citations),
 		})
-		.where(eq(aiProposal.id, id))
+		.where(ownedRow(aiProposal, id, hid))
 		.run();
 }
 
-export function failProposal(id: number, error: string) {
-	db.update(aiProposal)
+export async function failProposal(hid: HouseholdId, id: number, error: string) {
+	await db
+		.update(aiProposal)
 		.set({ status: 'failed', error })
-		.where(eq(aiProposal.id, id))
+		.where(ownedRow(aiProposal, id, hid))
 		.run();
 }
 
 /** What figgy already knows, phrased for a prompt. */
-export function describeExisting(plantTypeId: number): string[] {
-	return db
-		.select({
-			action: careRule.action,
-			monthMask: careRule.monthMask,
-			active: careRule.active,
-		})
-		.from(careRule)
-		.where(eq(careRule.plantTypeId, plantTypeId))
-		.all()
+export async function describeExisting(
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<string[]> {
+	return (
+		await db
+			.select({
+				action: careRule.action,
+				monthMask: careRule.monthMask,
+				active: careRule.active,
+			})
+			.from(careRule)
+			.where(and(owns(careRule, hid), eq(careRule.plantTypeId, plantTypeId)))
+			.all()
+	)
 		.filter((r) => r.active)
 		.map((r) => `${r.action}: months ${monthsFromMask(r.monthMask).join(', ')}`);
 }
 
-/** Total spend, for the settings screen. */
-export function totalSpendCents(): number {
-	return db
-		.select({ cost: aiCall.costCents })
+/** What this household has spent, for the settings screen. */
+export async function totalSpendCents(hid: HouseholdId): Promise<number> {
+	const row = await db
+		.select({ cents: sum(aiCall.costCents) })
 		.from(aiCall)
-		.all()
-		.reduce((total, c) => total + c.cost, 0);
+		.where(owns(aiCall, hid))
+		.get();
+	return Number(row?.cents ?? 0);
 }

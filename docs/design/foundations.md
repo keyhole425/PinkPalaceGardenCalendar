@@ -172,8 +172,7 @@ Inside a card, use `space-y-2`; between list items `space-y-1` / `space-y-2`.
 | `rounded-md` | things you can press, and the boxes and inputs that hold them |
 | `rounded-full` | badges and pills only |
 
-`rounded-xl` and larger are removed from the theme. (`rounded-lg` still exists
-as a token but nothing uses it - see [decisions.md](decisions.md).)
+`rounded-lg` and larger are removed from the theme, so they do not compile.
 
 ## Elevation
 

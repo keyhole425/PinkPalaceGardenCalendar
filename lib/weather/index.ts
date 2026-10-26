@@ -24,11 +24,9 @@ export { conditionOf, signalsFrom } from './signals';
 export type {
 	Condition,
 	Forecast,
-	ForecastDay,
 	ForecastSource,
 	Signal,
 	SignalKind,
-	Sky,
 } from './types';
 
 /**
@@ -37,9 +35,13 @@ export type {
  * not worth a migration.
  */
 const CACHE_KEY = 'weather.v2';
+/** When both providers last failed together. */
+const FAILED_KEY = 'weather.failed-at';
+/** How long to leave them alone after that, rather than make every page wait. */
+const RETRY_AFTER_MS = 30 * 60 * 1000;
 
-function cacheRead(when: IsoDate): Forecast | null {
-	const row = db.select().from(meta).where(eq(meta.key, CACHE_KEY)).get();
+async function cacheRead(when: IsoDate): Promise<Forecast | null> {
+	const row = await db.select().from(meta).where(eq(meta.key, CACHE_KEY)).get();
 	if (!row) return null;
 	try {
 		const cached = JSON.parse(row.value) as Forecast;
@@ -49,8 +51,9 @@ function cacheRead(when: IsoDate): Forecast | null {
 	}
 }
 
-function cacheWrite(forecast: Forecast) {
-	db.insert(meta)
+async function cacheWrite(forecast: Forecast) {
+	await db
+		.insert(meta)
 		.values({ key: CACHE_KEY, value: JSON.stringify(forecast) })
 		.onConflictDoUpdate({
 			target: meta.key,
@@ -96,8 +99,11 @@ export function combine(bom: BomDay[], openMeteo: ForecastDay[]): ForecastDay[] 
 export async function getForecast(
 	when: IsoDate = todayInGarden(),
 ): Promise<Forecast | null> {
-	const cached = cacheRead(when);
+	const cached = await cacheRead(when);
 	if (cached) return cached;
+
+	const failed = await db.select().from(meta).where(eq(meta.key, FAILED_KEY)).get();
+	if (failed && Date.now() - Date.parse(failed.value) < RETRY_AFTER_MS) return null;
 
 	// Asked together: the Bureau's wind gap is filled from the same round trip.
 	const [bureau, openMeteo] = await Promise.all([fetchBom(), fetchOpenMeteo()]);
@@ -113,7 +119,15 @@ export async function getForecast(
 		forecast = { fetchedFor: when, source: 'open-meteo', days: openMeteo };
 	}
 
-	if (!forecast) return null;
-	cacheWrite(forecast);
+	if (!forecast) {
+		const at = new Date().toISOString();
+		await db
+			.insert(meta)
+			.values({ key: FAILED_KEY, value: at })
+			.onConflictDoUpdate({ target: meta.key, set: { value: at } })
+			.run();
+		return null;
+	}
+	await cacheWrite(forecast);
 	return forecast;
 }

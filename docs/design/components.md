@@ -160,7 +160,7 @@ hand from `actionChip()`.
 | `strong` | a flag that wants doing something about: "needs review" |
 | `quiet` | a status that is just a fact: a proposal's or a planting's status |
 | `good` | a fact in your favour: "2 growing", "frost free" |
-| `warn` | something going stale or wrong: "that is getting old" |
+| `warn` | something going stale or wrong (nothing uses it at the moment) |
 | `harvest` | when a crop is ready: "ready about 3 Jan – 20 Jan" |
 
 Badge text is lower case, because it is a fragment of a sentence, not a label.
@@ -249,6 +249,11 @@ Not primitives, but they set the patterns new work should follow:
   untick what you disagree with, then accept.
 - `components/weather/WeatherStrip.tsx` - the weather card.
 - `components/grid/MonthGrid.tsx` - the year.
+- `components/tour/Tour.tsx` - the first-run tour: an inline offer, then a
+  `palace-50` card that points at a `data-tour` element with the marker ring
+  (`[data-tour-active]` in `globals.css`). A sheet above the tab bar on a
+  phone. The steps are data, in `lib/tour/steps.ts`; to point at something
+  new, give it a `data-tour` name and add a step.
 
 ## Adding a new primitive
 

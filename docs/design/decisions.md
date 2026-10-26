@@ -38,8 +38,9 @@ rules. Not fixed yet - each is a candidate change of its own.
 - **`Button` variants `danger` and `pill` are unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
-- **`rounded-lg` is still a token** (`globals.css`) though rule 7 says two radii
-  and nothing uses it.
+- **Badge tone `warn` is unused.** Its one user was the "that is getting old"
+  backup badge on `/settings`, which went with the home server. Keep it for the
+  next stale-or-wrong fact, or remove it.
 - **`Icon.tsx`'s doc comment says "nine shapes"**; there are fourteen.
 - **PWA icons are missing.** `app/manifest.ts` lists `/icon-192.png` and
   `/icon-512.png`; `public/` only has `icon.svg`.
@@ -48,6 +49,64 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-26 - a first-run tour you can say no to
+**Context:** people arriving from an invite have never seen figgy, and the
+person who starts a garden has setting up to do that nobody else does.
+**Decision:** two tours as data - setting up, for admins, then a look round,
+for everyone - chosen on the server so a member never sees admin steps and
+nobody is shown Claude in a household without a key. It begins as an offer in
+a `palace-50` note at the top of the page, not a dialog, so nothing is
+interrupted and nothing takes focus that was not asked for. Saying yes moves
+a card from place to place; the thing it means gets the marker ring
+(`palace-500`, as round the current month) rather than a dimmed page, so the
+page stays readable and usable. On a phone the card is a sheet above the tab
+bar, and the page gains that much room at its end so nothing near the bottom
+is trapped under it. "Not now" lasts the visit, "No thanks" and "Skip the
+tour" last until Settings brings it back, Esc puts it away and keeps the place.
+**Cost:** an outline on a card that already has a border reads as two lines;
+the 4px offset keeps them apart. A step whose element is missing - the
+weather when the forecast failed - shows in the middle of the screen instead.
+
+### 2026-10-26 - each household brings its own key
+**Context:** figgy's Claude features ran on one key in the server's
+environment. With households of friends that is somebody else's bill.
+**Decision:** "Looking things up" on `/settings` is where an admin adds,
+checks, replaces and removes the household's key; the page only ever shows
+its last four characters. Every switched-off surface ends with `KeyNeeded`,
+which points an admin at Settings and anyone else at their admin, instead of
+naming an environment variable nobody using figgy can set. A proposal that is
+still researching refreshes itself every four seconds rather than asking to be
+reloaded.
+**Cost:** a household with no key has no Claude features at all, and
+somebody has to make an Anthropic account to get them.
+
+### 2026-10-26 - accounts, and a link shown once
+**Context:** figgy is moving to the internet and will hold more than one
+garden, so it needs people to sign in, and a way in that nobody can find on
+their own.
+**Decision:** `/login` and `/join/[token]` live in an `(auth)` layout: the
+same pink cover with the wordmark and nothing to tap, because every link
+would lead back there. An invite link is shown once, in a `palace-50` note box
+with Copy, and the page says figgy will not show it again - true, since only
+its hash is kept. Removing someone sits behind a `<details>` "Remove", like
+every other form that does more than the common case. Errors on these forms
+are `role="alert"` so a screen reader hears a refused password.
+**Cost:** a lost invite link cannot be shown again; the admin makes another.
+On a 375px screen the invite form stacks the email above the role and the
+button rather than sharing a row, which squeezed the email field to 58px.
+
+### 2026-10-26 - no more home server
+**Context:** figgy is moving from a Docker container on a Mac to Vercel. The
+Backups card on `/settings` described a nightly sidecar that no longer exists,
+and `rounded-lg` was still a token although rule 7 allows two radii and nothing
+used it.
+**Decision:** the Backups card is gone; backups become the hosted database's
+job. `rounded-lg` is reset to `initial` like the larger radii, so it no longer
+compiles. Copy that said "restart" now says "redeploy".
+**Cost:** `/settings` no longer shows the age of the last backup, which was the
+one warning that a backup job had died quietly. The hosted database's own
+restore window has to stand in for it.
 
 ## 2026-10-26 - the design written down as docs
 

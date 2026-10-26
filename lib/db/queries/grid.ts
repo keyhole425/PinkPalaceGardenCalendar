@@ -4,13 +4,14 @@
  * This is deliberately one query and a group-by rather than a query per plant -
  * the whole orchard is a few dozen rows.
  */
-import { asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, isNull } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { monthOf, today as todayInGarden } from '@/lib/dates';
 import type { Month } from '@/lib/schedule/months';
 import { db } from '../client';
-import type { Cadence, CareAction } from '../schema';
+import type { Cadence } from '../schema';
 import { careRule, plantType } from '../schema';
+import { type HouseholdId, owns } from '../tenancy';
 import { getSchedule } from './garden';
 
 /** The order the spreadsheet used, and the order the grid shows. */
@@ -69,8 +70,8 @@ export function noteSummary(notes: string | null): string | null {
 	return `${flat.slice(0, cut === -1 ? 120 : cut).trim()}\u2026`;
 }
 
-export function getGrid(): GridPlant[] {
-	const plants = db
+export async function getGrid(hid: HouseholdId): Promise<GridPlant[]> {
+	const plants = await db
 		.select({
 			id: plantType.id,
 			slug: plantType.slug,
@@ -80,10 +81,11 @@ export function getGrid(): GridPlant[] {
 			needsReview: plantType.needsReview,
 		})
 		.from(plantType)
+		.where(owns(plantType, hid))
 		.orderBy(asc(plantType.id))
 		.all();
 
-	const rules = db
+	const rules = await db
 		.select({
 			id: careRule.id,
 			plantTypeId: careRule.plantTypeId,
@@ -96,7 +98,7 @@ export function getGrid(): GridPlant[] {
 		.from(careRule)
 		// Template rules only. Per-planting overrides belong on a planting's own
 		// page, not in the plant-level year view.
-		.where(isNull(careRule.plantingId))
+		.where(and(owns(careRule, hid), isNull(careRule.plantingId)))
 		.orderBy(asc(careRule.id))
 		.all();
 
@@ -134,16 +136,6 @@ export function getGrid(): GridPlant[] {
 	});
 }
 
-export function countPlantsNeedingReview(): number {
-	return db
-		.select({ id: plantType.id })
-		.from(plantType)
-		.where(eq(plantType.needsReview, true))
-		.all().length;
-}
-
-export type { CareAction };
-
 /**
  * Which cells to tick.
  *
@@ -158,10 +150,11 @@ export type { CareAction };
  */
 export type CellMark = { done: number; total: number };
 
-export function getGridMarks(
+export async function getGridMarks(
+	hid: HouseholdId,
 	when: IsoDate = todayInGarden(),
-): Map<string, CellMark> {
-	const { plantings } = getSchedule(when);
+): Promise<Map<string, CellMark>> {
+	const { plantings } = await getSchedule(hid, when);
 	const marks = new Map<string, CellMark>();
 
 	// Only the last twelve months count, so the grid shows this year round,

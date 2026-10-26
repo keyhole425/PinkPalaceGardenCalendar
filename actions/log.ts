@@ -20,7 +20,8 @@ import {
 	type ParsedLog,
 	parseLogSentence,
 } from '@/lib/ai/parse-log';
-import { type IsoDate, isIsoDate, today, yearOf } from '@/lib/dates';
+import { requireHousehold } from '@/lib/auth/context';
+import { type IsoDate, isIsoDate, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { getSchedule, OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import {
@@ -30,6 +31,7 @@ import {
 	planting,
 	plantType,
 } from '@/lib/db/schema';
+import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ParseResult =
 	| { ok: true; parsed: ParsedLog; sentence: string }
@@ -39,8 +41,9 @@ export type CommitResult =
 	| { ok: true; written: number }
 	| { ok: false; error: string };
 
-export async function knownPlantings(): Promise<KnownPlanting[]> {
-	return db
+/** The plants a sentence may name: this household's, and nobody else's. */
+async function knownPlantings(hid: HouseholdId): Promise<KnownPlanting[]> {
+	return await db
 		.select({
 			id: planting.id,
 			label: planting.label,
@@ -50,7 +53,7 @@ export async function knownPlantings(): Promise<KnownPlanting[]> {
 		.from(planting)
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
 		.innerJoin(environment, eq(planting.environmentId, environment.id))
-		.where(ne(planting.status, 'removed'))
+		.where(and(owns(planting, hid), ne(planting.status, 'removed')))
 		.orderBy(asc(planting.label))
 		.all();
 }
@@ -59,11 +62,12 @@ export async function parseLog(
 	_previous: ParseResult | null,
 	form: FormData,
 ): Promise<ParseResult> {
-	if (!aiAvailable()) {
+	const { householdId } = await requireHousehold();
+	if (!(await aiAvailable(householdId))) {
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so it cannot read a sentence. Add ANTHROPIC_API_KEY and restart.',
+				'This household has no Anthropic key yet, so figgy cannot read a sentence. An admin can add one in Settings.',
 		};
 	}
 
@@ -76,7 +80,11 @@ export async function parseLog(
 	}
 
 	try {
-		const parsed = await parseLogSentence(sentence, await knownPlantings());
+		const parsed = await parseLogSentence(
+			householdId,
+			sentence,
+			await knownPlantings(householdId),
+		);
 		if (parsed.entries.length === 0) {
 			return {
 				ok: false,
@@ -121,12 +129,13 @@ const commitSchema = z.object({
  * The lookback is the same ninety days the dashboard uses, so a sentence can
  * only answer a job the dashboard would still be nagging about.
  */
-function matchOccurrence(
+async function matchOccurrence(
+	hid: HouseholdId,
 	plantingId: number,
 	action: string,
 	on: IsoDate,
-): { key: string; ruleId: number; seasonYear: number } | null {
-	const entry = getSchedule(on).plantings.find(
+): Promise<{ key: string; ruleId: number; seasonYear: number } | null> {
+	const entry = (await getSchedule(hid, on)).plantings.find(
 		(p) => p.context.plantingId === plantingId,
 	);
 	if (!entry) return null;
@@ -163,6 +172,7 @@ export async function commitLog(
 	_previous: CommitResult | null,
 	form: FormData,
 ): Promise<CommitResult> {
+	const { householdId } = await requireHousehold();
 	const raw = form.get('entries')?.toString() ?? '[]';
 	let parsed: z.infer<typeof commitSchema>;
 	try {
@@ -173,14 +183,17 @@ export async function commitLog(
 
 	let written = 0;
 	for (const entry of parsed.entries) {
-		const exists = db
+		// The sheet came back from the browser, so every planting id in it is
+		// checked against this household before anything is written.
+		const exists = await db
 			.select({ id: planting.id })
 			.from(planting)
-			.where(eq(planting.id, entry.plantingId))
+			.where(ownedRow(planting, entry.plantingId, householdId))
 			.get();
 		if (!exists) continue;
 
-		const match = matchOccurrence(
+		const match = await matchOccurrence(
+			householdId,
 			entry.plantingId,
 			entry.action,
 			entry.completedOn,
@@ -191,11 +204,12 @@ export async function commitLog(
 		// the exception: two kilos this morning and one more this afternoon are
 		// genuinely two pickings, and the whole point of an ad-hoc record.
 		if (entry.action !== 'harvest') {
-			const already = db
+			const already = await db
 				.select({ id: careLog.id })
 				.from(careLog)
 				.where(
 					and(
+						owns(careLog, householdId),
 						eq(careLog.plantingId, entry.plantingId),
 						eq(careLog.action, entry.action),
 						eq(careLog.completedOn, entry.completedOn),
@@ -205,24 +219,24 @@ export async function commitLog(
 			if (already) continue;
 		}
 
-		try {
-			db.insert(careLog)
-				.values({
-					plantingId: entry.plantingId,
-					careRuleId: match?.ruleId ?? null,
-					action: entry.action,
-					seasonYear: match?.seasonYear ?? yearOf(entry.completedOn),
-					occurrenceKey: match?.key ?? null,
-					completedOn: entry.completedOn,
-					quantityNote: entry.quantity || null,
-					notesMd: entry.note || null,
-				})
-				.run();
-			written++;
-		} catch (error) {
+		const inserted = await db
+			.insert(careLog)
+			.values({
+				householdId,
+				plantingId: entry.plantingId,
+				careRuleId: match?.ruleId ?? null,
+				action: entry.action,
+				seasonYear: match?.seasonYear ?? yearOf(entry.completedOn),
+				occurrenceKey: match?.key ?? null,
+				completedOn: entry.completedOn,
+				quantityNote: entry.quantity || null,
+				notesMd: entry.note || null,
+			})
 			// Already ticked off. Not worth stopping the rest of the sentence for.
-			if (!String(error).includes('UNIQUE')) throw error;
-		}
+			.onConflictDoNothing()
+			.returning({ id: careLog.id })
+			.get();
+		if (inserted) written++;
 	}
 
 	revalidatePath('/now');
@@ -230,15 +244,3 @@ export async function commitLog(
 	revalidatePath('/plants');
 	return { ok: true, written };
 }
-
-/** Used by the sheet to show what a proposed entry will attach to. */
-export async function describePlanting(id: number): Promise<string | null> {
-	const row = db
-		.select({ label: planting.label })
-		.from(planting)
-		.where(and(eq(planting.id, id), ne(planting.status, 'removed')))
-		.get();
-	return row?.label ?? null;
-}
-
-export { today };

@@ -1,6 +1,7 @@
 /** What each request cost, written down so spending is visible. */
 import { db } from '@/lib/db/client';
 import { aiCall } from '@/lib/db/schema';
+import type { HouseholdId } from '@/lib/db/tenancy';
 import { MODEL } from './client';
 
 /** Anthropic's published rates for Opus 5, in US dollars per million tokens. */
@@ -28,14 +29,17 @@ export function costInCents(usage: Usage): number {
 	return (perMillion / 1_000_000) * 100;
 }
 
-export function recordCall(args: {
+export async function recordCall(args: {
+	householdId: HouseholdId;
 	proposalId?: number;
 	purpose: string;
 	usage: Usage;
 	webSearches?: number;
 }) {
-	db.insert(aiCall)
+	await db
+		.insert(aiCall)
 		.values({
+			householdId: args.householdId,
 			proposalId: args.proposalId ?? null,
 			purpose: args.purpose,
 			model: MODEL,

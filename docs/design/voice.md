@@ -90,7 +90,7 @@ is in your schedule yet."
 ## Small words
 
 - Badges are lower-case fragments: "shifted", "one of 3", "2 growing", "needs
-  review", "that is getting old".
+  review".
 - Timings are relative and spoken: "closes in 9 days", "window closed 3 days
   ago", "opens tomorrow".
 - Counts sit next to their headings as a bare number, not "(3)".

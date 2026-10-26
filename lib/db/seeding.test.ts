@@ -4,10 +4,10 @@
  * This is the subtlest rule in figgy and the easiest to break, so it is tested
  * against a real database rather than reasoned about.
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { monthsFromMask } from '@/lib/schedule/months';
-import { createTempGarden, type TempGarden } from './testing';
+import { createTempGarden, GARDEN, type TempGarden } from './testing';
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 
@@ -32,9 +32,9 @@ function form(fields: Record<string, string | string[]>): FormData {
 	return f;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
 	garden?.cleanup();
-	garden = createTempGarden();
+	garden = await createTempGarden();
 	return () => garden.cleanup();
 });
 
@@ -42,42 +42,91 @@ describe('seeding', () => {
 	it('is idempotent', async () => {
 		const { db, seedGarden, schema } = await freshModules();
 
-		const first = seedGarden(db);
+		const first = await seedGarden(db);
 		expect(first.plantTypes).toBeGreaterThan(0);
 		expect(first.plantings).toBeGreaterThan(0);
 		expect(first.rules).toBeGreaterThan(0);
 
 		const after = {
-			rules: db.select().from(schema.careRule).all().length,
-			plantings: db.select().from(schema.planting).all().length,
-			plants: db.select().from(schema.plantType).all().length,
+			rules: (await db.select().from(schema.careRule).all()).length,
+			plantings: (await db.select().from(schema.planting).all()).length,
+			plants: (await db.select().from(schema.plantType).all()).length,
 		};
 
-		const second = seedGarden(db);
+		const second = await seedGarden(db);
 		expect(second.plantTypes).toBe(0);
 		expect(second.plantings).toBe(0);
 
 		// Counts against the first run, not against a number written here, so
 		// the test keeps working as the seed grows.
-		expect(db.select().from(schema.careRule).all()).toHaveLength(after.rules);
-		expect(db.select().from(schema.planting).all()).toHaveLength(after.plantings);
-		expect(db.select().from(schema.plantType).all()).toHaveLength(after.plants);
+		expect(await db.select().from(schema.careRule).all()).toHaveLength(after.rules);
+		expect(await db.select().from(schema.planting).all()).toHaveLength(
+			after.plantings,
+		);
+		expect(await db.select().from(schema.plantType).all()).toHaveLength(
+			after.plants,
+		);
+	});
+
+	it('keeps every rule it already had, so work done stays done', async () => {
+		const { db, seedGarden, schema } = await freshModules();
+		await seedGarden(db);
+		const ids = (
+			await db.select({ id: schema.careRule.id }).from(schema.careRule).all()
+		)
+			.map((r) => r.id)
+			.sort();
+
+		const lemon = await db
+			.select()
+			.from(schema.planting)
+			.where(eq(schema.planting.label, 'Lemon'))
+			.get();
+		const rule = await db
+			.select()
+			.from(schema.careRule)
+			.where(eq(schema.careRule.plantTypeId, lemon?.plantTypeId ?? 0))
+			.get();
+		if (!lemon || !rule) throw new Error('no lemon');
+		await db
+			.insert(schema.careLog)
+			.values({
+				householdId: GARDEN,
+				plantingId: lemon.id,
+				careRuleId: rule.id,
+				action: rule.action,
+				seasonYear: 2026,
+				occurrenceKey: '2026-09',
+				completedOn: '2026-09-10',
+			})
+			.run();
+
+		const again = await seedGarden(db);
+		expect(again.rules).toBe(0);
+		const after = (
+			await db.select({ id: schema.careRule.id }).from(schema.careRule).all()
+		)
+			.map((r) => r.id)
+			.sort();
+		expect(after).toEqual(ids);
+		const log = await db.select().from(schema.careLog).get();
+		expect(log?.careRuleId).toBe(rule.id);
 	});
 
 	it('leaves an edited rule alone, and does not put its own back', async () => {
 		const { db, seedGarden, schema, rules, queries } = await freshModules();
-		seedGarden(db);
+		await seedGarden(db);
 
-		const lemon = db
+		const lemon = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'lemon'))
 			.get();
 		if (!lemon) throw new Error('no lemon');
 
-		const prune = queries
-			.getEditableRules(lemon.id)
-			.find((r) => r.action === 'prune');
+		const prune = (await queries.getEditableRules(GARDEN, lemon.id)).find(
+			(r) => r.action === 'prune',
+		);
 		if (!prune) throw new Error('no prune rule');
 		// The spreadsheet says August or September.
 		expect(prune.alternatives).toBe(true);
@@ -95,11 +144,11 @@ describe('seeding', () => {
 		);
 		expect(result).toEqual({ ok: true });
 
-		seedGarden(db);
+		await seedGarden(db);
 
-		const after = queries
-			.getEditableRules(lemon.id)
-			.filter((r) => r.action === 'prune');
+		const after = (await queries.getEditableRules(GARDEN, lemon.id)).filter(
+			(r) => r.action === 'prune',
+		);
 		expect(after).toHaveLength(1);
 		expect(after[0].alternatives).toBe(false);
 		expect(after[0].edited).toBe(true);
@@ -109,18 +158,18 @@ describe('seeding', () => {
 
 	it('keeps a removed rule removed', async () => {
 		const { db, seedGarden, schema, rules, queries } = await freshModules();
-		seedGarden(db);
+		await seedGarden(db);
 
-		const cherry = db
+		const cherry = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'cherry'))
 			.get();
 		if (!cherry) throw new Error('no cherry');
 
-		const prune = queries
-			.getEditableRules(cherry.id)
-			.find((r) => r.action === 'prune');
+		const prune = (await queries.getEditableRules(GARDEN, cherry.id)).find(
+			(r) => r.action === 'prune',
+		);
 		if (!prune) throw new Error('no prune rule');
 
 		await rules.deleteRule(
@@ -132,29 +181,90 @@ describe('seeding', () => {
 			}),
 		);
 
-		seedGarden(db);
+		await seedGarden(db);
 
 		expect(
-			queries.getEditableRules(cherry.id).filter((r) => r.action === 'prune'),
+			(await queries.getEditableRules(GARDEN, cherry.id)).filter(
+				(r) => r.action === 'prune',
+			),
 		).toHaveLength(0);
-		expect(queries.getRemovedActions(cherry.id)).toContain('prune');
+		expect(await queries.getRemovedActions(GARDEN, cherry.id)).toContain('prune');
+	});
+
+	it('keeps what was done when the rule it answered is removed', async () => {
+		const { db, seedGarden, schema, rules, queries } = await freshModules();
+		await seedGarden(db);
+		// The local driver enforces foreign keys and would cascade on its own.
+		// Hosted Turso may not, so this runs as if nothing cascades.
+		await db.run(sql`PRAGMA foreign_keys = OFF`);
+
+		const cherry = await db
+			.select()
+			.from(schema.plantType)
+			.where(eq(schema.plantType.slug, 'cherry'))
+			.get();
+		if (!cherry) throw new Error('no cherry');
+		const tree = await db
+			.select()
+			.from(schema.planting)
+			.where(eq(schema.planting.plantTypeId, cherry.id))
+			.get();
+		if (!tree) throw new Error('no cherry tree');
+		const prune = (await queries.getEditableRules(GARDEN, cherry.id)).find(
+			(r) => r.action === 'prune',
+		);
+		if (!prune) throw new Error('no prune rule');
+
+		const [ruleId] = prune.ruleIds;
+		await db
+			.insert(schema.careLog)
+			.values({
+				householdId: GARDEN,
+				plantingId: tree.id,
+				careRuleId: ruleId,
+				action: 'prune',
+				seasonYear: 2025,
+				occurrenceKey: '2025-w8',
+				completedOn: '2025-08-20',
+			})
+			.run();
+
+		await rules.deleteRule(
+			null,
+			form({
+				plantTypeId: String(cherry.id),
+				replacing: prune.ruleIds.join(','),
+				action: 'prune',
+			}),
+		);
+
+		// The pruning has to survive and let go of the rule because figgy says
+		// so in code, not because the database happened to cascade.
+		const logs = await db
+			.select()
+			.from(schema.careLog)
+			.where(eq(schema.careLog.plantingId, tree.id))
+			.all();
+		expect(logs).toHaveLength(1);
+		expect(logs[0]?.careRuleId).toBeNull();
+		expect(logs[0]?.completedOn).toBe('2025-08-20');
 	});
 
 	it('keeps the rest of an action when one of its rules is removed', async () => {
 		const { db, seedGarden, schema, rules, queries } = await freshModules();
-		seedGarden(db);
+		await seedGarden(db);
 
 		// The cumquat has two feeds: a February-or-March one, and September.
-		const cumquat = db
+		const cumquat = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'cumquat'))
 			.get();
 		if (!cumquat) throw new Error('no cumquat');
 
-		const feeds = queries
-			.getEditableRules(cumquat.id)
-			.filter((r) => r.action === 'fertilise');
+		const feeds = (await queries.getEditableRules(GARDEN, cumquat.id)).filter(
+			(r) => r.action === 'fertilise',
+		);
 		expect(feeds).toHaveLength(2);
 
 		const lateSummer = feeds.find((r) => r.alternatives);
@@ -169,13 +279,13 @@ describe('seeding', () => {
 			}),
 		);
 
-		seedGarden(db);
+		await seedGarden(db);
 
 		// September survives. Without adoption the re-seed would have taken it
 		// as its own and deleted it, having been told feeding is now yours.
-		const after = queries
-			.getEditableRules(cumquat.id)
-			.filter((r) => r.action === 'fertilise');
+		const after = (await queries.getEditableRules(GARDEN, cumquat.id)).filter(
+			(r) => r.action === 'fertilise',
+		);
 		expect(after).toHaveLength(1);
 		expect(monthsFromMask(after[0].monthMask)).toEqual([9]);
 		// It still says where it came from.
@@ -184,9 +294,9 @@ describe('seeding', () => {
 
 	it('leaves edited plant details alone', async () => {
 		const { db, seedGarden, schema, plants } = await freshModules();
-		seedGarden(db);
+		await seedGarden(db);
 
-		const fig = db
+		const fig = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'fig'))
@@ -204,10 +314,10 @@ describe('seeding', () => {
 			}),
 		);
 
-		const report = seedGarden(db);
+		const report = await seedGarden(db);
 		expect(report.leftAlone).toContain('fig');
 
-		const after = db
+		const after = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'fig'))
@@ -220,9 +330,9 @@ describe('seeding', () => {
 describe('editing rules', () => {
 	it('turns chosen months into alternatives when asked', async () => {
 		const { db, seedGarden, schema, rules, queries } = await freshModules();
-		seedGarden(db);
+		await seedGarden(db);
 
-		const plum = db
+		const plum = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'plum'))
@@ -231,7 +341,9 @@ describe('editing rules', () => {
 
 		// The spreadsheet never said when to prune a plum.
 		expect(
-			queries.getEditableRules(plum.id).some((r) => r.action === 'prune'),
+			(await queries.getEditableRules(GARDEN, plum.id)).some(
+				(r) => r.action === 'prune',
+			),
 		).toBe(false);
 
 		await rules.saveRule(
@@ -245,9 +357,9 @@ describe('editing rules', () => {
 			}),
 		);
 
-		const prune = queries
-			.getEditableRules(plum.id)
-			.find((r) => r.action === 'prune');
+		const prune = (await queries.getEditableRules(GARDEN, plum.id)).find(
+			(r) => r.action === 'prune',
+		);
 		expect(prune?.alternatives).toBe(true);
 		expect(monthsFromMask(prune?.monthMask ?? 0)).toEqual([6, 7]);
 		// Alternatives are a once-a-season job whatever the form said.
@@ -256,8 +368,8 @@ describe('editing rules', () => {
 
 	it('refuses a single month dressed up as a choice', async () => {
 		const { db, seedGarden, schema, rules } = await freshModules();
-		seedGarden(db);
-		const plum = db
+		await seedGarden(db);
+		const plum = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'plum'))
@@ -279,8 +391,8 @@ describe('editing rules', () => {
 
 	it('feeds an edited rule straight into the schedule', async () => {
 		const { db, seedGarden, schema, rules } = await freshModules();
-		seedGarden(db);
-		const plum = db
+		await seedGarden(db);
+		const plum = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'plum'))
@@ -298,7 +410,7 @@ describe('editing rules', () => {
 		);
 
 		const { getDashboard } = await import('./queries/garden');
-		const board = getDashboard('2026-07-15');
+		const board = await getDashboard(GARDEN, '2026-07-15');
 		expect(
 			board.due.some(
 				(t) =>

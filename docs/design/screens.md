@@ -25,7 +25,10 @@ Settings is the cog in the header.
 | `/plants/new` | Add a plant | ← Plants | `measure` | Two ways in: "Let figgy look it up" (Claude research → proposal) or "Or say what you know" (the form). |
 | `/garden/[slug]` | the place's name | ← The garden | `list` | One bed or place: the plan, Sow something, Growing here now, Rotation warnings, What has grown here. |
 | `/proposals/[id]` | the plant that was looked up | ← Plants | `list` | Review what Claude proposed before any of it reaches the schedule; or see that it was accepted, rejected or failed. |
-| `/settings` | Settings | - | `list` | The database, backups, past look-ups. |
+| `/settings` | Settings | - | `list` | The household (name, members, invites), new gardens for site admins, this garden's numbers, looking things up, past look-ups, and you (take the tour again, sign out). |
+| `/no-garden` | No garden here yet | - | `measure` | Where a request lands when it belongs to no household. Reads nothing, so it cannot redirect back to itself. |
+| `/login` | Sign in | - | `measure` | Email and password, for coming back. Says figgy is invite-only. Outside the garden layout: the cover has the wordmark only. |
+| `/join/[token]` | Start your garden / Join {household} / Choose a new password | - | `measure` | Spending an invite. A spent or expired link says so and points at sign-in. |
 
 ## Redirects
 

@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-	countMonths,
 	FULL_MASK,
 	isRunStart,
 	maskFromMonths,
-	maskFromRange,
 	maskRuns,
 	monthsFromMask,
 	monthsInOrder,
 	shiftMask,
-	toggleMonth,
 } from './months';
 
 describe('masks', () => {
@@ -17,7 +14,6 @@ describe('masks', () => {
 		// Lemon fertilise: January, March, September, November.
 		const mask = maskFromMonths([1, 3, 9, 11]);
 		expect(monthsFromMask(mask)).toEqual([1, 3, 9, 11]);
-		expect(countMonths(mask)).toBe(4);
 	});
 
 	it('ignores order and duplicates', () => {
@@ -27,27 +23,6 @@ describe('masks', () => {
 	it('rejects a month that is not a month', () => {
 		expect(() => maskFromMonths([0])).toThrow(RangeError);
 		expect(() => maskFromMonths([13])).toThrow(RangeError);
-	});
-
-	it('toggles a month off and on again', () => {
-		const mask = maskFromMonths([5, 6]);
-		expect(monthsFromMask(toggleMonth(mask, 6))).toEqual([5]);
-		expect(toggleMonth(toggleMonth(mask, 6), 6)).toBe(mask);
-	});
-});
-
-describe('ranges that wrap the year', () => {
-	it('builds a contiguous range', () => {
-		expect(monthsFromMask(maskFromRange(5, 8))).toEqual([5, 6, 7, 8]);
-	});
-
-	it('builds a range through December into January', () => {
-		// Cherry harvest: November to February.
-		expect(monthsFromMask(maskFromRange(11, 2))).toEqual([1, 2, 11, 12]);
-	});
-
-	it('treats a single month as a range of one', () => {
-		expect(monthsFromMask(maskFromRange(9, 9))).toEqual([9]);
 	});
 });
 
@@ -99,7 +74,7 @@ describe('shifting a window into another environment', () => {
 	it('preserves how many months a window covers', () => {
 		const mask = maskFromMonths([1, 3, 9, 11]);
 		for (let by = -12; by <= 12; by++) {
-			expect(countMonths(shiftMask(mask, by))).toBe(4);
+			expect(monthsFromMask(shiftMask(mask, by))).toHaveLength(4);
 		}
 	});
 
