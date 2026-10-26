@@ -160,7 +160,7 @@ hand from `actionChip()`.
 | `strong` | a flag that wants doing something about: "needs review" |
 | `quiet` | a status that is just a fact: a proposal's or a planting's status |
 | `good` | a fact in your favour: "2 growing", "frost free" |
-| `warn` | something going stale or wrong: "that is getting old" |
+| `warn` | something going stale or wrong (nothing uses it at the moment) |
 | `harvest` | when a crop is ready: "ready about 3 Jan – 20 Jan" |
 
 Badge text is lower case, because it is a fragment of a sentence, not a label.

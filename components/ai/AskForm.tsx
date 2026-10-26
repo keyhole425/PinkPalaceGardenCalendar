@@ -29,7 +29,7 @@ export function AskForm({
 			<EmptyState>
 				figgy can research a plant&rsquo;s care for Adelaide and propose a schedule,
 				but it needs an Anthropic API key to do it. Set{' '}
-				<code>ANTHROPIC_API_KEY</code> and restart. Everything else works without
+				<code>ANTHROPIC_API_KEY</code> and redeploy. Everything else works without
 				one.
 			</EmptyState>
 		);

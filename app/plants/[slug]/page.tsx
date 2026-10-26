@@ -118,7 +118,11 @@ export default async function PlantPage({
 				{plant.needsReview && (
 					<p className="rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
 						figgy doesn&rsquo;t have the full picture for this one &mdash; the
-						spreadsheet left gaps. Filling them in is coming up.
+						spreadsheet left gaps.{' '}
+						<Link href={`/plants/${slug}/edit`} className="underline">
+							Fill them in
+						</Link>
+						, or let Claude look it up from there.
 					</p>
 				)}
 

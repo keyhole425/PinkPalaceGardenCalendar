@@ -58,7 +58,7 @@ export async function askAboutPlant(
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so it cannot look anything up. Add ANTHROPIC_API_KEY and restart.',
+				'figgy has no API key, so it cannot look anything up. Add ANTHROPIC_API_KEY and redeploy.',
 		};
 	}
 

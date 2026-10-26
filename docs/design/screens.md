@@ -25,7 +25,7 @@ Settings is the cog in the header.
 | `/plants/new` | Add a plant | ← Plants | `measure` | Two ways in: "Let figgy look it up" (Claude research → proposal) or "Or say what you know" (the form). |
 | `/garden/[slug]` | the place's name | ← The garden | `list` | One bed or place: the plan, Sow something, Growing here now, Rotation warnings, What has grown here. |
 | `/proposals/[id]` | the plant that was looked up | ← Plants | `list` | Review what Claude proposed before any of it reaches the schedule; or see that it was accepted, rejected or failed. |
-| `/settings` | Settings | - | `list` | The database, backups, past look-ups. |
+| `/settings` | Settings | - | `list` | The database, looking things up, past look-ups. |
 
 ## Redirects
 

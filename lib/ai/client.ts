@@ -19,7 +19,7 @@ let client: Anthropic | null = null;
 export function anthropic(): Anthropic {
 	if (!aiAvailable()) {
 		throw new Error(
-			'No ANTHROPIC_API_KEY, so figgy cannot look anything up. Add one and restart.',
+			'No ANTHROPIC_API_KEY, so figgy cannot look anything up. Add one and redeploy.',
 		);
 	}
 
@@ -43,7 +43,7 @@ export function anthropic(): Anthropic {
  */
 export function describeError(error: unknown): string {
 	if (error instanceof Anthropic.AuthenticationError) {
-		return 'That API key was refused. Check ANTHROPIC_API_KEY in ops/.env.';
+		return 'That API key was refused. Check ANTHROPIC_API_KEY in figgy’s environment settings.';
 	}
 	if (error instanceof Anthropic.PermissionDeniedError) {
 		return 'That API key is not allowed to do this. Check its permissions in the Anthropic console.';
@@ -52,7 +52,7 @@ export function describeError(error: unknown): string {
 		return 'Claude is rate limiting us. Try again in a minute.';
 	}
 	if (error instanceof Anthropic.APIConnectionError) {
-		return 'Could not reach Claude. Is this machine online?';
+		return 'Could not reach Claude. Worth trying again in a minute.';
 	}
 	if (error instanceof Anthropic.APIError) {
 		// The commonest first-run stumble, and the message tells you nothing
@@ -61,7 +61,7 @@ export function describeError(error: unknown): string {
 			return 'The key works, but the Anthropic account has no credit. Add some under Plans & Billing at console.anthropic.com, then try again.';
 		}
 		if (/not scoped to a workspace/i.test(error.message)) {
-			return 'That key belongs to the organisation rather than a workspace, so Claude does not know which workspace to bill. Either set ANTHROPIC_WORKSPACE_ID in ops/.env, or make a workspace-scoped key in the Anthropic console.';
+			return 'That key belongs to the organisation rather than a workspace, so Claude does not know which workspace to bill. Either set ANTHROPIC_WORKSPACE_ID in figgy’s environment settings, or make a workspace-scoped key in the Anthropic console.';
 		}
 		if (error.status >= 500) {
 			return 'Claude had a problem at its end. Worth trying again shortly.';

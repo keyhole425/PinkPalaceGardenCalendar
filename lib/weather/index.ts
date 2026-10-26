@@ -24,11 +24,9 @@ export { conditionOf, signalsFrom } from './signals';
 export type {
 	Condition,
 	Forecast,
-	ForecastDay,
 	ForecastSource,
 	Signal,
 	SignalKind,
-	Sky,
 } from './types';
 
 /**

@@ -8,13 +8,13 @@
  * come from the engine; the form only says which job, when it was done, and
  * anything you want to remember about it.
  */
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { isIsoDate, today, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { findOccurrence, openSeasonsFor } from '@/lib/db/queries/garden';
-import { careLog, planting } from '@/lib/db/schema';
+import { careLog } from '@/lib/db/schema';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -158,47 +158,5 @@ export async function undoCompletion(
 
 	db.delete(careLog).where(eq(careLog.id, parsed.data.logId)).run();
 	refresh(parsed.data.slug);
-	return { ok: true };
-}
-
-const noteSchema = z.object({
-	plantingId: z.coerce.number().int().positive(),
-	notes: z.string().trim().min(1).max(2000),
-});
-
-/** A note against a plant with no job attached: "looking sorry for itself". */
-export async function addPlantingNote(
-	_previous: ActionResult | null,
-	form: FormData,
-): Promise<ActionResult> {
-	const parsed = noteSchema.safeParse({
-		plantingId: form.get('plantingId'),
-		notes: form.get('notes'),
-	});
-	if (!parsed.success) {
-		return { ok: false, error: 'Write something first.' };
-	}
-
-	const row = db
-		.select({ id: planting.id })
-		.from(planting)
-		.where(and(eq(planting.id, parsed.data.plantingId)))
-		.get();
-	if (!row) return { ok: false, error: 'No such plant.' };
-
-	const when = today();
-	db.insert(careLog)
-		.values({
-			plantingId: parsed.data.plantingId,
-			careRuleId: null,
-			action: 'note',
-			seasonYear: yearOf(when),
-			occurrenceKey: null,
-			completedOn: when,
-			notesMd: parsed.data.notes,
-		})
-		.run();
-
-	refresh(form.get('slug')?.toString());
 	return { ok: true };
 }

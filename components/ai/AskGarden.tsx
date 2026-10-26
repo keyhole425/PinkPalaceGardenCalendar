@@ -21,7 +21,7 @@ export function AskGarden({ available }: { available: boolean }) {
 		return (
 			<EmptyState>
 				figgy can answer questions about your own records, but it needs an Anthropic
-				API key. Set <code>ANTHROPIC_API_KEY</code> and restart.
+				API key. Set <code>ANTHROPIC_API_KEY</code> and redeploy.
 			</EmptyState>
 		);
 	}

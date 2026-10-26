@@ -38,8 +38,9 @@ rules. Not fixed yet - each is a candidate change of its own.
 - **`Button` variants `danger` and `pill` are unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
-- **`rounded-lg` is still a token** (`globals.css`) though rule 7 says two radii
-  and nothing uses it.
+- **Badge tone `warn` is unused.** Its one user was the "that is getting old"
+  backup badge on `/settings`, which went with the home server. Keep it for the
+  next stale-or-wrong fact, or remove it.
 - **`Icon.tsx`'s doc comment says "nine shapes"**; there are fourteen.
 - **PWA icons are missing.** `app/manifest.ts` lists `/icon-192.png` and
   `/icon-512.png`; `public/` only has `icon.svg`.
@@ -48,6 +49,18 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-26 - no more home server
+**Context:** figgy is moving from a Docker container on a Mac to Vercel. The
+Backups card on `/settings` described a nightly sidecar that no longer exists,
+and `rounded-lg` was still a token although rule 7 allows two radii and nothing
+used it.
+**Decision:** the Backups card is gone; backups become the hosted database's
+job. `rounded-lg` is reset to `initial` like the larger radii, so it no longer
+compiles. Copy that said "restart" now says "redeploy".
+**Cost:** `/settings` no longer shows the age of the last backup, which was the
+one warning that a backup job had died quietly. The hosted database's own
+restore window has to stand in for it.
 
 ## 2026-10-26 - the design written down as docs
 

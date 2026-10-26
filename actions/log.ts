@@ -20,7 +20,7 @@ import {
 	type ParsedLog,
 	parseLogSentence,
 } from '@/lib/ai/parse-log';
-import { type IsoDate, isIsoDate, today, yearOf } from '@/lib/dates';
+import { type IsoDate, isIsoDate, yearOf } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { getSchedule, OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
 import {
@@ -39,7 +39,7 @@ export type CommitResult =
 	| { ok: true; written: number }
 	| { ok: false; error: string };
 
-export async function knownPlantings(): Promise<KnownPlanting[]> {
+async function knownPlantings(): Promise<KnownPlanting[]> {
 	return db
 		.select({
 			id: planting.id,
@@ -63,7 +63,7 @@ export async function parseLog(
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so it cannot read a sentence. Add ANTHROPIC_API_KEY and restart.',
+				'figgy has no API key, so it cannot read a sentence. Add ANTHROPIC_API_KEY and redeploy.',
 		};
 	}
 
@@ -230,15 +230,3 @@ export async function commitLog(
 	revalidatePath('/plants');
 	return { ok: true, written };
 }
-
-/** Used by the sheet to show what a proposed entry will attach to. */
-export async function describePlanting(id: number): Promise<string | null> {
-	const row = db
-		.select({ label: planting.label })
-		.from(planting)
-		.where(and(eq(planting.id, id), ne(planting.status, 'removed')))
-		.get();
-	return row?.label ?? null;
-}
-
-export { today };

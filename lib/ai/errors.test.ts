@@ -23,11 +23,12 @@ describe('what figgy says when Claude will not answer', () => {
 		expect(said).not.toContain('{');
 	});
 
-	it('points a refused key at the file it lives in', () => {
+	it('points a refused key at the setting it lives in', () => {
 		const said = describeError(
 			new Anthropic.AuthenticationError(401, {}, 'nope', new Headers()),
 		);
-		expect(said).toContain('ops/.env');
+		expect(said).toContain('ANTHROPIC_API_KEY');
+		expect(said).toContain('environment settings');
 	});
 
 	it('explains an organisation key that names no workspace', () => {

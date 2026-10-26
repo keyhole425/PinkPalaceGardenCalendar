@@ -4,12 +4,12 @@
  * This is deliberately one query and a group-by rather than a query per plant -
  * the whole orchard is a few dozen rows.
  */
-import { asc, eq, isNull } from 'drizzle-orm';
+import { asc, isNull } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { monthOf, today as todayInGarden } from '@/lib/dates';
 import type { Month } from '@/lib/schedule/months';
 import { db } from '../client';
-import type { Cadence, CareAction } from '../schema';
+import type { Cadence } from '../schema';
 import { careRule, plantType } from '../schema';
 import { getSchedule } from './garden';
 
@@ -133,16 +133,6 @@ export function getGrid(): GridPlant[] {
 		};
 	});
 }
-
-export function countPlantsNeedingReview(): number {
-	return db
-		.select({ id: plantType.id })
-		.from(plantType)
-		.where(eq(plantType.needsReview, true))
-		.all().length;
-}
-
-export type { CareAction };
 
 /**
  * Which cells to tick.

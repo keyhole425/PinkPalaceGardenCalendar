@@ -299,16 +299,8 @@ export const aiCall = sqliteTable('ai_call', {
 	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
-/** Small key/value bag: seed version, last backup time. */
+/** Small key/value bag: the seed version and the cached forecast. */
 export const meta = sqliteTable('meta', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
 });
-
-export type Environment = typeof environment.$inferSelect;
-export type PlantType = typeof plantType.$inferSelect;
-export type Planting = typeof planting.$inferSelect;
-export type CareRule = typeof careRule.$inferSelect;
-export type CareLog = typeof careLog.$inferSelect;
-export type AiProposal = typeof aiProposal.$inferSelect;
-export type AiCall = typeof aiCall.$inferSelect;

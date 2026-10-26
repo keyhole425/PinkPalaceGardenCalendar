@@ -6,7 +6,6 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
-		"start:lan": "next start -H 0.0.0.0 -p 3000",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check .",
 		"format": "biome check --write .",
@@ -17,10 +16,6 @@
 		"db:seed": "tsx db/seed/run.ts",
 		"db:studio": "drizzle-kit studio",
 		"db:reset": "rm -f data/garden.db data/garden.db-wal data/garden.db-shm && npm run db:migrate && npm run db:seed",
-		"backup": "tsx scripts/backup.ts",
-		"docker:up": "docker compose -f ops/compose.yml up -d --build",
-		"docker:logs": "docker compose -f ops/compose.yml logs -f figgy",
-		"docker:down": "docker compose -f ops/compose.yml down",
 		"test:e2e": "playwright test"
 	},
 	"dependencies": {

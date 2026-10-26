@@ -58,7 +58,6 @@ export const plantProposalSchema = z.object({
 	caveats: z.array(z.string()),
 });
 
-export type ProposedRule = z.infer<typeof proposedRuleSchema>;
 export type PlantProposal = z.infer<typeof plantProposalSchema>;
 
 export type Citation = { url: string; title: string };

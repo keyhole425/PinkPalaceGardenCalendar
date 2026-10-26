@@ -83,38 +83,6 @@ export function hasMonth(mask: number, m: Month): boolean {
 	return (mask & (1 << (m - 1))) !== 0;
 }
 
-export function withMonth(mask: number, m: Month): number {
-	return mask | (1 << (m - 1));
-}
-
-export function withoutMonth(mask: number, m: Month): number {
-	return mask & ~(1 << (m - 1));
-}
-
-export function toggleMonth(mask: number, m: Month): number {
-	return mask ^ (1 << (m - 1));
-}
-
-export function countMonths(mask: number): number {
-	let n = 0;
-	for (let bit = 0; bit < 12; bit++) {
-		if (mask & (1 << bit)) n++;
-	}
-	return n;
-}
-
-/** Inclusive range that may wrap the year: range(11, 2) is Nov, Dec, Jan, Feb. */
-export function maskFromRange(from: Month, to: Month): number {
-	let mask = EMPTY_MASK;
-	let m = from;
-	for (;;) {
-		mask = withMonth(mask, m);
-		if (m === to) break;
-		m = nextMonth(m);
-	}
-	return mask;
-}
-
 export function nextMonth(m: Month): Month {
 	return (m === 12 ? 1 : m + 1) as Month;
 }

@@ -93,15 +93,6 @@ export function getPlant(
 	};
 }
 
-export function listPlantSlugs(): string[] {
-	return db
-		.select({ slug: plantType.slug })
-		.from(plantType)
-		.orderBy(asc(plantType.id))
-		.all()
-		.map((r) => r.slug);
-}
-
 /** Everything written down against one plant, newest first. */
 export function getHistory(plantingId: number): HistoryEntry[] {
 	return db

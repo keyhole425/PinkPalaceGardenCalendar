@@ -29,8 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      # Builds, migrates, seeds and serves the standalone output - the same
-      # thing the container runs. Catches what unit tests cannot.
+      # Builds, migrates, seeds and serves a production build. Catches what
+      # unit tests cannot.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()

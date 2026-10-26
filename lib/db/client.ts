@@ -19,7 +19,7 @@ export function resolveDbPath(): string {
 	);
 }
 
-/** Opens a database at a given path. Tests use this against a temp file. */
+/** Opens a database at a given path, creating its directory if need be. */
 export function createDb(file: string) {
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	const sqlite = new Database(file);
@@ -44,5 +44,4 @@ if (cacheConnection) {
 	globalForDb.figgyDb = db;
 }
 
-export { schema };
 export const dbPath = resolveDbPath();

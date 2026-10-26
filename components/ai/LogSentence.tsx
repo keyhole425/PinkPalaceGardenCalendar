@@ -112,8 +112,8 @@ export function LogSentence({
 				<EmptyState>
 					figgy can turn &ldquo;netted the cherries and picked 2 kg of lemons&rdquo;
 					into records, but it needs an Anthropic API key. Set{' '}
-					<code>ANTHROPIC_API_KEY</code> and restart. You can always tick things off
-					by hand.
+					<code>ANTHROPIC_API_KEY</code> and redeploy. You can always tick things
+					off by hand.
 				</EmptyState>
 			) : (
 				<div className="space-y-3">

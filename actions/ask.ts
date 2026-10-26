@@ -16,7 +16,7 @@ export async function ask(
 		return {
 			ok: false,
 			error:
-				'figgy has no API key, so there is nobody to ask. Add ANTHROPIC_API_KEY and restart.',
+				'figgy has no API key, so there is nobody to ask. Add ANTHROPIC_API_KEY and redeploy.',
 		};
 	}
 
