@@ -203,15 +203,6 @@ export default async function NowPage() {
 					</Card>
 				</aside>
 			</div>
-
-			<p className="mt-rhythm max-w-measure text-ink-soft text-xs">
-				Done today is one tap; open <em>Date or note</em> to back-date it or say how
-				it went. Everything also shows on{' '}
-				<Link href="/grid" className="underline">
-					the year
-				</Link>
-				.
-			</p>
 		</Frame>
 	);
 }
