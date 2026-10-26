@@ -36,8 +36,8 @@ export type {
  */
 const CACHE_KEY = 'weather.v2';
 
-function cacheRead(when: IsoDate): Forecast | null {
-	const row = db.select().from(meta).where(eq(meta.key, CACHE_KEY)).get();
+async function cacheRead(when: IsoDate): Promise<Forecast | null> {
+	const row = await db.select().from(meta).where(eq(meta.key, CACHE_KEY)).get();
 	if (!row) return null;
 	try {
 		const cached = JSON.parse(row.value) as Forecast;
@@ -47,8 +47,9 @@ function cacheRead(when: IsoDate): Forecast | null {
 	}
 }
 
-function cacheWrite(forecast: Forecast) {
-	db.insert(meta)
+async function cacheWrite(forecast: Forecast) {
+	await db
+		.insert(meta)
 		.values({ key: CACHE_KEY, value: JSON.stringify(forecast) })
 		.onConflictDoUpdate({
 			target: meta.key,
@@ -94,7 +95,7 @@ export function combine(bom: BomDay[], openMeteo: ForecastDay[]): ForecastDay[] 
 export async function getForecast(
 	when: IsoDate = todayInGarden(),
 ): Promise<Forecast | null> {
-	const cached = cacheRead(when);
+	const cached = await cacheRead(when);
 	if (cached) return cached;
 
 	// Asked together: the Bureau's wind gap is filled from the same round trip.
@@ -112,6 +113,6 @@ export async function getForecast(
 	}
 
 	if (!forecast) return null;
-	cacheWrite(forecast);
+	await cacheWrite(forecast);
 	return forecast;
 }

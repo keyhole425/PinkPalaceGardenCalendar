@@ -28,13 +28,14 @@ export function costInCents(usage: Usage): number {
 	return (perMillion / 1_000_000) * 100;
 }
 
-export function recordCall(args: {
+export async function recordCall(args: {
 	proposalId?: number;
 	purpose: string;
 	usage: Usage;
 	webSearches?: number;
 }) {
-	db.insert(aiCall)
+	await db
+		.insert(aiCall)
 		.values({
 			proposalId: args.proposalId ?? null,
 			purpose: args.purpose,

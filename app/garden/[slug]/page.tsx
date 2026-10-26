@@ -26,12 +26,12 @@ export const dynamic = 'force-dynamic';
  * runs a month ahead offers you next month's sowings now - which is the whole
  * point of having a hothouse.
  */
-function sowableNow(
+async function sowableNow(
 	environmentKind: string,
 	shiftMonths: number,
 	month: Month,
-): SowablePlant[] {
-	const rows = db
+): Promise<SowablePlant[]> {
+	const rows = await db
 		.select({
 			id: plantType.id,
 			commonName: plantType.commonName,
@@ -87,26 +87,24 @@ export default async function BedPage({
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
-	const bed = getBed(slug);
+	const bed = await getBed(slug);
 	if (!bed) notFound();
 
 	const when = today();
 	const month = monthOf(when);
-	const history = getBedHistory(bed.id);
-	const plants = sowableNow(bed.kind, bed.windowShiftMonths, month);
+	const history = await getBedHistory(bed.id);
+	const plants = await sowableNow(bed.kind, bed.windowShiftMonths, month);
 
 	// Every family grown here lately, so the form can say so before you plant a
 	// cousin rather than after.
 	const families = [
-		...new Set(
-			getBedHistory(bed.id)
-				.map((h) => h.family)
-				.filter(Boolean),
-		),
+		...new Set(history.map((h) => h.family).filter(Boolean)),
 	] as string[];
-	const warnings = families
-		.map((family) => rotationWarningFor(bed.id, family, when))
-		.filter((w) => w !== null);
+	const warnings = (
+		await Promise.all(
+			families.map((family) => rotationWarningFor(bed.id, family, when)),
+		)
+	).filter((w) => w !== null);
 	const recentFamilies = warnings.map((w) => ({
 		family: w.family,
 		what: w.what,

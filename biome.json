@@ -26,6 +26,10 @@
 			"style": {
 				"useImportType": "error",
 				"noNonNullAssertion": "off"
+			},
+			"nursery": {
+				"noFloatingPromises": "error",
+				"noMisusedPromises": "error"
 			}
 		}
 	}

@@ -36,7 +36,7 @@ export default defineConfig({
 		reuseExistingServer: false,
 		timeout: 180_000,
 		env: {
-			GARDEN_DB_PATH: db,
+			TURSO_DATABASE_URL: `file:${db}`,
 			// Pinned, so "what's due" is the same on every run.
 			FIGGY_TODAY: '2026-09-25',
 		},

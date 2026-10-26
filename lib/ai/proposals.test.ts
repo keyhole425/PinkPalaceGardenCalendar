@@ -54,30 +54,30 @@ async function runExpectingRedirect(fn: () => Promise<unknown>): Promise<string>
 	throw new Error('Expected a redirect and did not get one');
 }
 
-beforeEach(() => {
+beforeEach(async () => {
 	garden?.cleanup();
-	garden = createTempGarden();
+	garden = await createTempGarden();
 	return () => garden.cleanup();
 });
 
 describe('the proposal schema', () => {
-	it('accepts a proposal shaped the way the model returns one', () => {
+	it('accepts a proposal shaped the way the model returns one', async () => {
 		expect(plantProposalSchema.safeParse(kaffirLimeProposal).success).toBe(true);
 	});
 
-	it('rejects a month that is not a month', () => {
+	it('rejects a month that is not a month', async () => {
 		const bad = structuredClone(kaffirLimeProposal);
 		bad.rules[0].months = [13];
 		expect(plantProposalSchema.safeParse(bad).success).toBe(false);
 	});
 
-	it('rejects a window with no months at all', () => {
+	it('rejects a window with no months at all', async () => {
 		const bad = structuredClone(kaffirLimeProposal);
 		bad.rules[0].months = [];
 		expect(plantProposalSchema.safeParse(bad).success).toBe(false);
 	});
 
-	it('rejects an invented action', () => {
+	it('rejects an invented action', async () => {
 		const bad = structuredClone(kaffirLimeProposal);
 		// @ts-expect-error deliberately wrong
 		bad.rules[0].action = 'mulch';
@@ -88,9 +88,9 @@ describe('the proposal schema', () => {
 describe('accepting a proposal', () => {
 	async function readyProposal() {
 		const mods = await freshModules();
-		mods.seedGarden(mods.db);
-		const id = mods.proposals.startProposal('Kaffir lime');
-		mods.proposals.finishProposal(id, {
+		await mods.seedGarden(mods.db);
+		const id = await mods.proposals.startProposal('Kaffir lime');
+		await mods.proposals.finishProposal(id, {
 			proposal: kaffirLimeProposal,
 			notes: 'Research notes here.',
 			citations: [{ url: 'https://example.org/citrus-care', title: 'Citrus care' }],
@@ -109,7 +109,7 @@ describe('accepting a proposal', () => {
 		);
 		expect(to).toBe('/plants/kaffir-lime');
 
-		const plant = db
+		const plant = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'kaffir-lime'))
@@ -119,7 +119,7 @@ describe('accepting a proposal', () => {
 		// Accepting it is the review, so it is not flagged as needing one.
 		expect(plant?.needsReview).toBe(false);
 
-		const rules = queries.getEditableRules(plant?.id ?? 0);
+		const rules = await queries.getEditableRules(plant?.id ?? 0);
 		expect(rules).toHaveLength(4);
 
 		// "August or September" becomes two rules sharing a group, which the
@@ -150,12 +150,14 @@ describe('accepting a proposal', () => {
 			),
 		);
 
-		const plant = db
+		const plant = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'kaffir-lime'))
 			.get();
-		const actions = queries.getEditableRules(plant?.id ?? 0).map((r) => r.action);
+		const actions = (await queries.getEditableRules(plant?.id ?? 0)).map(
+			(r) => r.action,
+		);
 		expect(actions.sort()).toEqual(['fertilise', 'prune']);
 	});
 
@@ -168,7 +170,7 @@ describe('accepting a proposal', () => {
 			),
 		);
 
-		const rule = db.select().from(schema.careRule).all().at(-1);
+		const rule = (await db.select().from(schema.careRule).all()).at(-1);
 		expect(rule?.source).toBe('ai');
 		expect(rule?.sourceRef).toContain('claude-opus-5');
 		expect(rule?.sourceRef).toContain('example.org');
@@ -176,7 +178,7 @@ describe('accepting a proposal', () => {
 
 	it('plants one when asked, and not otherwise', async () => {
 		const { db, schema, research, id } = await readyProposal();
-		const orchard = db
+		const orchard = await db
 			.select()
 			.from(schema.environment)
 			.where(eq(schema.environment.slug, 'orchard'))
@@ -194,17 +196,15 @@ describe('accepting a proposal', () => {
 			),
 		);
 
-		const planted = db
-			.select()
-			.from(schema.planting)
-			.all()
-			.find((p) => p.label === 'Kaffir lime by the tank');
+		const planted = (await db.select().from(schema.planting).all()).find(
+			(p) => p.label === 'Kaffir lime by the tank',
+		);
 		expect(planted).toBeDefined();
 	});
 
 	it('feeds accepted windows straight into the schedule', async () => {
 		const { db, schema, research, id } = await readyProposal();
-		const orchard = db
+		const orchard = await db
 			.select()
 			.from(schema.environment)
 			.where(eq(schema.environment.slug, 'orchard'))
@@ -223,7 +223,7 @@ describe('accepting a proposal', () => {
 		);
 
 		const { getDashboard } = await import('@/lib/db/queries/garden');
-		const board = getDashboard('2026-09-15');
+		const board = await getDashboard('2026-09-15');
 		expect(
 			board.due.some(
 				(t) =>
@@ -242,15 +242,15 @@ describe('accepting a proposal', () => {
 			),
 		);
 
-		seedGarden(db);
+		await seedGarden(db);
 
-		const plant = db
+		const plant = await db
 			.select()
 			.from(schema.plantType)
 			.where(eq(schema.plantType.slug, 'kaffir-lime'))
 			.get();
 		expect(plant).toBeDefined();
-		expect(queries.getEditableRules(plant?.id ?? 0)).toHaveLength(1);
+		expect(await queries.getEditableRules(plant?.id ?? 0)).toHaveLength(1);
 	});
 
 	it('will not be accepted twice', async () => {
@@ -276,14 +276,14 @@ describe('accepting a proposal', () => {
 describe('rejecting a proposal', () => {
 	it('writes nothing to the schedule', async () => {
 		const mods = await freshModules();
-		mods.seedGarden(mods.db);
+		await mods.seedGarden(mods.db);
 		const before = {
-			rules: mods.db.select().from(mods.schema.careRule).all().length,
-			plants: mods.db.select().from(mods.schema.plantType).all().length,
+			rules: (await mods.db.select().from(mods.schema.careRule).all()).length,
+			plants: (await mods.db.select().from(mods.schema.plantType).all()).length,
 		};
 
-		const id = mods.proposals.startProposal('Kaffir lime');
-		mods.proposals.finishProposal(id, {
+		const id = await mods.proposals.startProposal('Kaffir lime');
+		await mods.proposals.finishProposal(id, {
 			proposal: kaffirLimeProposal,
 			notes: '',
 			citations: [],
@@ -293,18 +293,18 @@ describe('rejecting a proposal', () => {
 			await mods.research.rejectProposal(null, form({ proposalId: String(id) })),
 		).toEqual({ ok: true });
 
-		expect(mods.db.select().from(mods.schema.careRule).all()).toHaveLength(
+		expect(await mods.db.select().from(mods.schema.careRule).all()).toHaveLength(
 			before.rules,
 		);
-		expect(mods.db.select().from(mods.schema.plantType).all()).toHaveLength(
+		expect(await mods.db.select().from(mods.schema.plantType).all()).toHaveLength(
 			before.plants,
 		);
-		expect(mods.proposals.getProposal(id)?.status).toBe('rejected');
+		expect((await mods.proposals.getProposal(id))?.status).toBe('rejected');
 	});
 });
 
 describe('what it costs', () => {
-	it('prices a lookup from the tokens it used', () => {
+	it('prices a lookup from the tokens it used', async () => {
 		// A realistic research pass: a lot of search results in, a page out.
 		const cents = costInCents({
 			input_tokens: 45_000,
@@ -315,7 +315,7 @@ describe('what it costs', () => {
 		expect(cents).toBeCloseTo(30.25, 1);
 	});
 
-	it('charges a tenth for cached input', () => {
+	it('charges a tenth for cached input', async () => {
 		const cold = costInCents({ input_tokens: 10_000 });
 		const warm = costInCents({ cache_read_input_tokens: 10_000 });
 		expect(warm).toBeCloseTo(cold / 10, 6);

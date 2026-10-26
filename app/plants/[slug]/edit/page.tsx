@@ -27,13 +27,19 @@ export default async function EditPlantPage({
 	params: Promise<{ slug: string }>;
 }) {
 	const { slug } = await params;
-	const plant = db.select().from(plantType).where(eq(plantType.slug, slug)).get();
+	const plant = await db
+		.select()
+		.from(plantType)
+		.where(eq(plantType.slug, slug))
+		.get();
 	if (!plant) notFound();
 
-	const rules = getEditableRules(plant.id);
-	const removed = getRemovedActions(plant.id);
-	const plantings = getPlantings(plant.id);
-	const environments = listEnvironments();
+	const [rules, removed, plantings, environments] = await Promise.all([
+		getEditableRules(plant.id),
+		getRemovedActions(plant.id),
+		getPlantings(plant.id),
+		listEnvironments(),
+	]);
 	const currentMonth = monthOf(today()) as Month;
 
 	return (

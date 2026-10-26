@@ -73,7 +73,7 @@ export default async function PlantPage({
 }) {
 	const { slug } = await params;
 	const when = today();
-	const plant = getPlant(slug, when);
+	const plant = await getPlant(slug, when);
 	if (!plant) notFound();
 
 	const currentMonth = monthOf(when) as Month;

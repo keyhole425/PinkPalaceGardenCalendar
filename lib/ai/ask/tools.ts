@@ -38,8 +38,8 @@ export const askToolSchemas = {
 	}),
 } as const;
 
-export function listPlants() {
-	return db
+export async function listPlants() {
+	return await db
 		.select({
 			slug: plantType.slug,
 			name: plantType.commonName,
@@ -51,9 +51,9 @@ export function listPlants() {
 		.all();
 }
 
-export function whatsDue(on?: string) {
+export async function whatsDue(on?: string) {
 	const when = (on || todayInGarden()) as IsoDate;
-	const board = getDashboard(when);
+	const board = await getDashboard(when);
 	const describe = (list: typeof board.due) =>
 		list.map((t) => ({
 			plant: t.context.label,
@@ -73,22 +73,26 @@ export function whatsDue(on?: string) {
 	};
 }
 
-export function plantSchedule(slug: string) {
-	const plant = db.select().from(plantType).where(eq(plantType.slug, slug)).get();
+export async function plantSchedule(slug: string) {
+	const plant = await db
+		.select()
+		.from(plantType)
+		.where(eq(plantType.slug, slug))
+		.get();
 	if (!plant) return { error: `No plant with the slug "${slug}".` };
 
 	return {
 		name: plant.commonName,
 		scientificName: plant.scientificName,
 		notes: plant.notesMd,
-		rules: getEditableRules(plant.id).map((r) => ({
+		rules: (await getEditableRules(plant.id)).map((r) => ({
 			action: r.action,
 			months: monthsFromMask(r.monthMask),
 			alternatives: r.alternatives,
 			cadence: r.cadence,
 			note: r.note,
 		})),
-		growing: db
+		growing: await db
 			.select({
 				label: planting.label,
 				place: environment.name,
@@ -102,13 +106,17 @@ export function plantSchedule(slug: string) {
 	};
 }
 
-export function plantHistory(slug: string, limit = 50) {
-	const plant = db.select().from(plantType).where(eq(plantType.slug, slug)).get();
+export async function plantHistory(slug: string, limit = 50) {
+	const plant = await db
+		.select()
+		.from(plantType)
+		.where(eq(plantType.slug, slug))
+		.get();
 	if (!plant) return { error: `No plant with the slug "${slug}".` };
 
 	return {
 		name: plant.commonName,
-		entries: db
+		entries: await db
 			.select({
 				label: planting.label,
 				action: careLog.action,
@@ -125,8 +133,8 @@ export function plantHistory(slug: string, limit = 50) {
 	};
 }
 
-export function beds() {
-	return listBeds().map((b) => ({
+export async function beds() {
+	return (await listBeds()).map((b) => ({
 		name: b.name,
 		kind: b.kind,
 		frostFree: b.frostFree,
@@ -141,11 +149,11 @@ export function beds() {
 	}));
 }
 
-export function whatToSow(on?: string) {
+export async function whatToSow(on?: string) {
 	const when = (on || todayInGarden()) as IsoDate;
 	return {
 		date: when,
-		crops: sowableThisMonth(when).map((c) => ({
+		crops: (await sowableThisMonth(when)).map((c) => ({
 			what: c.commonName,
 			places: c.places.map((p) => p.name),
 			broughtForward: c.places.some((p) => p.shifted),
@@ -154,11 +162,11 @@ export function whatToSow(on?: string) {
 }
 
 /** Every planting figgy knows, for questions about the garden as a whole. */
-export function gardenSummary() {
-	const schedule = getSchedule();
+export async function gardenSummary() {
+	const schedule = await getSchedule();
 	return {
 		today: schedule.today,
-		plantings: db
+		plantings: await db
 			.select({
 				label: planting.label,
 				plant: plantType.commonName,

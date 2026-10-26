@@ -7,12 +7,15 @@
  * somewhere safe. That is not a hypothetical: it happened, and it wrote test
  * plants into the actual garden.
  *
- * Pointing GARDEN_DB_PATH at a temp file here means the real database is
- * unreachable from the test run, whatever a test file imports.
+ * Pointing TURSO_DATABASE_URL at a temp file here means the real database is
+ * unreachable from the test run, whatever a test file imports. The auth token
+ * goes too, and lib/db/client.ts refuses anything but a local file under
+ * vitest, so a hosted database is out of reach as well.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'figgy-vitest-'));
-process.env.GARDEN_DB_PATH = path.join(dir, 'default.db');
+process.env.TURSO_DATABASE_URL = `file:${path.join(dir, 'default.db')}`;
+delete process.env.TURSO_AUTH_TOKEN;

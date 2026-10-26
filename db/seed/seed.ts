@@ -10,6 +10,7 @@
  */
 import { and, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
 import type { Db } from '@/lib/db/client';
+import { deleteRules } from '@/lib/db/rules';
 import { careRule, environment, meta, planting, plantType } from '@/lib/db/schema';
 import { maskFromMonths } from '@/lib/schedule/months';
 import {
@@ -37,18 +38,19 @@ export type SeedReport = {
 const environments = [...orchardEnvironments, ...vegEnvironments];
 const plantTypes = [...orchardPlantTypes, ...vegPlantTypes];
 
-function seedEnvironments(db: Db) {
+async function seedEnvironments(db: Db) {
 	let created = 0;
 	for (const raw of environments) {
 		const env = seedEnvironmentSchema.parse(raw);
-		const existing = db
+		const existing = await db
 			.select({ id: environment.id })
 			.from(environment)
 			.where(eq(environment.slug, env.slug))
 			.get();
 
 		if (existing) {
-			db.update(environment)
+			await db
+				.update(environment)
 				.set({
 					kind: env.kind,
 					name: env.name,
@@ -64,7 +66,7 @@ function seedEnvironments(db: Db) {
 				.where(eq(environment.id, existing.id))
 				.run();
 		} else {
-			db.insert(environment).values(env).run();
+			await db.insert(environment).values(env).run();
 			created++;
 		}
 	}
@@ -78,8 +80,8 @@ function seedEnvironments(db: Db) {
  * counts - including a tombstone, the disabled row left behind when a rule is
  * deleted, which is how "this tree needs no pruning" survives a re-seed.
  */
-function userOwnedActions(db: Db, plantTypeId: number): Set<string> {
-	const rows = db
+async function userOwnedActions(db: Db, plantTypeId: number): Promise<Set<string>> {
+	const rows = await db
 		.select({ action: careRule.action })
 		.from(careRule)
 		.where(
@@ -92,19 +94,18 @@ function userOwnedActions(db: Db, plantTypeId: number): Set<string> {
 	return new Set(rows.map((r) => r.action));
 }
 
-function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
-	const owned = userOwnedActions(db, plantTypeId);
+async function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
+	const owned = await userOwnedActions(db, plantTypeId);
 
 	// Clear out only the rules this seed still owns, then lay them down fresh.
-	db.delete(careRule)
-		.where(
-			and(
-				eq(careRule.plantTypeId, plantTypeId),
-				eq(careRule.source, 'seed'),
-				isNull(careRule.userModifiedAt),
-			),
-		)
-		.run();
+	await deleteRules(
+		db,
+		and(
+			eq(careRule.plantTypeId, plantTypeId),
+			eq(careRule.source, 'seed'),
+			isNull(careRule.userModifiedAt),
+		),
+	);
 
 	let written = 0;
 	for (const rule of pt.rules) {
@@ -113,7 +114,8 @@ function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
 		const sourceRef = `${SEED_SOURCE} / ${pt.commonName} / ${rule.action}`;
 
 		if (rule.months) {
-			db.insert(careRule)
+			await db
+				.insert(careRule)
 				.values({
 					plantTypeId,
 					action: rule.action,
@@ -131,7 +133,8 @@ function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
 		// Alternatives: one rule per option, tied together by a shared group.
 		const altGroup = `${pt.slug}:${rule.action}`;
 		for (const option of rule.anyOf ?? []) {
-			db.insert(careRule)
+			await db
+				.insert(careRule)
 				.values({
 					plantTypeId,
 					action: rule.action,
@@ -149,7 +152,7 @@ function seedRulesFor(db: Db, plantTypeId: number, pt: SeedPlantType) {
 	return { written, owned: [...owned] };
 }
 
-function seedPlantingsFor(
+async function seedPlantingsFor(
 	db: Db,
 	plantTypeId: number,
 	pt: SeedPlantType,
@@ -157,14 +160,15 @@ function seedPlantingsFor(
 ) {
 	let created = 0;
 	for (const label of pt.plantings) {
-		const existing = db
+		const existing = await db
 			.select({ id: planting.id })
 			.from(planting)
 			.where(and(eq(planting.plantTypeId, plantTypeId), eq(planting.label, label)))
 			.get();
 		if (existing) continue;
 
-		db.insert(planting)
+		await db
+			.insert(planting)
 			.values({ plantTypeId, environmentId, label, status: 'active' })
 			.run();
 		created++;
@@ -172,10 +176,10 @@ function seedPlantingsFor(
 	return created;
 }
 
-export function seedGarden(db: Db): SeedReport {
-	const newEnvironments = seedEnvironments(db);
+export async function seedGarden(db: Db): Promise<SeedReport> {
+	const newEnvironments = await seedEnvironments(db);
 
-	const orchard = db
+	const orchard = await db
 		.select({ id: environment.id })
 		.from(environment)
 		.where(eq(environment.slug, 'orchard'))
@@ -210,7 +214,7 @@ export function seedGarden(db: Db): SeedReport {
 			sourceRef: pt.category === 'fruit_tree' ? SEED_SOURCE : 'Starter set',
 		};
 
-		const existing = db
+		const existing = await db
 			.select({ id: plantType.id, userModifiedAt: plantType.userModifiedAt })
 			.from(plantType)
 			.where(eq(plantType.slug, pt.slug))
@@ -218,31 +222,38 @@ export function seedGarden(db: Db): SeedReport {
 
 		let plantTypeId: number;
 		if (!existing) {
-			plantTypeId = db
-				.insert(plantType)
-				.values({ slug: pt.slug, ...fields })
-				.returning({ id: plantType.id })
-				.get().id;
+			plantTypeId = (
+				await db
+					.insert(plantType)
+					.values({ slug: pt.slug, ...fields })
+					.returning({ id: plantType.id })
+					.get()
+			).id;
 			report.plantTypes++;
 		} else {
 			plantTypeId = existing.id;
 			if (existing.userModifiedAt) {
 				report.leftAlone.push(pt.slug);
 			} else {
-				db.update(plantType).set(fields).where(eq(plantType.id, plantTypeId)).run();
+				await db
+					.update(plantType)
+					.set(fields)
+					.where(eq(plantType.id, plantTypeId))
+					.run();
 			}
 		}
 
-		const rules = seedRulesFor(db, plantTypeId, pt);
+		const rules = await seedRulesFor(db, plantTypeId, pt);
 		report.rules += rules.written;
 		for (const action of rules.owned) {
 			report.leftAlone.push(`${pt.slug}:${action}`);
 		}
 
-		report.plantings += seedPlantingsFor(db, plantTypeId, pt, orchard.id);
+		report.plantings += await seedPlantingsFor(db, plantTypeId, pt, orchard.id);
 	}
 
-	db.insert(meta)
+	await db
+		.insert(meta)
 		.values({ key: 'seed_version', value: SEED_VERSION })
 		.onConflictDoUpdate({ target: meta.key, set: { value: SEED_VERSION } })
 		.run();

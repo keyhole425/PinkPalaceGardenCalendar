@@ -32,24 +32,27 @@ function parseProposal(raw: string | null): PlantProposal | null {
 	return parsed.success ? parsed.data : null;
 }
 
-export function getProposal(id: number): StoredProposal | null {
-	const row = db.select().from(aiProposal).where(eq(aiProposal.id, id)).get();
+export async function getProposal(id: number): Promise<StoredProposal | null> {
+	const row = await db.select().from(aiProposal).where(eq(aiProposal.id, id)).get();
 	if (!row) return null;
 
 	const slug = row.plantTypeId
-		? (db
-				.select({ slug: plantType.slug })
-				.from(plantType)
-				.where(eq(plantType.id, row.plantTypeId))
-				.get()?.slug ?? null)
+		? ((
+				await db
+					.select({ slug: plantType.slug })
+					.from(plantType)
+					.where(eq(plantType.id, row.plantTypeId))
+					.get()
+			)?.slug ?? null)
 		: null;
 
-	const spend = db
-		.select({ cost: aiCall.costCents })
-		.from(aiCall)
-		.where(eq(aiCall.proposalId, id))
-		.all()
-		.reduce((total, c) => total + c.cost, 0);
+	const spend = (
+		await db
+			.select({ cost: aiCall.costCents })
+			.from(aiCall)
+			.where(eq(aiCall.proposalId, id))
+			.all()
+	).reduce((total, c) => total + c.cost, 0);
 
 	return {
 		id: row.id,
@@ -68,8 +71,8 @@ export function getProposal(id: number): StoredProposal | null {
 	};
 }
 
-export function listProposals(limit = 25) {
-	return db
+export async function listProposals(limit = 25) {
+	return await db
 		.select({
 			id: aiProposal.id,
 			query: aiProposal.query,
@@ -82,20 +85,25 @@ export function listProposals(limit = 25) {
 		.all();
 }
 
-export function startProposal(query: string, plantTypeId?: number): number {
-	return db
-		.insert(aiProposal)
-		.values({
-			query,
-			plantTypeId: plantTypeId ?? null,
-			model: MODEL,
-			status: 'running',
-		})
-		.returning({ id: aiProposal.id })
-		.get().id;
+export async function startProposal(
+	query: string,
+	plantTypeId?: number,
+): Promise<number> {
+	return (
+		await db
+			.insert(aiProposal)
+			.values({
+				query,
+				plantTypeId: plantTypeId ?? null,
+				model: MODEL,
+				status: 'running',
+			})
+			.returning({ id: aiProposal.id })
+			.get()
+	).id;
 }
 
-export function finishProposal(
+export async function finishProposal(
 	id: number,
 	result: {
 		proposal: PlantProposal;
@@ -103,7 +111,8 @@ export function finishProposal(
 		citations: Citation[];
 	},
 ) {
-	db.update(aiProposal)
+	await db
+		.update(aiProposal)
 		.set({
 			status: 'ready',
 			payload: JSON.stringify(result.proposal),
@@ -114,33 +123,35 @@ export function finishProposal(
 		.run();
 }
 
-export function failProposal(id: number, error: string) {
-	db.update(aiProposal)
+export async function failProposal(id: number, error: string) {
+	await db
+		.update(aiProposal)
 		.set({ status: 'failed', error })
 		.where(eq(aiProposal.id, id))
 		.run();
 }
 
 /** What figgy already knows, phrased for a prompt. */
-export function describeExisting(plantTypeId: number): string[] {
-	return db
-		.select({
-			action: careRule.action,
-			monthMask: careRule.monthMask,
-			active: careRule.active,
-		})
-		.from(careRule)
-		.where(eq(careRule.plantTypeId, plantTypeId))
-		.all()
+export async function describeExisting(plantTypeId: number): Promise<string[]> {
+	return (
+		await db
+			.select({
+				action: careRule.action,
+				monthMask: careRule.monthMask,
+				active: careRule.active,
+			})
+			.from(careRule)
+			.where(eq(careRule.plantTypeId, plantTypeId))
+			.all()
+	)
 		.filter((r) => r.active)
 		.map((r) => `${r.action}: months ${monthsFromMask(r.monthMask).join(', ')}`);
 }
 
 /** Total spend, for the settings screen. */
-export function totalSpendCents(): number {
-	return db
-		.select({ cost: aiCall.costCents })
-		.from(aiCall)
-		.all()
-		.reduce((total, c) => total + c.cost, 0);
+export async function totalSpendCents(): Promise<number> {
+	return (await db.select({ cost: aiCall.costCents }).from(aiCall).all()).reduce(
+		(total, c) => total + c.cost,
+		0,
+	);
 }

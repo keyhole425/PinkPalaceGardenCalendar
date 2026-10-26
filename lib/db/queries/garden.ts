@@ -41,32 +41,32 @@ export type HarvestSeason = {
 	closesOn: IsoDate;
 };
 
-function loadPlantings() {
-	return (
-		db
-			.select({
-				plantingId: planting.id,
-				label: planting.label,
-				plantTypeId: planting.plantTypeId,
-				plantSlug: plantType.slug,
-				plantName: plantType.commonName,
-				environmentId: environment.id,
-				environmentKind: environment.kind,
-				environmentName: environment.name,
-				frostFree: environment.frostFree,
-				windowShiftMonths: environment.windowShiftMonths,
-			})
-			.from(planting)
-			.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
-			.innerJoin(environment, eq(planting.environmentId, environment.id))
-			// A tree that has been pulled out needs nothing.
-			.where(ne(planting.status, 'removed'))
-			.orderBy(asc(plantType.id), asc(planting.id))
-			.all()
-	);
+async function loadPlantings() {
+	return await db
+		.select({
+			plantingId: planting.id,
+			label: planting.label,
+			plantTypeId: planting.plantTypeId,
+			plantSlug: plantType.slug,
+			plantName: plantType.commonName,
+			environmentId: environment.id,
+			environmentKind: environment.kind,
+			environmentName: environment.name,
+			frostFree: environment.frostFree,
+			windowShiftMonths: environment.windowShiftMonths,
+		})
+		.from(planting)
+		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
+		.innerJoin(environment, eq(planting.environmentId, environment.id))
+		// A tree that has been pulled out needs nothing.
+		.where(ne(planting.status, 'removed'))
+		.orderBy(asc(plantType.id), asc(planting.id))
+		.all();
 }
 
-function toContext(row: ReturnType<typeof loadPlantings>[number]): PlantingContext {
+function toContext(
+	row: Awaited<ReturnType<typeof loadPlantings>>[number],
+): PlantingContext {
 	return {
 		plantingId: row.plantingId,
 		label: row.label,
@@ -83,8 +83,10 @@ function toContext(row: ReturnType<typeof loadPlantings>[number]): PlantingConte
 	};
 }
 
-function loadRules(): RuleInput[] {
-	return db
+type LoadedRule = RuleInput & { plantTypeId: number | null };
+
+async function loadRules(): Promise<LoadedRule[]> {
+	return (await db
 		.select({
 			id: careRule.id,
 			plantTypeId: careRule.plantTypeId,
@@ -99,11 +101,11 @@ function loadRules(): RuleInput[] {
 		.from(careRule)
 		.where(eq(careRule.active, true))
 		.orderBy(asc(careRule.id))
-		.all() as (RuleInput & { plantTypeId: number | null })[];
+		.all()) as LoadedRule[];
 }
 
-function loadLogs(): (LogInput & { plantingId: number })[] {
-	return db
+async function loadLogs(): Promise<(LogInput & { plantingId: number })[]> {
+	return await db
 		.select({
 			id: careLog.id,
 			plantingId: careLog.plantingId,
@@ -130,11 +132,22 @@ export type GardenSchedule = {
 	harvesting: HarvestSeason[];
 };
 
-/** Every job in the garden, in whatever state it is in. */
-export function getSchedule(when: IsoDate = todayInGarden()): GardenSchedule {
-	const rows = loadPlantings();
-	const allRules = loadRules() as (RuleInput & { plantTypeId: number | null })[];
-	const allLogs = loadLogs();
+/**
+ * Every job in the garden, in whatever state it is in.
+ *
+ * Deliberately not cached per request. A server action and the render that
+ * follows it can share a request, and a schedule cached before a completion
+ * was written would show the job as still due after it.
+ */
+export async function getSchedule(
+	when: IsoDate = todayInGarden(),
+): Promise<GardenSchedule> {
+	// Independent reads, so they go out together rather than one after another.
+	const [rows, allRules, allLogs] = await Promise.all([
+		await loadPlantings(),
+		await loadRules(),
+		await loadLogs(),
+	]);
 
 	const plantings: PlantingSchedule[] = [];
 	const tasks: Task[] = [];
@@ -171,13 +184,13 @@ export function getSchedule(when: IsoDate = todayInGarden()): GardenSchedule {
  * says: the engine decides which action and which season a job belongs to, so
  * a stale page cannot invent a job that does not exist.
  */
-export function findOccurrence(
+export async function findOccurrence(
 	plantingId: number,
 	ruleId: number,
 	occurrenceKey: string,
 	when: IsoDate = todayInGarden(),
-): Task | null {
-	const { plantings } = getSchedule(when);
+): Promise<Task | null> {
+	const { plantings } = await getSchedule(when);
 	const entry = plantings.find((p) => p.context.plantingId === plantingId);
 	if (!entry) return null;
 
@@ -188,11 +201,11 @@ export function findOccurrence(
 }
 
 /** The harvest seasons open for one plant right now. */
-export function openSeasonsFor(
+export async function openSeasonsFor(
 	plantingId: number,
 	when: IsoDate = todayInGarden(),
-): HarvestSeason[] {
-	return getSchedule(when).harvesting.filter(
+): Promise<HarvestSeason[]> {
+	return (await getSchedule(when)).harvesting.filter(
 		(h) => h.context.plantingId === plantingId,
 	);
 }
@@ -211,8 +224,10 @@ export type Dashboard = {
 	recentlyDone: Task[];
 };
 
-export function getDashboard(when: IsoDate = todayInGarden()): Dashboard {
-	const { tasks, harvesting } = getSchedule(when);
+export async function getDashboard(
+	when: IsoDate = todayInGarden(),
+): Promise<Dashboard> {
+	const { tasks, harvesting } = await getSchedule(when);
 	const overdueFloor = shiftIso(when, -OVERDUE_LOOKBACK_DAYS);
 	const doneFloor = shiftIso(when, -RECENT_DONE_DAYS);
 

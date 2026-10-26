@@ -46,36 +46,43 @@ export type PlantDetail = {
 	 * The plant's own rules, shown when nothing of it is in the ground - a crop
 	 * waiting for its season still has a schedule worth reading.
 	 */
-	templateRules: ReturnType<typeof getEditableRules>;
+	templateRules: Awaited<ReturnType<typeof getEditableRules>>;
 };
 
-export function getPlant(
+export async function getPlant(
 	slug: string,
 	when: IsoDate = todayInGarden(),
-): PlantDetail | null {
-	const row = db.select().from(plantType).where(eq(plantType.slug, slug)).get();
+): Promise<PlantDetail | null> {
+	const row = await db
+		.select()
+		.from(plantType)
+		.where(eq(plantType.slug, slug))
+		.get();
 	if (!row) return null;
 
 	// The schedule already resolves overrides and environment shifts for every
 	// planting; picking this plant's out of it keeps one code path.
-	const schedule = getSchedule(when);
+	const schedule = await getSchedule(when);
 
-	const plantings: PlantPlanting[] = schedule.plantings
-		.filter((p) => p.context.plantTypeId === row.id)
-		.map((p) => ({
-			plantingId: p.context.plantingId,
-			label: p.context.label,
-			environmentName: p.context.environment.name,
-			rules: [...p.rules].sort((a, b) => a.action.localeCompare(b.action)),
-			occurrences: [...p.occurrences].sort((a, b) =>
-				a.opensOn.localeCompare(b.opensOn),
-			),
-			openSeasons: schedule.harvesting.filter(
-				(h) => h.context.plantingId === p.context.plantingId,
-			),
-			history: getHistory(p.context.plantingId),
-		}))
-		.sort((a, b) => a.label.localeCompare(b.label));
+	const plantings: PlantPlanting[] = (
+		await Promise.all(
+			schedule.plantings
+				.filter((p) => p.context.plantTypeId === row.id)
+				.map(async (p) => ({
+					plantingId: p.context.plantingId,
+					label: p.context.label,
+					environmentName: p.context.environment.name,
+					rules: [...p.rules].sort((a, b) => a.action.localeCompare(b.action)),
+					occurrences: [...p.occurrences].sort((a, b) =>
+						a.opensOn.localeCompare(b.opensOn),
+					),
+					openSeasons: schedule.harvesting.filter(
+						(h) => h.context.plantingId === p.context.plantingId,
+					),
+					history: await getHistory(p.context.plantingId),
+				})),
+		)
+	).sort((a, b) => a.label.localeCompare(b.label));
 
 	return {
 		id: row.id,
@@ -89,13 +96,13 @@ export function getPlant(
 		needsReview: row.needsReview,
 		sourceRef: row.sourceRef,
 		plantings,
-		templateRules: getEditableRules(row.id),
+		templateRules: await getEditableRules(row.id),
 	};
 }
 
 /** Everything written down against one plant, newest first. */
-export function getHistory(plantingId: number): HistoryEntry[] {
-	return db
+export async function getHistory(plantingId: number): Promise<HistoryEntry[]> {
+	return await db
 		.select({
 			id: careLog.id,
 			action: careLog.action,
@@ -117,8 +124,8 @@ export function getHistory(plantingId: number): HistoryEntry[] {
  * Unlike the schedule's view these are unshifted and unresolved - the editor
  * edits what is written down, not what a particular environment makes of it.
  */
-export function getEditableRules(plantTypeId: number) {
-	const rows = db
+export async function getEditableRules(plantTypeId: number) {
+	const rows = await db
 		.select({
 			id: careRule.id,
 			action: careRule.action,
@@ -168,17 +175,18 @@ export function getEditableRules(plantTypeId: number) {
 }
 
 /** Whether a rule for this action has been deliberately removed. */
-export function getRemovedActions(plantTypeId: number): string[] {
-	return db
-		.select({ action: careRule.action })
-		.from(careRule)
-		.where(and(eq(careRule.plantTypeId, plantTypeId), eq(careRule.active, false)))
-		.all()
-		.map((r) => r.action);
+export async function getRemovedActions(plantTypeId: number): Promise<string[]> {
+	return (
+		await db
+			.select({ action: careRule.action })
+			.from(careRule)
+			.where(and(eq(careRule.plantTypeId, plantTypeId), eq(careRule.active, false)))
+			.all()
+	).map((r) => r.action);
 }
 
-export function listEnvironments() {
-	return db
+export async function listEnvironments() {
+	return await db
 		.select()
 		.from(environment)
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
@@ -192,8 +200,8 @@ export function listEnvironments() {
  * cannot say whether it is describing the world or your garden, which is
  * exactly how it used to read.
  */
-export function listPlants() {
-	return db
+export async function listPlants() {
+	return await db
 		.select({
 			id: plantType.id,
 			slug: plantType.slug,
@@ -215,8 +223,8 @@ export function listPlants() {
 		.all();
 }
 
-export function getPlantings(plantTypeId: number) {
-	return db
+export async function getPlantings(plantTypeId: number) {
+	return await db
 		.select({
 			id: planting.id,
 			label: planting.label,

@@ -52,7 +52,7 @@ export async function completeTask(
 	}
 
 	const { plantingId, ruleId, occurrenceKey, completedOn, notes } = parsed.data;
-	const task = findOccurrence(plantingId, ruleId, occurrenceKey);
+	const task = await findOccurrence(plantingId, ruleId, occurrenceKey);
 	if (!task) {
 		return {
 			ok: false,
@@ -60,26 +60,27 @@ export async function completeTask(
 		};
 	}
 
-	try {
-		db.insert(careLog)
-			.values({
-				plantingId,
-				// Always the representative rule. The engine treats any member of
-				// a set of alternatives as satisfying the whole set.
-				careRuleId: task.occurrence.rule.id,
-				action: task.occurrence.rule.action,
-				seasonYear: task.occurrence.seasonYear,
-				occurrenceKey,
-				completedOn,
-				notesMd: notes || null,
-			})
-			.run();
-	} catch (error) {
-		// The unique index means this is almost always a double submit.
-		if (String(error).includes('UNIQUE')) {
-			return { ok: false, error: 'That one is already marked done.' };
-		}
-		throw error;
+	const written = await db
+		.insert(careLog)
+		.values({
+			plantingId,
+			// Always the representative rule. The engine treats any member of
+			// a set of alternatives as satisfying the whole set.
+			careRuleId: task.occurrence.rule.id,
+			action: task.occurrence.rule.action,
+			seasonYear: task.occurrence.seasonYear,
+			occurrenceKey,
+			completedOn,
+			notesMd: notes || null,
+		})
+		// The unique index on the occurrence means a clash is almost always a
+		// double submit. Asked for in the statement rather than read out of an
+		// error message, which the driver is free to word however it likes.
+		.onConflictDoNothing()
+		.returning({ id: careLog.id })
+		.get();
+	if (!written) {
+		return { ok: false, error: 'That one is already marked done.' };
 	}
 
 	refresh(task.context.plantSlug);
@@ -115,14 +116,15 @@ export async function logHarvest(
 	}
 
 	const { plantingId, ruleId, completedOn, quantityNote, notes } = parsed.data;
-	const season = openSeasonsFor(plantingId).find((s) =>
+	const season = (await openSeasonsFor(plantingId)).find((s) =>
 		s.rule.ruleIds.includes(ruleId),
 	);
 	if (!season) {
 		return { ok: false, error: 'Nothing is in season on that plant.' };
 	}
 
-	db.insert(careLog)
+	await db
+		.insert(careLog)
 		.values({
 			plantingId,
 			careRuleId: season.rule.id,
@@ -156,7 +158,7 @@ export async function undoCompletion(
 		return { ok: false, error: 'Nothing to undo.' };
 	}
 
-	db.delete(careLog).where(eq(careLog.id, parsed.data.logId)).run();
+	await db.delete(careLog).where(eq(careLog.id, parsed.data.logId)).run();
 	refresh(parsed.data.slug);
 	return { ok: true };
 }

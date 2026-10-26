@@ -40,7 +40,7 @@ export type CommitResult =
 	| { ok: false; error: string };
 
 async function knownPlantings(): Promise<KnownPlanting[]> {
-	return db
+	return await db
 		.select({
 			id: planting.id,
 			label: planting.label,
@@ -121,12 +121,12 @@ const commitSchema = z.object({
  * The lookback is the same ninety days the dashboard uses, so a sentence can
  * only answer a job the dashboard would still be nagging about.
  */
-function matchOccurrence(
+async function matchOccurrence(
 	plantingId: number,
 	action: string,
 	on: IsoDate,
-): { key: string; ruleId: number; seasonYear: number } | null {
-	const entry = getSchedule(on).plantings.find(
+): Promise<{ key: string; ruleId: number; seasonYear: number } | null> {
+	const entry = (await getSchedule(on)).plantings.find(
 		(p) => p.context.plantingId === plantingId,
 	);
 	if (!entry) return null;
@@ -173,14 +173,14 @@ export async function commitLog(
 
 	let written = 0;
 	for (const entry of parsed.entries) {
-		const exists = db
+		const exists = await db
 			.select({ id: planting.id })
 			.from(planting)
 			.where(eq(planting.id, entry.plantingId))
 			.get();
 		if (!exists) continue;
 
-		const match = matchOccurrence(
+		const match = await matchOccurrence(
 			entry.plantingId,
 			entry.action,
 			entry.completedOn,
@@ -191,7 +191,7 @@ export async function commitLog(
 		// the exception: two kilos this morning and one more this afternoon are
 		// genuinely two pickings, and the whole point of an ad-hoc record.
 		if (entry.action !== 'harvest') {
-			const already = db
+			const already = await db
 				.select({ id: careLog.id })
 				.from(careLog)
 				.where(
@@ -205,24 +205,23 @@ export async function commitLog(
 			if (already) continue;
 		}
 
-		try {
-			db.insert(careLog)
-				.values({
-					plantingId: entry.plantingId,
-					careRuleId: match?.ruleId ?? null,
-					action: entry.action,
-					seasonYear: match?.seasonYear ?? yearOf(entry.completedOn),
-					occurrenceKey: match?.key ?? null,
-					completedOn: entry.completedOn,
-					quantityNote: entry.quantity || null,
-					notesMd: entry.note || null,
-				})
-				.run();
-			written++;
-		} catch (error) {
+		const inserted = await db
+			.insert(careLog)
+			.values({
+				plantingId: entry.plantingId,
+				careRuleId: match?.ruleId ?? null,
+				action: entry.action,
+				seasonYear: match?.seasonYear ?? yearOf(entry.completedOn),
+				occurrenceKey: match?.key ?? null,
+				completedOn: entry.completedOn,
+				quantityNote: entry.quantity || null,
+				notesMd: entry.note || null,
+			})
 			// Already ticked off. Not worth stopping the rest of the sentence for.
-			if (!String(error).includes('UNIQUE')) throw error;
-		}
+			.onConflictDoNothing()
+			.returning({ id: careLog.id })
+			.get();
+		if (inserted) written++;
 	}
 
 	revalidatePath('/now');

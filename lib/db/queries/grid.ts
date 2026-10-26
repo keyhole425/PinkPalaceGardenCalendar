@@ -69,8 +69,8 @@ export function noteSummary(notes: string | null): string | null {
 	return `${flat.slice(0, cut === -1 ? 120 : cut).trim()}\u2026`;
 }
 
-export function getGrid(): GridPlant[] {
-	const plants = db
+export async function getGrid(): Promise<GridPlant[]> {
+	const plants = await db
 		.select({
 			id: plantType.id,
 			slug: plantType.slug,
@@ -83,7 +83,7 @@ export function getGrid(): GridPlant[] {
 		.orderBy(asc(plantType.id))
 		.all();
 
-	const rules = db
+	const rules = await db
 		.select({
 			id: careRule.id,
 			plantTypeId: careRule.plantTypeId,
@@ -148,10 +148,10 @@ export function getGrid(): GridPlant[] {
  */
 export type CellMark = { done: number; total: number };
 
-export function getGridMarks(
+export async function getGridMarks(
 	when: IsoDate = todayInGarden(),
-): Map<string, CellMark> {
-	const { plantings } = getSchedule(when);
+): Promise<Map<string, CellMark>> {
+	const { plantings } = await getSchedule(when);
 	const marks = new Map<string, CellMark>();
 
 	// Only the last twelve months count, so the grid shows this year round,

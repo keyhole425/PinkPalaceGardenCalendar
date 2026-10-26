@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import { count } from 'drizzle-orm';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -7,32 +7,30 @@ import { Frame } from '@/components/ui/Frame';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { aiAvailable, MODEL } from '@/lib/ai/client';
 import { listProposals, totalSpendCents } from '@/lib/ai/proposals';
-import { db, dbPath } from '@/lib/db/client';
+import { db, dbUrl, describeDbUrl } from '@/lib/db/client';
 import { careLog, careRule, meta, planting, plantType } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
 
-function sizeOnDisk(): string {
-	try {
-		const bytes = fs.statSync(dbPath).size;
-		return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-	} catch {
-		return 'not found';
-	}
-}
-
 export default async function SettingsPage() {
+	// Counted in the database rather than by fetching every row: the log only
+	// grows, and every row would otherwise cross the network to be counted.
+	const [[plants], [plantings], [rules], [log]] = await Promise.all(
+		[plantType, planting, careRule, careLog].map((table) =>
+			db.select({ n: count() }).from(table).all(),
+		),
+	);
 	const counts = {
-		plants: db.select().from(plantType).all().length,
-		plantings: db.select().from(planting).all().length,
-		rules: db.select().from(careRule).all().length,
-		log: db.select().from(careLog).all().length,
+		plants: plants?.n ?? 0,
+		plantings: plantings?.n ?? 0,
+		rules: rules?.n ?? 0,
+		log: log?.n ?? 0,
 	};
-	const metaRows = db.select().from(meta).all();
+	const metaRows = await db.select().from(meta).all();
 	const seedVersion =
 		metaRows.find((m) => m.key === 'seed_version')?.value ?? 'unknown';
-	const spend = totalSpendCents();
-	const proposals = listProposals(10);
+	const spend = await totalSpendCents();
+	const proposals = await listProposals(10);
 
 	return (
 		<Frame width="list">
@@ -41,10 +39,8 @@ export default async function SettingsPage() {
 			<div className="space-y-rhythm">
 				<Card title="The database">
 					<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm tabular-nums">
-						<dt className="text-ink-soft">File</dt>
-						<dd className="break-all font-mono text-xs">{dbPath}</dd>
-						<dt className="text-ink-soft">Size</dt>
-						<dd>{sizeOnDisk()}</dd>
+						<dt className="text-ink-soft">Where</dt>
+						<dd className="break-all font-mono text-xs">{describeDbUrl(dbUrl)}</dd>
 						<dt className="text-ink-soft">Plants</dt>
 						<dd>{counts.plants}</dd>
 						<dt className="text-ink-soft">Growing</dt>

@@ -53,52 +53,53 @@ function readyRange(
 	return { from: plusDays(sownOn, min), to: plusDays(sownOn, max ?? min) };
 }
 
-function loadOccupants(environmentId: number): BedOccupant[] {
-	return db
-		.select({
-			plantingId: planting.id,
-			label: planting.label,
-			plantSlug: plantType.slug,
-			plantName: plantType.commonName,
-			family: plantType.family,
-			posX: planting.posX,
-			posY: planting.posY,
-			sownOn: planting.sownOn,
-			plantedOn: planting.plantedOn,
-			status: planting.status,
-			min: plantType.daysToMaturityMin,
-			max: plantType.daysToMaturityMax,
-		})
-		.from(planting)
-		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
-		.where(
-			and(
-				eq(planting.environmentId, environmentId),
-				ne(planting.status, 'removed'),
-			),
-		)
-		.orderBy(asc(planting.posY), asc(planting.posX), asc(planting.id))
-		.all()
-		.map((row) => {
-			const ready = readyRange(row.sownOn, row.min, row.max);
-			return {
-				plantingId: row.plantingId,
-				label: row.label,
-				plantSlug: row.plantSlug,
-				plantName: row.plantName,
-				family: row.family,
-				posX: row.posX,
-				posY: row.posY,
-				sownOn: row.sownOn,
-				plantedOn: row.plantedOn,
-				status: row.status,
-				readyFrom: ready.from,
-				readyTo: ready.to,
-			};
-		});
+async function loadOccupants(environmentId: number): Promise<BedOccupant[]> {
+	return (
+		await db
+			.select({
+				plantingId: planting.id,
+				label: planting.label,
+				plantSlug: plantType.slug,
+				plantName: plantType.commonName,
+				family: plantType.family,
+				posX: planting.posX,
+				posY: planting.posY,
+				sownOn: planting.sownOn,
+				plantedOn: planting.plantedOn,
+				status: planting.status,
+				min: plantType.daysToMaturityMin,
+				max: plantType.daysToMaturityMax,
+			})
+			.from(planting)
+			.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
+			.where(
+				and(
+					eq(planting.environmentId, environmentId),
+					ne(planting.status, 'removed'),
+				),
+			)
+			.orderBy(asc(planting.posY), asc(planting.posX), asc(planting.id))
+			.all()
+	).map((row) => {
+		const ready = readyRange(row.sownOn, row.min, row.max);
+		return {
+			plantingId: row.plantingId,
+			label: row.label,
+			plantSlug: row.plantSlug,
+			plantName: row.plantName,
+			family: row.family,
+			posX: row.posX,
+			posY: row.posY,
+			sownOn: row.sownOn,
+			plantedOn: row.plantedOn,
+			status: row.status,
+			readyFrom: ready.from,
+			readyTo: ready.to,
+		};
+	});
 }
 
-function toBed(e: typeof environment.$inferSelect): Bed {
+async function toBed(e: typeof environment.$inferSelect): Promise<Bed> {
 	return {
 		id: e.id,
 		slug: e.slug,
@@ -112,19 +113,19 @@ function toBed(e: typeof environment.$inferSelect): Bed {
 		frostFree: e.frostFree,
 		windowShiftMonths: e.windowShiftMonths,
 		notes: e.notes,
-		occupants: loadOccupants(e.id),
+		occupants: await loadOccupants(e.id),
 	};
 }
 
 /** The places you sow into: everything but the orchard. */
-export function listBeds(): Bed[] {
-	return db
+export async function listBeds(): Promise<Bed[]> {
+	const rows = await db
 		.select()
 		.from(environment)
 		.where(ne(environment.kind, 'orchard'))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
-		.all()
-		.map(toBed);
+		.all();
+	return Promise.all(rows.map(toBed));
 }
 
 /**
@@ -134,20 +135,24 @@ export function listBeds(): Bed[] {
  * always said so. The app used to show them on two separate pages, which is
  * why it was unclear how Places and Beds related to each other.
  */
-export function listPlaces(): Bed[] {
-	return db
+export async function listPlaces(): Promise<Bed[]> {
+	const rows = await db
 		.select()
 		.from(environment)
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
-		.all()
-		.map(toBed);
+		.all();
+	return Promise.all(rows.map(toBed));
 }
 
 /** Any place by slug - the orchard included, which is why it is not filtered. */
-export function getBed(slug: string): Bed | null {
-	const e = db.select().from(environment).where(eq(environment.slug, slug)).get();
+export async function getBed(slug: string): Promise<Bed | null> {
+	const e = await db
+		.select()
+		.from(environment)
+		.where(eq(environment.slug, slug))
+		.get();
 	if (!e) return null;
-	return toBed(e);
+	return await toBed(e);
 }
 
 export type BedHistoryEntry = {
@@ -161,8 +166,10 @@ export type BedHistoryEntry = {
 };
 
 /** Everything that has grown here, newest first. */
-export function getBedHistory(environmentId: number): BedHistoryEntry[] {
-	return db
+export async function getBedHistory(
+	environmentId: number,
+): Promise<BedHistoryEntry[]> {
+	return await db
 		.select({
 			plantingId: planting.id,
 			label: planting.label,
@@ -193,15 +200,15 @@ export type RotationWarning = {
  * same diseases, so putting one back where its cousin just was is asking for
  * trouble. This looks back two years.
  */
-export function rotationWarningFor(
+export async function rotationWarningFor(
 	environmentId: number,
 	family: string | null,
 	when: IsoDate = todayInGarden(),
-): RotationWarning | null {
+): Promise<RotationWarning | null> {
 	if (!family) return null;
 	const floor = plusDays(when, -365 * ROTATION_YEARS);
 
-	const previous = db
+	const previous = await db
 		.select({
 			plantName: plantType.commonName,
 			family: plantType.family,
@@ -249,10 +256,12 @@ export type SowSuggestion = {
  * environment shift the engine does - which is why the hothouse shows up here
  * a month before the beds do.
  */
-export function sowableThisMonth(when: IsoDate = todayInGarden()): SowSuggestion[] {
+export async function sowableThisMonth(
+	when: IsoDate = todayInGarden(),
+): Promise<SowSuggestion[]> {
 	const month = Number(when.slice(5, 7));
 
-	const places = db
+	const places = await db
 		.select()
 		.from(environment)
 		.where(ne(environment.kind, 'orchard'))
@@ -260,7 +269,7 @@ export function sowableThisMonth(when: IsoDate = todayInGarden()): SowSuggestion
 		.all();
 	if (places.length === 0) return [];
 
-	const rules = db
+	const rules = await db
 		.select({
 			plantTypeId: plantType.id,
 			slug: plantType.slug,

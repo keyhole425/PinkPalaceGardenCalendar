@@ -19,11 +19,11 @@ export default async function ProposalPage({
 	params: Promise<{ id: string }>;
 }) {
 	const { id } = await params;
-	const stored = getProposal(Number(id));
+	const stored = await getProposal(Number(id));
 	if (!stored) notFound();
 
 	const currentMonth = monthOf(today()) as Month;
-	const environments = listEnvironments();
+	const environments = await listEnvironments();
 
 	return (
 		<Frame width="list">

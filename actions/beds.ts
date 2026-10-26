@@ -59,14 +59,14 @@ export async function sowInBed(
 
 	const { environmentId, plantTypeId, posX, posY } = parsed.data;
 
-	const plant = db
+	const plant = await db
 		.select()
 		.from(plantType)
 		.where(eq(plantType.id, plantTypeId))
 		.get();
 	if (!plant) return { ok: false, error: 'No such plant.' };
 
-	const place = db
+	const place = await db
 		.select({ slug: environment.slug })
 		.from(environment)
 		.where(eq(environment.id, environmentId))
@@ -76,11 +76,12 @@ export async function sowInBed(
 	// Rotation is advice about soil, not a rule about data, so it never
 	// refuses. The form says so before you press the button - which is the
 	// moment it is useful - and the reply records that it was said.
-	const rotation = rotationWarningFor(environmentId, plant.family);
+	const rotation = await rotationWarningFor(environmentId, plant.family);
 
 	const sownOn = parsed.data.sownOn || today();
 
-	db.insert(planting)
+	await db
+		.insert(planting)
 		.values({
 			plantTypeId,
 			environmentId,
@@ -117,7 +118,8 @@ export async function clearFromBed(
 	});
 	if (!parsed.success) return { ok: false, error: 'Nothing to clear.' };
 
-	db.update(planting)
+	await db
+		.update(planting)
 		.set({ status: 'removed', removedOn: today() })
 		.where(eq(planting.id, parsed.data.plantingId))
 		.run();

@@ -24,8 +24,7 @@ export default async function GridPage({
 	const { start } = await searchParams;
 	const startMonth: Month = start === '1' ? 1 : DEFAULT_START;
 	const currentMonth = monthOf(today());
-	const plants = getGrid();
-	const marks = getGridMarks(today());
+	const [plants, marks] = await Promise.all([getGrid(), getGridMarks(today())]);
 
 	return (
 		<Frame width="wide">

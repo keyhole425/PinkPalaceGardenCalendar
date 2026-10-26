@@ -26,40 +26,40 @@ const tools = [
 		name: 'list_plants',
 		description: 'Every plant figgy knows about, with its slug.',
 		inputSchema: askToolSchemas.list_plants,
-		run: async () => JSON.stringify(listPlants()),
+		run: async () => JSON.stringify(await listPlants()),
 	}),
 	betaZodTool({
 		name: 'whats_due',
 		description:
 			'What needs doing on a given date: overdue, due now, coming up, and what is in season.',
 		inputSchema: askToolSchemas.whats_due,
-		run: async ({ on }) => JSON.stringify(whatsDue(on)),
+		run: async ({ on }) => JSON.stringify(await whatsDue(on)),
 	}),
 	betaZodTool({
 		name: 'plant_schedule',
 		description: "One plant's care windows, notes, and where it is growing.",
 		inputSchema: askToolSchemas.plant_schedule,
-		run: async ({ slug }) => JSON.stringify(plantSchedule(slug)),
+		run: async ({ slug }) => JSON.stringify(await plantSchedule(slug)),
 	}),
 	betaZodTool({
 		name: 'plant_history',
 		description:
 			'Everything recorded against one plant: what was done, when, and how much was picked.',
 		inputSchema: askToolSchemas.plant_history,
-		run: async ({ slug, limit }) => JSON.stringify(plantHistory(slug, limit)),
+		run: async ({ slug, limit }) => JSON.stringify(await plantHistory(slug, limit)),
 	}),
 	betaZodTool({
 		name: 'list_beds',
 		description:
 			'The beds and the hothouse, what is in them, and when it should be ready.',
 		inputSchema: askToolSchemas.list_beds,
-		run: async () => JSON.stringify(beds()),
+		run: async () => JSON.stringify(await beds()),
 	}),
 	betaZodTool({
 		name: 'what_to_sow',
 		description: 'Which crops could go in the ground in a given month.',
 		inputSchema: askToolSchemas.what_to_sow,
-		run: async ({ on }) => JSON.stringify(whatToSow(on)),
+		run: async ({ on }) => JSON.stringify(await whatToSow(on)),
 	}),
 ];
 
@@ -67,7 +67,7 @@ export type AskAnswer = { answer: string; toolsUsed: string[] };
 
 export async function askGarden(question: string): Promise<AskAnswer> {
 	const client = anthropic();
-	const summary = gardenSummary();
+	const summary = await gardenSummary();
 
 	const runner = client.beta.messages.toolRunner({
 		model: MODEL,
@@ -124,7 +124,7 @@ export async function askGarden(question: string): Promise<AskAnswer> {
 	}
 
 	const final = await runner.done();
-	recordCall({ purpose: 'ask', usage: final.usage });
+	await recordCall({ purpose: 'ask', usage: final.usage });
 
 	const answer = final.content
 		.filter((block) => block.type === 'text')

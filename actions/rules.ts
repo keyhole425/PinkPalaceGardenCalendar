@@ -14,7 +14,8 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { db } from '@/lib/db/client';
+import { db, type Tx } from '@/lib/db/client';
+import { deleteRules } from '@/lib/db/rules';
 import { CADENCES, CARE_ACTIONS, careRule, plantType } from '@/lib/db/schema';
 import { maskFromMonths } from '@/lib/schedule/months';
 
@@ -67,12 +68,13 @@ function refresh(slug?: string) {
 	}
 }
 
-function slugFor(plantTypeId: number): string | undefined {
-	return db
+async function slugFor(plantTypeId: number): Promise<string | undefined> {
+	const row = await db
 		.select({ slug: plantType.slug })
 		.from(plantType)
 		.where(eq(plantType.id, plantTypeId))
-		.get()?.slug;
+		.get();
+	return row?.slug;
 }
 
 /**
@@ -85,8 +87,14 @@ function slugFor(plantTypeId: number): string | undefined {
  * source and its reference back to the spreadsheet; it is simply no longer the
  * seed's to remove.
  */
-function adoptRemaining(plantTypeId: number, action: string, when: string) {
-	db.update(careRule)
+async function adoptRemaining(
+	tx: Tx,
+	plantTypeId: number,
+	action: string,
+	when: string,
+) {
+	await tx
+		.update(careRule)
 		.set({ userModifiedAt: when })
 		.where(
 			and(
@@ -132,16 +140,8 @@ export async function saveRule(
 	const cadence = alternatives ? 'once_in_window' : parsed.data.cadence;
 	const now = new Date().toISOString();
 
-	const slug = slugFor(plantTypeId);
+	const slug = await slugFor(plantTypeId);
 	if (!slug) return { ok: false, error: 'No such plant.' };
-
-	if (replacing.length > 0) {
-		db.delete(careRule)
-			.where(
-				and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
-			)
-			.run();
-	}
 
 	const common = {
 		plantTypeId,
@@ -154,20 +154,29 @@ export async function saveRule(
 		active: true,
 	};
 
-	if (alternatives) {
-		const altGroup = `${slug}:${action}:${Date.now()}`;
-		for (const month of months) {
-			db.insert(careRule)
-				.values({ ...common, monthMask: maskFromMonths([month]), altGroup })
-				.run();
-		}
-	} else {
-		db.insert(careRule)
-			.values({ ...common, monthMask: maskFromMonths(months), altGroup: null })
-			.run();
-	}
+	const altGroup = alternatives ? `${slug}:${action}:${Date.now()}` : null;
+	// One row per month for a set of alternatives, one row for the whole window
+	// otherwise. Either way a single insert.
+	const rows = alternatives
+		? months.map((month) => ({
+				...common,
+				monthMask: maskFromMonths([month]),
+				altGroup,
+			}))
+		: [{ ...common, monthMask: maskFromMonths(months), altGroup }];
 
-	adoptRemaining(plantTypeId, action, now);
+	// Replacing a group is delete-then-insert. Together or not at all, or a
+	// failure in between would lose the rule outright.
+	await db.transaction(async (tx) => {
+		if (replacing.length > 0) {
+			await deleteRules(
+				tx,
+				and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
+			);
+		}
+		await tx.insert(careRule).values(rows).run();
+		await adoptRemaining(tx, plantTypeId, action, now);
+	});
 	refresh(slug);
 	return { ok: true };
 }
@@ -190,32 +199,34 @@ export async function deleteRule(
 	if (!parsed.success) return { ok: false, error: 'Nothing to remove.' };
 
 	const { plantTypeId, replacing, action } = parsed.data;
-	const slug = slugFor(plantTypeId);
+	const slug = await slugFor(plantTypeId);
 	if (!slug) return { ok: false, error: 'No such plant.' };
-
-	db.delete(careRule)
-		.where(
-			and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
-		)
-		.run();
 
 	const now = new Date().toISOString();
 
-	// The tombstone. Without it the next re-seed would put this rule back.
-	db.insert(careRule)
-		.values({
-			plantTypeId,
-			action,
-			monthMask: 0,
-			cadence: 'once_in_window',
-			active: false,
-			source: 'user',
-			userModifiedAt: now,
-			note: 'Removed by hand.',
-		})
-		.run();
+	await db.transaction(async (tx) => {
+		await deleteRules(
+			tx,
+			and(eq(careRule.plantTypeId, plantTypeId), inArray(careRule.id, replacing)),
+		);
 
-	adoptRemaining(plantTypeId, action, now);
+		// The tombstone. Without it the next re-seed would put this rule back.
+		await tx
+			.insert(careRule)
+			.values({
+				plantTypeId,
+				action,
+				monthMask: 0,
+				cadence: 'once_in_window',
+				active: false,
+				source: 'user',
+				userModifiedAt: now,
+				note: 'Removed by hand.',
+			})
+			.run();
+
+		await adoptRemaining(tx, plantTypeId, action, now);
+	});
 	refresh(slug);
 	return { ok: true };
 }

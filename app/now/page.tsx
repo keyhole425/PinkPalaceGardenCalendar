@@ -20,9 +20,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function NowPage() {
 	const when = today();
-	const board = getDashboard(when);
-	const toSow = sowableThisMonth(when);
-	const forecast = await getForecast(when);
+	// Independent, so asked for together: the forecast may be a network call
+	// to the Bureau, and the other two are round trips to the database.
+	const [board, toSow, forecast] = await Promise.all([
+		getDashboard(when),
+		sowableThisMonth(when),
+		getForecast(when),
+	]);
 
 	const taskKey = (t: (typeof board.overdue)[number]) =>
 		`${t.context.plantingId}-${t.occurrence.rule.id}-${t.occurrence.key}`;

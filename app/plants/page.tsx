@@ -10,7 +10,7 @@ import { listPlants } from '@/lib/db/queries/plant';
 
 export const dynamic = 'force-dynamic';
 
-type Plant = ReturnType<typeof listPlants>[number];
+type Plant = Awaited<ReturnType<typeof listPlants>>[number];
 
 /** The order they are worth reading in, not alphabetical by label. */
 const CATEGORIES = [
@@ -21,7 +21,7 @@ const CATEGORIES = [
 ] as const;
 
 export default async function PlantsPage() {
-	const plants = listPlants();
+	const plants = await listPlants();
 
 	const byCategory = CATEGORIES.map(([key, label]) => ({
 		key,

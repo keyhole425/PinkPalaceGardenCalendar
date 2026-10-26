@@ -116,7 +116,7 @@ export async function parseLogSentence(
 		output_config: { format: zodOutputFormat(parsedLogSchema) },
 	});
 
-	recordCall({ purpose: 'parse-log', usage: response.usage });
+	await recordCall({ purpose: 'parse-log', usage: response.usage });
 
 	const parsed = response.parsed_output;
 	if (!parsed) {

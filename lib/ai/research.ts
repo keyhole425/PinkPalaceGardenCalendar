@@ -111,7 +111,7 @@ export async function research(
 			messages,
 		});
 
-		recordCall({
+		await recordCall({
 			proposalId,
 			purpose: 'research',
 			usage: response.usage,
@@ -208,7 +208,7 @@ export async function structure(
 		output_config: { format: zodOutputFormat(plantProposalSchema) },
 	});
 
-	recordCall({ proposalId, purpose: 'structure', usage: response.usage });
+	await recordCall({ proposalId, purpose: 'structure', usage: response.usage });
 
 	const parsed = response.parsed_output;
 	if (!parsed) {

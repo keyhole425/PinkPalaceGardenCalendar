@@ -18,6 +18,11 @@ npm run db:seed      # loads the orchard
 npm run dev          # http://localhost:3000
 ```
 
+The database is libSQL: a local SQLite file at `data/garden.db` by default, or
+Turso when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set. Every query is
+async, and nothing relies on a foreign-key cascade, because a hosted
+connection may not enforce one.
+
 ## How the schedule is stored
 
 A care window is a **12-bit month mask** — bit `m-1` set means month `m`. The

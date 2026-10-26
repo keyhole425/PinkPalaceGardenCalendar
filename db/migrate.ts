@@ -1,23 +1,20 @@
 /**
  * Applies any pending migrations from db/migrations, creating the database
- * file and its directory if this is the first run.
+ * file and its directory if this is a local first run.
+ *
+ * Run deliberately - by hand or from CI - never on a cold start: a hosted
+ * function that migrates on boot races every other instance doing the same.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { migrate } from 'drizzle-orm/libsql/migrator';
+import { db, dbUrl, describeDbUrl } from '@/lib/db/client';
 
-const file =
-	process.env.GARDEN_DB_PATH ?? path.join(process.cwd(), 'data', 'garden.db');
+async function main() {
+	await migrate(db, { migrationsFolder: './db/migrations' });
+	db.$client.close();
+	console.log(`figgy: migrations applied to ${describeDbUrl(dbUrl)}`);
+}
 
-fs.mkdirSync(path.dirname(file), { recursive: true });
-
-const sqlite = new Database(file);
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
-
-migrate(drizzle(sqlite), { migrationsFolder: './db/migrations' });
-sqlite.close();
-
-console.log(`figgy: migrations applied to ${file}`);
+main().catch((error) => {
+	console.error('figgy: migration failed:', error);
+	process.exit(1);
+});

@@ -24,7 +24,7 @@ function hasPlan(place: Bed): boolean {
 }
 
 export default async function GardenPage() {
-	const places = listPlaces();
+	const places = await listPlaces();
 
 	return (
 		<Frame width="page">
