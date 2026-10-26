@@ -106,6 +106,10 @@ voice - never a blank space, never "No items". An empty slot that you could
 fill should **offer to fill it** ("Sow something") rather than saying "empty"
 eight times. See [voice.md](voice.md#empty-states).
 
+The exception is a list that only matters when it has something in it:
+**Overdue** and **Recently done** on `/now` are left out entirely when empty,
+rather than saying so every visit.
+
 ## Talking to the user: Callout, Badge, inline text
 
 | Need | Use |

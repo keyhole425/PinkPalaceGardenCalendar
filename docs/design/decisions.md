@@ -50,6 +50,17 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-26 - Overdue only when something is
+**Context:** `/now` opened with an alert-toned Overdue list even when it was
+empty, so the first thing read on most visits was "Nothing missed in the last
+three months."
+**Decision:** Overdue is left out when empty, the way Recently done already
+was. The tour's `board` anchor moved to wrap Overdue and Due now together, so
+it always has something to point at.
+**Cost:** no positive "nothing missed" reassurance; an absent list has to say
+it by not being there. The empty-state rule in [patterns.md](patterns.md)
+now names this exception.
+
 ### 2026-10-26 - a first-run tour you can say no to
 **Context:** people arriving from an invite have never seen figgy, and the
 person who starts a garden has setting up to do that nobody else does.

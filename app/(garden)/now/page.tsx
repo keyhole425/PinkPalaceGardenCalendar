@@ -60,30 +60,41 @@ export default async function NowPage() {
 						<LogSentence available={ai} canAddKey={role === 'admin'} today={when} />
 					</div>
 
-					<div data-tour="board">
+					{/*
+					 * The tour points here, so it wraps both lists: Overdue comes
+					 * and goes, Due now is always there.
+					 */}
+					<div className="space-y-rhythm" data-tour="board">
+						{/*
+						 * Only when something has slipped. An empty alert-toned list
+						 * at the top of the page, every visit, was the first thing
+						 * read and said nothing.
+						 */}
+						{board.overdue.length > 0 && (
+							<Section
+								title="Overdue"
+								count={board.overdue.length}
+								tone="alert"
+								empty=""
+								max={8}
+							>
+								{board.overdue.map((task) => (
+									<TaskCard key={taskKey(task)} task={task} today={when} />
+								))}
+							</Section>
+						)}
+
 						<Section
-							title="Overdue"
-							count={board.overdue.length}
-							tone="alert"
-							empty="Nothing missed in the last three months."
+							title="Due now"
+							count={board.due.length}
+							empty="Nothing needs doing today."
 							max={8}
 						>
-							{board.overdue.map((task) => (
+							{board.due.map((task) => (
 								<TaskCard key={taskKey(task)} task={task} today={when} />
 							))}
 						</Section>
 					</div>
-
-					<Section
-						title="Due now"
-						count={board.due.length}
-						empty="Nothing needs doing today."
-						max={8}
-					>
-						{board.due.map((task) => (
-							<TaskCard key={taskKey(task)} task={task} today={when} />
-						))}
-					</Section>
 
 					{/*
 					 * The two longest lists on the page, and neither is something
