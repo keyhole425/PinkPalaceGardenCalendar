@@ -17,6 +17,21 @@ function safeNext(next: string | undefined): string {
 }
 
 /**
+ * Only a 401 means the password was wrong. A 403 is Better Auth refusing the
+ * address the page was opened on (it is not BETTER_AUTH_URL), before any
+ * password is looked at - calling that a mismatch sends someone off to reset
+ * a password that was right all along.
+ */
+function problem(status: number): string {
+	if (status === 401) return 'That email and password do not match.';
+	if (status === 429) return 'Too many tries. Wait a minute, then try again.';
+	if (status === 403) {
+		return 'figgy won’t sign you in from this address, so your password wasn’t checked. Open figgy from its usual address and try again.';
+	}
+	return 'That didn’t work - figgy couldn’t check your password just now. Try again in a moment.';
+}
+
+/**
  * Posts to Better Auth's endpoint rather than through a server action,
  * because the endpoint is where five wrong passwords in a minute get stopped.
  */
@@ -34,11 +49,7 @@ export function LoginForm({ next }: { next?: string }) {
 		});
 		setPending(false);
 		if (failed) {
-			setError(
-				failed.status === 429
-					? 'Too many tries. Wait a minute, then try again.'
-					: 'That email and password do not match.',
-			);
+			setError(problem(failed.status));
 			return;
 		}
 		router.replace(safeNext(next));
