@@ -197,3 +197,14 @@ body {
 	outline: 2px solid var(--color-focus);
 	outline-offset: 2px;
 }
+
+/*
+ * The tour's pointer: the marker ring, round whatever the tour is talking
+ * about. Palace-500 is already the marker (the ring round the current month),
+ * and an outline rather than a shadow keeps rule 1.
+ */
+[data-tour-active] {
+	outline: 3px solid var(--color-palace-500);
+	outline-offset: 4px;
+	border-radius: var(--radius-md);
+}

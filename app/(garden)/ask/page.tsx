@@ -19,7 +19,9 @@ export default async function AskPage() {
 				description="Questions about your own records &mdash; what you grew, what you
 					did, and what is due. Claude can read the garden but not change it."
 			/>
-			<AskGarden available={ai} canAddKey={role === 'admin'} />
+			<div data-tour="ask">
+				<AskGarden available={ai} canAddKey={role === 'admin'} />
+			</div>
 		</Frame>
 	);
 }

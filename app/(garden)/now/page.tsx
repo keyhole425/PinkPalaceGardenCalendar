@@ -56,21 +56,23 @@ export default async function NowPage() {
 			<div className="grid items-start gap-x-10 gap-y-rhythm lg:grid-cols-[minmax(0,1fr)_20rem]">
 				{/* What you have to do. */}
 				<div className="space-y-rhythm">
-					<div className="max-w-measure">
+					<div className="max-w-measure" data-tour="log-sentence">
 						<LogSentence available={ai} canAddKey={role === 'admin'} today={when} />
 					</div>
 
-					<Section
-						title="Overdue"
-						count={board.overdue.length}
-						tone="alert"
-						empty="Nothing missed in the last three months."
-						max={8}
-					>
-						{board.overdue.map((task) => (
-							<TaskCard key={taskKey(task)} task={task} today={when} />
-						))}
-					</Section>
+					<div data-tour="board">
+						<Section
+							title="Overdue"
+							count={board.overdue.length}
+							tone="alert"
+							empty="Nothing missed in the last three months."
+							max={8}
+						>
+							{board.overdue.map((task) => (
+								<TaskCard key={taskKey(task)} task={task} today={when} />
+							))}
+						</Section>
+					</div>
 
 					<Section
 						title="Due now"
@@ -123,11 +125,13 @@ export default async function NowPage() {
 				{/* What is worth knowing while you do it. */}
 				<aside className="space-y-rhythm">
 					{forecast && (
-						<WeatherStrip
-							forecast={forecast}
-							signals={signalsFrom(forecast)}
-							today={when}
-						/>
+						<div data-tour="weather">
+							<WeatherStrip
+								forecast={forecast}
+								signals={signalsFrom(forecast)}
+								today={when}
+							/>
+						</div>
 					)}
 
 					<Card title="Harvesting now" count={board.harvesting.length}>

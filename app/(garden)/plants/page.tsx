@@ -46,7 +46,11 @@ export default async function PlantsPage() {
 						.
 					</>
 				}
-				actions={<ButtonLink href="/plants/new">Add a plant</ButtonLink>}
+				actions={
+					<span data-tour="plants" className="inline-block">
+						<ButtonLink href="/plants/new">Add a plant</ButtonLink>
+					</span>
+				}
 			/>
 
 			<div className="space-y-rhythm">

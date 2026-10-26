@@ -11,6 +11,7 @@ import {
 	setMemberRole,
 	withdrawInvite,
 } from '@/actions/household';
+import { restartTours } from '@/actions/tour';
 import { Button } from '@/components/ui/Button';
 import { Field, inputClass, selectClass } from '@/components/ui/Field';
 
@@ -179,6 +180,26 @@ export function SignOutButton() {
 		<form action={signOut}>
 			<Button type="submit" variant="quiet">
 				Sign out
+			</Button>
+		</form>
+	);
+}
+
+/** Clears where you got to, so the welcome offer appears again. */
+export function TakeTheTourAgain() {
+	return (
+		<form
+			action={async () => {
+				try {
+					sessionStorage.removeItem('figgy.tour.snoozed');
+				} catch {
+					// Nothing stored, or nowhere to store it.
+				}
+				await restartTours();
+			}}
+		>
+			<Button type="submit" variant="quiet">
+				Take the tour again
 			</Button>
 		</form>
 	);

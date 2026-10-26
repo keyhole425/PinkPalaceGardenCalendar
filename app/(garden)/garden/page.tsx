@@ -37,30 +37,32 @@ export default async function GardenPage() {
 					match, so the same tomato is sowable earlier inside than out."
 			/>
 
-			{places.length === 0 ? (
-				<EmptyState>No places yet. Add one below.</EmptyState>
-			) : (
-				/*
-				 * A bed is a small square plan and pairs up neatly; the orchard is
-				 * a list of a dozen trees and would leave its neighbour stranded
-				 * beside a column of whitespace. So the plans go two-up and the
-				 * lists take the full width.
-				 */
-				<div className="space-y-rhythm">
-					{places
-						.filter((p) => !hasPlan(p))
-						.map((place) => (
-							<Place key={place.id} place={place} />
-						))}
-					<div className="grid gap-x-8 gap-y-rhythm md:grid-cols-2">
-						{places.filter(hasPlan).map((place) => (
-							<Place key={place.id} place={place} />
-						))}
+			<div data-tour="places">
+				{places.length === 0 ? (
+					<EmptyState>No places yet. Add one below.</EmptyState>
+				) : (
+					/*
+					 * A bed is a small square plan and pairs up neatly; the orchard is
+					 * a list of a dozen trees and would leave its neighbour stranded
+					 * beside a column of whitespace. So the plans go two-up and the
+					 * lists take the full width.
+					 */
+					<div className="space-y-rhythm">
+						{places
+							.filter((p) => !hasPlan(p))
+							.map((place) => (
+								<Place key={place.id} place={place} />
+							))}
+						<div className="grid gap-x-8 gap-y-rhythm md:grid-cols-2">
+							{places.filter(hasPlan).map((place) => (
+								<Place key={place.id} place={place} />
+							))}
+						</div>
 					</div>
-				</div>
-			)}
+				)}
+			</div>
 
-			<details className="mt-10">
+			<details className="mt-10" data-tour="add-place">
 				<summary className="inline-flex min-h-tap cursor-pointer list-none items-center font-semibold font-serif text-lg">
 					Add a place
 				</summary>

@@ -40,7 +40,7 @@ export default defineConfig({
 		{
 			// Each test here brings its own browser context, signed in or not.
 			name: 'getting in',
-			testMatch: /access\.spec\.ts/,
+			testMatch: /(access|tour)\.spec\.ts/,
 			dependencies: ['setup'],
 		},
 	],

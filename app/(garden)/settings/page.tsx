@@ -6,6 +6,7 @@ import {
 	MemberControls,
 	RenameHousehold,
 	SignOutButton,
+	TakeTheTourAgain,
 	WithdrawInvite,
 } from '@/components/settings/HouseholdForms';
 import { Badge } from '@/components/ui/Badge';
@@ -100,7 +101,11 @@ export default async function SettingsPage() {
 			<PageHeader title="Settings" />
 
 			<div className="space-y-rhythm">
-				<Card title={ctx.householdName} count={members.length}>
+				<Card
+					title={ctx.householdName}
+					count={members.length}
+					data-tour="household"
+				>
 					{admin && <RenameHousehold name={ctx.householdName} />}
 					<DataList>
 						{members.map((m) => (
@@ -122,7 +127,7 @@ export default async function SettingsPage() {
 						))}
 					</DataList>
 					{admin ? (
-						<>
+						<div className="space-y-2" data-tour="invite">
 							<h3 className="pt-2 font-medium text-sm">Invite someone in</h3>
 							<p className="text-ink-soft text-sm">
 								They will see this garden and can look after it with you. Admins can
@@ -130,7 +135,7 @@ export default async function SettingsPage() {
 							</p>
 							<InviteForm kind="household" />
 							<Pending invites={invites} />
-						</>
+						</div>
 					) : (
 						<p className="text-ink-soft text-sm">
 							To bring someone else in, ask an admin of this household.
@@ -139,7 +144,7 @@ export default async function SettingsPage() {
 				</Card>
 
 				{siteAdmin && (
-					<Card title="New gardens">
+					<Card title="New gardens" data-tour="new-gardens">
 						<p className="text-ink-soft text-sm">
 							An invite that starts a garden of its own, for a friend rather than
 							this household. Only site admins see this.
@@ -172,7 +177,7 @@ export default async function SettingsPage() {
 					</dl>
 				</Card>
 
-				<Card title="Looking things up" id="looking-things-up">
+				<Card title="Looking things up" id="looking-things-up" data-tour="ai-key">
 					{key ? (
 						<p className="text-sm">
 							Switched on, using {MODEL} on this household&rsquo;s key ending{' '}
@@ -242,7 +247,10 @@ export default async function SettingsPage() {
 					<p className="text-sm">
 						Signed in as <strong>{ctx.userName}</strong>.
 					</p>
-					<SignOutButton />
+					<div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+						<TakeTheTourAgain />
+						<SignOutButton />
+					</div>
 				</Card>
 			</div>
 		</Frame>

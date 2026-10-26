@@ -16,6 +16,7 @@ import {
 	check,
 	index,
 	integer,
+	primaryKey,
 	real,
 	sqliteTable,
 	text,
@@ -598,3 +599,33 @@ export const householdAiCredential = sqliteTable('household_ai_credential', {
 	checkedAt: text('checked_at'),
 	checkOk: integer('check_ok', { mode: 'boolean' }),
 });
+
+export const TOUR_IDS = ['setup', 'basics'] as const;
+export type TourId = (typeof TOUR_IDS)[number];
+export const TOUR_STATUSES = [
+	'pending',
+	'in_progress',
+	'completed',
+	'dismissed',
+] as const;
+
+/**
+ * How far each person has got through each first-run tour. No row means
+ * they have never seen it, which reads as pending: there is nothing to
+ * write when an account is made, and someone promoted to admin later meets
+ * the setup tour without anyone having to remember to queue it.
+ */
+export const userTour = sqliteTable(
+	'user_tour',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		tourId: text('tour_id', { enum: TOUR_IDS }).notNull(),
+		status: text('status', { enum: TOUR_STATUSES }).notNull().default('pending'),
+		/** Where they were, so leaving mid-tour picks up at the same step. */
+		stepId: text('step_id'),
+		updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.tourId] })],
+);

@@ -57,6 +57,13 @@
       "when": 1793008477082,
       "tag": "0007_household_ai_key",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793008957936,
+      "tag": "0008_tours",
+      "breakpoints": true
     }
   ]
 }

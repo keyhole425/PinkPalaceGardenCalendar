@@ -36,6 +36,14 @@ the same line with triggers that refuse a row pointing into another garden.
 The Pink Palace is household 1, with its orchard. A new household starts from
 the vegetable catalogue and one bed.
 
+## The first visit
+
+Everyone new is offered a tour: setting up, for whoever runs a household
+(name it, lay out the places, decide about Claude, invite people), then a look
+round, for everyone. The steps are data in `lib/tour/steps.ts`, each pointing
+at a `data-tour` element. It can be put off, declined for good, or brought back
+from Settings.
+
 ## Getting in
 
 figgy is invite-only. There is no sign-up form: an account is only ever made

@@ -26,6 +26,7 @@ import {
 	ROLES,
 	session,
 	user,
+	userTour,
 } from '@/lib/db/schema';
 import { mintInvite, revokeInvite } from '@/lib/invites';
 
@@ -210,6 +211,7 @@ async function deletePerson(tx: Tx, userId: string) {
 		.where(eq(invite.usedByUserId, userId))
 		.run();
 	await tx.delete(invite).where(eq(invite.userId, userId)).run();
+	await tx.delete(userTour).where(eq(userTour.userId, userId)).run();
 	await tx.delete(session).where(eq(session.userId, userId)).run();
 	await tx.delete(account).where(eq(account.userId, userId)).run();
 	await tx.delete(membership).where(eq(membership.userId, userId)).run();

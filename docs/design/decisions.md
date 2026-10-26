@@ -50,6 +50,24 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-26 - a first-run tour you can say no to
+**Context:** people arriving from an invite have never seen figgy, and the
+person who starts a garden has setting up to do that nobody else does.
+**Decision:** two tours as data - setting up, for admins, then a look round,
+for everyone - chosen on the server so a member never sees admin steps and
+nobody is shown Claude in a household without a key. It begins as an offer in
+a `palace-50` note at the top of the page, not a dialog, so nothing is
+interrupted and nothing takes focus that was not asked for. Saying yes moves
+a card from place to place; the thing it means gets the marker ring
+(`palace-500`, as round the current month) rather than a dimmed page, so the
+page stays readable and usable. On a phone the card is a sheet above the tab
+bar, and the page gains that much room at its end so nothing near the bottom
+is trapped under it. "Not now" lasts the visit, "No thanks" and "Skip the
+tour" last until Settings brings it back, Esc puts it away and keeps the place.
+**Cost:** an outline on a card that already has a border reads as two lines;
+the 4px offset keeps them apart. A step whose element is missing - the
+weather when the forecast failed - shows in the middle of the screen instead.
+
 ### 2026-10-26 - each household brings its own key
 **Context:** figgy's Claude features ran on one key in the server's
 environment. With households of friends that is somebody else's bill.

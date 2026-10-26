@@ -249,6 +249,11 @@ Not primitives, but they set the patterns new work should follow:
   untick what you disagree with, then accept.
 - `components/weather/WeatherStrip.tsx` - the weather card.
 - `components/grid/MonthGrid.tsx` - the year.
+- `components/tour/Tour.tsx` - the first-run tour: an inline offer, then a
+  `palace-50` card that points at a `data-tour` element with the marker ring
+  (`[data-tour-active]` in `globals.css`). A sheet above the tab bar on a
+  phone. The steps are data, in `lib/tour/steps.ts`; to point at something
+  new, give it a `data-tour` name and add a step.
 
 ## Adding a new primitive
 
