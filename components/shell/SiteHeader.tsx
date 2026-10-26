@@ -4,6 +4,24 @@ import { Icon } from '@/components/ui/Icon';
 import { ROUTES, TABS } from '@/lib/nav';
 import { NavLink, TabLink } from './NavLink';
 
+/**
+ * The cover with only the wordmark on it, for pages outside a garden. Not a
+ * link: there is nowhere to go until you are in.
+ */
+export function CoverHeader() {
+	return (
+		<header className="border-palace-300 border-b bg-palace-200">
+			<Frame width="page">
+				<div className="flex min-h-13 items-center py-2">
+					<span className="font-semibold font-serif text-lg text-palace-700">
+						figgy
+					</span>
+				</div>
+			</Frame>
+		</header>
+	);
+}
+
 /** The notebook's pink cover: the one place saturated pink belongs. */
 export function SiteHeader() {
 	return (

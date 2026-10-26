@@ -50,6 +50,21 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-26 - accounts, and a link shown once
+**Context:** figgy is moving to the internet and will hold more than one
+garden, so it needs people to sign in, and a way in that nobody can find on
+their own.
+**Decision:** `/login` and `/join/[token]` live in an `(auth)` layout: the
+same pink cover with the wordmark and nothing to tap, because every link
+would lead back there. An invite link is shown once, in a `palace-50` note box
+with Copy, and the page says figgy will not show it again - true, since only
+its hash is kept. Removing someone sits behind a `<details>` "Remove", like
+every other form that does more than the common case. Errors on these forms
+are `role="alert"` so a screen reader hears a refused password.
+**Cost:** a lost invite link cannot be shown again; the admin makes another.
+On a 375px screen the invite form stacks the email above the role and the
+button rather than sharing a row, which squeezed the email field to 58px.
+
 ### 2026-10-26 - no more home server
 **Context:** figgy is moving from a Docker container on a Mac to Vercel. The
 Backups card on `/settings` described a nightly sidecar that no longer exists,

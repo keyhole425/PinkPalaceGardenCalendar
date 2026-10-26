@@ -21,7 +21,9 @@ Anything that changes what is on screen goes through `figgy-ui-design`.
   `npm run test:e2e` (Playwright, builds first). CI runs all four.
 - Format: `npm run format`. Tabs, single quotes.
 - Preview: the `figgy` config in `.claude/launch.json` (`npm run dev`, port
-  3000). Needs a migrated, seeded `data/garden.db` (`npm run db:reset`).
+  3000). Needs a migrated, seeded `data/garden.db` (`npm run db:reset`) and
+  someone to sign in as (`npm run admin:dev-user`, with the throwaway
+  `FIGGY_DEV_*` values from `.env.example`).
 - No UI libraries. Primitives are in `components/ui/`; class names are joined
   with `cx()` from `lib/ui/cx.ts`.
 - Commits: `figgy: ` then a lower-case, plain-English subject about the

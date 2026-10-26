@@ -1,22 +1,21 @@
-import path from 'node:path';
 import { defineConfig } from '@playwright/test';
+import { E2E_DB, E2E_ENV, E2E_URL, GARDENER, SIGNED_IN } from './e2e/fixtures';
 
 /**
- * Three smoke flows against the real production server.
+ * Smoke flows against the real production server.
  *
  * It runs a production build under `next start` rather than the dev server,
  * so the tests exercise what actually ships. The database is a throwaway
- * seeded fresh on every run.
+ * seeded fresh on every run, with one gardener who can sign in; the setup
+ * project signs in once and the rest reuse the session, because the login
+ * rate limit is on here exactly as it is in production.
  */
-// Playwright loads this as CommonJS, so no import.meta here.
-const root = process.cwd();
-const db = path.join(root, 'data', 'e2e.db');
-
 const serve = [
-	`rm -f ${db} ${db}-wal ${db}-shm`,
+	`rm -f ${E2E_DB} ${E2E_DB}-wal ${E2E_DB}-shm`,
 	'npm run build',
 	'npm run db:migrate',
 	'npm run db:seed',
+	'npm run admin:dev-user',
 	'npx next start -H 127.0.0.1 -p 3100',
 ].join(' && ');
 
@@ -27,18 +26,34 @@ export default defineConfig({
 	retries: process.env.CI ? 1 : 0,
 	reporter: process.env.CI ? 'github' : 'list',
 	use: {
-		baseURL: 'http://127.0.0.1:3100',
+		baseURL: E2E_URL,
 		trace: 'retain-on-failure',
 	},
+	projects: [
+		{ name: 'setup', testMatch: /.*\.setup\.ts/ },
+		{
+			name: 'signed in',
+			testMatch: /figgy\.spec\.ts/,
+			dependencies: ['setup'],
+			use: { storageState: SIGNED_IN },
+		},
+		{
+			// Each test here brings its own browser context, signed in or not.
+			name: 'getting in',
+			testMatch: /access\.spec\.ts/,
+			dependencies: ['setup'],
+		},
+	],
 	webServer: {
 		command: serve,
-		url: 'http://127.0.0.1:3100/api/health',
+		url: `${E2E_URL}/api/health`,
 		reuseExistingServer: false,
-		timeout: 180_000,
+		timeout: 240_000,
 		env: {
-			TURSO_DATABASE_URL: `file:${db}`,
-			// Pinned, so "what's due" is the same on every run.
-			FIGGY_TODAY: '2026-09-25',
+			...E2E_ENV,
+			FIGGY_DEV_EMAIL: GARDENER.email,
+			FIGGY_DEV_PASSWORD: GARDENER.password,
+			FIGGY_DEV_NAME: GARDENER.name,
 		},
 	},
 });

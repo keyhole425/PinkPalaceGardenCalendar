@@ -15,6 +15,8 @@ actions each, twelve months across. That grid is now the seed data.
 npm install
 npm run db:migrate   # creates data/garden.db
 npm run db:seed      # loads the orchard
+FIGGY_DEV_EMAIL=gardener@figgy.test FIGGY_DEV_PASSWORD='a long e2e password' \
+  npm run admin:dev-user   # someone to sign in as
 npm run dev          # http://localhost:3000
 ```
 
@@ -33,6 +35,31 @@ the same line with triggers that refuse a row pointing into another garden.
 
 The Pink Palace is household 1, with its orchard. A new household starts from
 the vegetable catalogue and one bed.
+
+## Getting in
+
+figgy is invite-only. There is no sign-up form: an account is only ever made
+from an invite link, which works once, for a week, and is stored only as a
+hash. Three kinds:
+
+- **Join a household**, made by that household's admins on `/settings`.
+- **Start a new garden**, made only by a site admin.
+- **Choose a new password**, made from the command line - figgy sends no
+  email, so this is what "forgot my password" means.
+
+Site admin is granted and revoked from the command line only, and every check
+reads it from the database rather than trusting a cookie.
+
+| | |
+|---|---|
+| `npm run admin:invite -- --new-garden` | an invite to start a garden |
+| `npm run admin:invite -- --household 1 --role admin` | an invite into household 1 |
+| `npm run admin:invite -- --reset them@example.com` | a new-password link |
+| `npm run admin:grant -- you@example.com` / `admin:revoke` | site admin on or off |
+| `npm run admin:list` | every household and who is in it |
+
+They act on whatever `TURSO_DATABASE_URL` points at, and build links from
+`BETTER_AUTH_URL`.
 
 ## How the schedule is stored
 

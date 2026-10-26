@@ -15,7 +15,45 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { beforeEach, vi } from 'vitest';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'figgy-vitest-'));
 process.env.TURSO_DATABASE_URL = `file:${path.join(dir, 'default.db')}`;
 delete process.env.TURSO_AUTH_TOKEN;
+
+/*
+ * Nobody is signed in under vitest - there is no request, so no cookie - so
+ * the context module answers from lib/auth/testing instead. Each test picks
+ * who it is with actAs(); the default is an admin of household 1, which is
+ * the household seedGarden() makes in an empty database.
+ */
+vi.mock('@/lib/auth/context', async () => {
+	const { acting } = await import('@/lib/auth/testing');
+	const { asHouseholdId } = await import('@/lib/db/tenancy');
+	const { redirect } = await import('next/navigation');
+	return {
+		getSession: async () => {
+			const who = acting();
+			return who.signedIn
+				? { user: { id: who.userId, name: who.userName }, session: {} }
+				: null;
+		},
+		requireHousehold: async () => {
+			const who = acting();
+			if (!who.signedIn) redirect('/login');
+			return {
+				userId: who.userId,
+				userName: who.userName,
+				householdId: asHouseholdId(who.householdId),
+				householdName: who.householdName,
+				role: who.role,
+			};
+		},
+		isSiteAdmin: async () => acting().siteAdmin,
+	};
+});
+
+beforeEach(async () => {
+	const { actAs } = await import('@/lib/auth/testing');
+	actAs();
+});

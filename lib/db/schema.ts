@@ -13,6 +13,7 @@
  */
 import { sql } from 'drizzle-orm';
 import {
+	check,
 	index,
 	integer,
 	real,
@@ -350,6 +351,8 @@ export const aiCall = sqliteTable(
 			.notNull()
 			.references(() => household.id, { onDelete: 'cascade' }),
 
+		/** Who asked, so a household can see who spent its key. Gone if they go. */
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
 		proposalId: integer('proposal_id').references(() => aiProposal.id, {
 			onDelete: 'set null',
 		}),
@@ -377,3 +380,195 @@ export const meta = sqliteTable('meta', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
 });
+
+/*
+ * People, and how they get in.
+ *
+ * user, session, account, verification and rate_limit are Better Auth's,
+ * shaped the way its Drizzle adapter expects: the property names are its
+ * field names, the columns follow figgy's snake_case. Dates here are
+ * millisecond timestamps because that is what Better Auth writes; the garden
+ * tables keep their YYYY-MM-DD text.
+ *
+ * There is no sign-up form. An account is only ever made from an invite (see
+ * lib/invites.ts), which is why these tables carry nothing about households:
+ * that is membership's job.
+ */
+
+const createdAt = () =>
+	integer('created_at', { mode: 'timestamp_ms' })
+		.notNull()
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`);
+const updatedAt = () =>
+	integer('updated_at', { mode: 'timestamp_ms' })
+		.notNull()
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.$onUpdate(() => new Date());
+
+export const user = sqliteTable('user', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	/** Stored lower-cased; Better Auth lower-cases before it looks one up. */
+	email: text('email').notNull().unique(),
+	emailVerified: integer('email_verified', { mode: 'boolean' })
+		.notNull()
+		.default(false),
+	image: text('image'),
+	/**
+	 * Can mint invites that start a new garden. Granted and revoked only from
+	 * the command line (scripts/admin), never through the app, and read from
+	 * the database on every check rather than trusted from a cookie.
+	 */
+	siteAdmin: integer('site_admin', { mode: 'boolean' }).notNull().default(false),
+	createdAt: createdAt(),
+	updatedAt: updatedAt(),
+});
+
+export const session = sqliteTable(
+	'session',
+	{
+		id: text('id').primaryKey(),
+		expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+		token: text('token').notNull().unique(),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+		ipAddress: text('ip_address'),
+		userAgent: text('user_agent'),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+	},
+	(t) => [index('session_user_idx').on(t.userId)],
+);
+
+export const account = sqliteTable(
+	'account',
+	{
+		id: text('id').primaryKey(),
+		accountId: text('account_id').notNull(),
+		providerId: text('provider_id').notNull(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		accessToken: text('access_token'),
+		refreshToken: text('refresh_token'),
+		idToken: text('id_token'),
+		accessTokenExpiresAt: integer('access_token_expires_at', {
+			mode: 'timestamp_ms',
+		}),
+		refreshTokenExpiresAt: integer('refresh_token_expires_at', {
+			mode: 'timestamp_ms',
+		}),
+		scope: text('scope'),
+		/** The password hash, for the 'credential' provider. Never the password. */
+		password: text('password'),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(t) => [index('account_user_idx').on(t.userId)],
+);
+
+export const verification = sqliteTable(
+	'verification',
+	{
+		id: text('id').primaryKey(),
+		identifier: text('identifier').notNull(),
+		value: text('value').notNull(),
+		expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(t) => [index('verification_identifier_idx').on(t.identifier)],
+);
+
+/**
+ * Login attempts per address, kept in the database because a serverless
+ * function's memory is gone by the next request: an in-memory limit would
+ * reset every time it mattered.
+ */
+export const rateLimit = sqliteTable('rate_limit', {
+	id: text('id').primaryKey(),
+	key: text('key').notNull().unique(),
+	count: integer('count').notNull(),
+	lastRequest: integer('last_request').notNull(),
+});
+
+export const ROLES = ['admin', 'member'] as const;
+export type Role = (typeof ROLES)[number];
+
+/**
+ * Which garden a person belongs to, and whether they run it. One household
+ * per person: the user id is the key.
+ *
+ * Admins can rename the household, invite people into it, add the AI key,
+ * and change or remove other members. Members garden.
+ */
+export const membership = sqliteTable(
+	'membership',
+	{
+		userId: text('user_id')
+			.primaryKey()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		householdId: integer('household_id')
+			.notNull()
+			.references(() => household.id, { onDelete: 'cascade' }),
+		role: text('role', { enum: ROLES }).notNull().default('member'),
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+	},
+	(t) => [index('membership_household_idx').on(t.householdId)],
+);
+
+export const INVITE_KINDS = [
+	'new_household',
+	'join_household',
+	'reset_password',
+] as const;
+export type InviteKind = (typeof INVITE_KINDS)[number];
+
+/**
+ * A way in, good once.
+ *
+ * Only a hash of the token is kept, so a copy of the database cannot be
+ * turned into working links. `new_household` invites start a garden of their
+ * own and only a site admin can make one; `join_household` invites add
+ * someone to an existing garden and only its admins can make one;
+ * `reset_password` lets one existing person choose a new password, and is
+ * how a forgotten one is dealt with in a figgy that sends no email.
+ */
+export const invite = sqliteTable(
+	'invite',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** SHA-256 of the token, hex. The token itself is shown once and kept nowhere. */
+		tokenHash: text('token_hash').notNull().unique(),
+		kind: text('kind', { enum: INVITE_KINDS }).notNull(),
+		/** The garden to join. Null for an invite that starts a new one. */
+		householdId: integer('household_id').references(() => household.id, {
+			onDelete: 'cascade',
+		}),
+		role: text('role', { enum: ROLES }).notNull().default('member'),
+		/** Whose password a reset invite resets. */
+		userId: text('user_id').references(() => user.id, { onDelete: 'cascade' }),
+		/** If set, only this address can use it. */
+		email: text('email'),
+		/** Null when it was made from the command line. */
+		createdByUserId: text('created_by_user_id').references(() => user.id, {
+			onDelete: 'set null',
+		}),
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		/** ISO instants, compared as text: they sort the way time does. */
+		expiresAt: text('expires_at').notNull(),
+		usedAt: text('used_at'),
+		usedByUserId: text('used_by_user_id').references(() => user.id, {
+			onDelete: 'set null',
+		}),
+		revokedAt: text('revoked_at'),
+	},
+	(t) => [
+		index('invite_household_idx').on(t.householdId),
+		check(
+			'invite_kind_household',
+			sql`(${t.kind} = 'new_household' AND ${t.householdId} IS NULL AND ${t.userId} IS NULL) OR (${t.kind} = 'join_household' AND ${t.householdId} IS NOT NULL AND ${t.userId} IS NULL) OR (${t.kind} = 'reset_password' AND ${t.userId} IS NOT NULL)`,
+		),
+	],
+);

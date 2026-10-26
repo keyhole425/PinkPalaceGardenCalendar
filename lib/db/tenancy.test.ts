@@ -15,11 +15,9 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { kaffirLimeProposal } from '@/lib/ai/fixtures';
+import { actAs } from '@/lib/auth/testing';
 import { asHouseholdId, type HouseholdId } from './tenancy';
 import { createTempGarden, GARDEN, type TempGarden } from './testing';
-
-/** Whoever the actions think is signed in. Switched per test. */
-const acting = vi.hoisted(() => ({ householdId: 1 }));
 
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
 vi.mock('next/navigation', () => ({
@@ -30,21 +28,12 @@ vi.mock('next/navigation', () => ({
 		throw new Error('NOT_FOUND');
 	},
 }));
-vi.mock('@/lib/auth/context', () => ({
-	requireHousehold: async () => ({
-		userId: null,
-		householdId: acting.householdId,
-		householdName: 'whoever',
-		role: 'admin',
-	}),
-}));
 
 let garden: TempGarden;
 
 beforeEach(async () => {
 	garden?.cleanup();
 	garden = await createTempGarden();
-	acting.householdId = 1;
 	return () => garden.cleanup();
 });
 
@@ -321,7 +310,7 @@ describe('one household acting on another', () => {
 			.returning()
 			.get();
 
-		acting.householdId = theirs;
+		actAs({ householdId: theirs });
 		const proposals = await import('@/lib/ai/proposals');
 		const proposalId = await proposals.startProposal(theirs, 'Kaffir lime');
 		await proposals.finishProposal(theirs, proposalId, {
@@ -329,7 +318,7 @@ describe('one household acting on another', () => {
 			notes: 'notes',
 			citations: [],
 		});
-		acting.householdId = GARDEN;
+		actAs({ householdId: GARDEN });
 
 		return {
 			...mods,

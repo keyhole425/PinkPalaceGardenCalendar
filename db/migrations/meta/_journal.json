@@ -43,6 +43,13 @@
       "when": 1793006566586,
       "tag": "0005_tenancy_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793007560870,
+      "tag": "0006_accounts",
+      "breakpoints": true
     }
   ]
 }
