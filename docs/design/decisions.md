@@ -1,0 +1,145 @@
+# Design decisions
+
+A log of what was decided about how figgy looks and reads, why, and what it
+cost. Newest first. The commit bodies hold the full reasoning; this is the
+index of it.
+
+**Adding an entry:** when a change alters a token, a primitive, a pattern or a
+voice rule, add an entry here in the same commit. Keep the shape:
+
+```md
+### YYYY-MM-DD - short name (commit)
+**Context:** what was wrong or missing, with numbers if there are any.
+**Decision:** what figgy does now.
+**Cost:** what it gave up, recorded rather than quietly worked around.
+```
+
+---
+
+## Open
+
+Known gaps between these docs and the code, or between the code and its own
+rules. Not fixed yet - each is a candidate change of its own.
+
+- **Ask is unreachable on a phone.** `lib/nav.ts` says "Ask stays in the
+  header", but the header's route links are `hidden` below `sm`, and Ask isn't
+  one of the four `TABS`. Nothing else links to `/ask`.
+- **Plant pages hand-roll their section headings.** `app/plants/[slug]/page.tsx`
+  and `app/plants/[slug]/edit/page.tsx` write `<h2 className="font-semibold
+  text-lg">` without `font-serif`, so they read differently from every `Card`
+  heading; a `Card` (or `font-serif`) would fix it. The edit page also
+  spaces its sections with `space-y-8` rather than `space-y-rhythm`.
+- **A stale link.** "What it needs" on a plant page links to `/beds`, which now
+  redirects to `/garden`.
+- **The year grid's cell labels are `uppercase`** (`components/grid/MonthGrid.tsx`)
+  - "OR" in an 11px cell. The only uppercase in the app; either it's a
+  deliberate exception for a 2xs label in a filled cell and belongs in
+  [voice.md](voice.md), or it goes.
+- **`Button` variants `danger` and `pill` are unused.** The Ask suggestions are
+  hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
+  variant should match them, or they should use it.
+- **`rounded-lg` is still a token** (`globals.css`) though rule 7 says two radii
+  and nothing uses it.
+- **`Icon.tsx`'s doc comment says "nine shapes"**; there are fourteen.
+- **PWA icons are missing.** `app/manifest.ts` lists `/icon-192.png` and
+  `/icon-512.png`; `public/` only has `icon.svg`.
+- **Harvest text on its fill is 4.22:1** - accepted (see 2026-09-28 below), but
+  it is the one AA shortfall, so any new use of text on `bg-harvest` at small
+  sizes needs the same redundancy.
+
+---
+
+## 2026-10-26 - the design written down as docs
+
+**Context:** the design language lived in the comment atop `globals.css`, in
+each primitive's doc comment, and in commit bodies. Nothing gathered it.
+**Decision:** `docs/design/` explains it; the code stays the source of truth for
+values. A `figgy-ui-design` skill works from these docs.
+**Cost:** two places to keep in step. Mitigated by the docs never copying
+values, and by the rule that a design change updates its doc in the same
+commit.
+
+### 2026-09-28 - Rejoicify, Glinda and Wickedest (`6cc72ed`)
+**Context:** the palette was a generic pink plus the spreadsheet's
+green/orange/pink, and `palace-700` on the cover was 3.69:1.
+**Decision:** three named OPI *Wicked* shades. The palace ramp anchored on
+Rejoicify (326°). Each action colour gets soft / base / deep; harvest has no
+deep because it *is* the palace pink. Fills carry `text-ink`. net, spray, water
+and note go grey - a colour without a meaning is grey.
+**Cost:** the three are nearly one colour to a red-green colourblind reader
+(ΔE 3–7). Meaning moved into words and titles; hue only speeds scanning. Harvest
+text on fill is 4.22:1.
+
+### 2026-09-28 - the weather card reads like weather (`82ad56f`)
+**Context:** "The week" over five bare numbers; nothing said weather.
+**Decision:** a cloud and the city on the title, a sky icon per day from the
+forecast, high over low, a caption for units, at most two advisories with only
+frost and heat coloured, the source named.
+**Cost:** a little more height on the rail.
+
+### 2026-09-28 - the log behind a button (`567d335`)
+**Context:** an open textarea above What's on took the top of the page and
+pushed the whole rail down.
+**Decision:** a dashed "Add a note" button inside the left column; the panel is
+a `note` Card. Side-text hidden below `sm`.
+**Cost:** one more tap to log a sentence.
+
+### 2026-09-28 - say what "or…" opens (`7c2d9eb`)
+**Context:** 11px of underlined "or…" in a 96px column.
+**Decision:** "Date or note" with a pencil, a real target; the panel opens over
+the card on `palace-50`, with Today/Yesterday and the date echoed in long form.
+Still a `<details>`.
+**Cost:** none worth recording.
+
+### 2026-09-28 - settings is a cog (`3e76b11`)
+**Context:** "Settings" read like a sixth place in the garden.
+**Decision:** a 36px cog with an `aria-label`; the row is left to destinations.
+**Cost:** 36px, under the 44px `tap` - accepted to keep the cover thin.
+
+### 2026-09-28 - figgy's first icons (`28ac532`)
+**Context:** every affordance was a word, some of them bad ones.
+**Decision:** fourteen drawn paths in one file, one grid and weight,
+`currentColor`. An icon is decoration (`aria-hidden`) or it is the control
+(`title`). No third case.
+**Cost:** new icons must be drawn, not installed.
+
+### 2026-09-28 - scientific names in the serif (`e867c72`)
+**Context:** binomials in the sans italic.
+**Decision:** Fraunces italic via `ScientificName` - the one place the serif
+appears outside a heading. Rows went to `text-sm` so the serif's smaller
+x-height sits level.
+**Cost:** a second italic file to carry.
+
+### 2026-09-26 - cap the note on a task card (`94300f8`), stop Plum swallowing the year (`c9d1384`)
+**Context:** long notes set the height of everything around them (a 1,312px
+grid row; 118px cards against a median of 83).
+**Decision:** clamp to two lines, the whole note on hover and on the plant's
+page. Every row the same height.
+**Cost:** the note is a hover away.
+
+### 2026-09-26 - make what's on fit on a screen (`101472b`)
+**Context:** 3,815px tall at 1440px wide; Done 1,300px from its plant.
+**Decision:** a column of jobs and a rail of ambient things; Coming up folds;
+long lists show eight. Recently done stays open as the proof a tap landed.
+**Cost:** two layouts to think about, phone and desktop.
+
+### 2026-09-26 - one garden (`8b303da`)
+**Context:** Beds and Places were two pages over the same rows; the orchard had
+no view.
+**Decision:** one Garden page; Plants says it is the catalogue, not the garden;
+rows say "2 growing" / "none planted"; an empty bed slot offers to sow.
+**Cost:** old routes kept as redirects.
+
+### 2026-09-26 - fonts vendored (`0ce6ad7`)
+**Context:** `next/font/google` made every build need the network.
+**Decision:** commit the `.woff2` files; latin subset; wght-only Fraunces.
+**Cost:** the bytes live in the repo.
+
+### 2026-09-26 - a garden notebook, written down as rules (`a8f9a6a`), and the same door for every page (`4839096`)
+**Context:** nineteen colour tokens, no shared components; the primary button
+copy-pasted into fourteen files, five drifted.
+**Decision:** the seven rules in `globals.css`; scale tokens reuse Tailwind's
+names; shadows deleted; the `components/ui/` primitives, with fourteen
+buttons, twelve empty states, ~28 inputs, ~22 badges and four action maps
+folded into them. `min-h-11` became `min-h-tap`.
+**Cost:** none - the retune restyled ~300 call sites without touching them.
