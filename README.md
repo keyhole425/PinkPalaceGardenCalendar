@@ -151,8 +151,8 @@ costs nothing beats a clever one that needs an API key.
 ## Deploying
 
 figgy runs on Vercel with its data on Turso. [docs/DEPLOY.md](docs/DEPLOY.md)
-has all of it: setting both up, moving the garden across from the home server,
-getting the first person in, backups, and changing secrets.
+has all of it: setting both up, getting the first person in, backups, and
+changing secrets.
 
 ## Layout
 

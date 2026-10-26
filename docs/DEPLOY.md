@@ -1,8 +1,8 @@
 # Deploying figgy
 
 figgy runs on **Vercel**, with its database on **Turso** (hosted libSQL). This
-is the whole of it: setting both up once, moving the garden across from the
-home server, getting the first person in, and looking after it afterwards.
+is the whole of it: setting both up once, getting the first person in, and
+looking after it afterwards.
 
 ## What lives where
 
@@ -17,6 +17,18 @@ home server, getting the first person in, and looking after it afterwards.
 Functions sit next to the database, not next to the people: a page makes
 several round trips to the database and one to the browser.
 
+## In order
+
+Going live is three steps, each needing something from the one before:
+
+1. [Turso](#once-turso): an account and two databases.
+2. [Vercel](#once-vercel): the project, its settings and its secrets.
+3. [Getting the first person in](#getting-the-first-person-in).
+
+Before step 2, merge this work into `main`. Vercel builds production from the
+repository's default branch, and until the merge `main` has no `vercel.json`,
+no `vercel-build` and no Turso.
+
 ## Once: Turso
 
 ```bash
@@ -29,33 +41,73 @@ If Turso has a Sydney location, use it and leave `vercel.json` on `syd1`. If
 not, pick the nearest and move `regions` in `vercel.json` to the Vercel region
 beside it.
 
-A preview database, so a pull request can never touch the real garden:
+Two databases, so a pull request can never touch the real garden:
 
 ```bash
+turso db create figgy --location <location>
 turso db create figgy-preview --location <location>
+turso db show figgy --url
+turso db tokens create figgy
 turso db show figgy-preview --url
 turso db tokens create figgy-preview
 ```
 
-The production database is made from the home garden; see [Moving the garden
-across](#moving-the-garden-across).
+Keep the URLs and tokens to hand for Vercel. Both start empty, and that is
+all they need: the first deploy to each migrates it and seeds the Pink Palace
+in as household 1, with its beds, plants and care rules. Nothing comes across
+from the copy on your laptop.
 
 ## Once: Vercel
 
-1. Import the repository. Vercel finds Next.js on its own; leave the build
-   settings alone. `package.json` has a `vercel-build` script, which Vercel
-   runs instead of `build`: it migrates and re-seeds that environment's
-   database, then builds.
-2. **Environment variables.** Mark every one *Sensitive*. Each environment
-   gets its own values, never shared:
+### An account
+
+Sign up at vercel.com with GitHub. The free Hobby plan is enough: it is for
+personal, non-commercial use, which a household garden is, and its functions
+may run for up to 300 seconds, which is what researching a plant asks for.
+
+### Importing the project
+
+**Add New → Project**, then pick the repository. The first time, Vercel asks
+to install its GitHub app; give it *Only select repositories* and choose
+`PinkPalaceGardenCalendar`, not the whole account.
+
+On *Configure Project*:
+
+- **Project name**: `figgy`. It becomes the address, `figgy.vercel.app` or
+  `figgy-<something>.vercel.app` if that is taken.
+- **Framework Preset**: Next.js, found on its own. **Root Directory**: `./`.
+- **Build and Output Settings**: leave them alone. `package.json` has a
+  `vercel-build` script, which Vercel runs instead of `build`: it migrates and
+  re-seeds that environment's database, then builds.
+- **Environment Variables**: leave this empty. Anything entered here goes to
+  production and previews alike, and figgy keeps them apart.
+
+Press **Deploy**. This first build fails at the migration step, with
+*TURSO_DATABASE_URL is not set, and Vercel has no disk to keep a file on* -
+that is figgy refusing to run without a database, and it has touched nothing.
+
+### Settings
+
+In the project's **Settings**:
+
+1. **Environment Variables.** Add each one twice, once ticked for
+   *Production* only and once for *Preview* only - never *Development* - and
+   mark every one *Sensitive*. Sensitive values can be replaced but never
+   read back, from the dashboard or the CLI, so keep the production ones in a
+   password manager as you go.
 
    | Variable | Production | Preview |
    |---|---|---|
-   | `TURSO_DATABASE_URL` | `libsql://figgy-…turso.io` | the `figgy-preview` URL |
+   | `TURSO_DATABASE_URL` | `turso db show figgy --url` | `turso db show figgy-preview --url` |
    | `TURSO_AUTH_TOKEN` | `turso db tokens create figgy` | `turso db tokens create figgy-preview` |
    | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` | a different one |
-   | `BETTER_AUTH_URL` | `https://` + your domain | *unset* - previews use their own address |
+   | `BETTER_AUTH_URL` | `https://` + the address people will use | *unset* - previews use their own address |
    | `FIGGY_ENCRYPTION_KEY` | `openssl rand -base64 32` | a different one |
+
+   `BETTER_AUTH_URL` is the custom domain if there will be one, otherwise the
+   project's `.vercel.app` address. Leave *Automatically expose System
+   Environment Variables* ticked: previews find their address from
+   `VERCEL_URL` and `VERCEL_BRANCH_URL`.
 
    **Never set** `ANTHROPIC_API_KEY` (figgy does not read it, and a key there
    is a key somebody could spend), `TZ` (reserved on Vercel; figgy works out
@@ -65,68 +117,54 @@ across](#moving-the-garden-across).
    `BETTER_AUTH_SECRET`, and refuses to seal a key without
    `FIGGY_ENCRYPTION_KEY`, rather than quietly running on development
    defaults.
-3. **Deployment Protection** → turn on *Vercel Authentication* for preview
-   deployments, so a preview is only reachable by you.
-4. **Domain** → add it, then set `BETTER_AUTH_URL` to match.
+2. **Build and Deployment → Node.js Version**: the newest offered. CI tests on
+   Node 26.
+3. **Functions**: leave *Fluid compute* on, as it is for a new project.
+   Without it Hobby stops a function at 60 seconds, and the deploy is refused
+   because the plant pages ask for 300. The region shown should be Sydney
+   (`syd1`), from `vercel.json`.
+4. **Deployment Protection**: *Vercel Authentication* on, at *Standard
+   Protection*. New projects start this way; check it. Previews and each
+   deployment's own address then need you signed in to Vercel, while the
+   production address stays open to the garden.
+5. **Environments → Production**: the branch is `main`.
+6. **Domains**, if there is one: add it, put the records Vercel shows in at
+   the domain's registrar, and wait for it to say *Valid Configuration*. Then
+   set production's `BETTER_AUTH_URL` to match.
 
 Keep a copy of the production `FIGGY_ENCRYPTION_KEY` somewhere safe outside
 Vercel. Lose it, and every household has to enter its Anthropic key again.
 
-## Moving the garden across
+### The first real deploy
 
-The garden is in the old Docker volume, `ops_figgy-data`. With the containers
-stopped nothing is writing to it, so the database and its journal can be
-copied out together:
+**Deployments**, the failed one, **⋯ → Redeploy**. In the build log,
+`figgy: migrations applied to figgy-….turso.io` says it found the production
+database. Open the production address: it should go to sign-in.
 
-```bash
-docker volume ls | grep figgy        # ops_figgy-data
-mkdir -p cutover
-docker run --rm -v ops_figgy-data:/data -v "$PWD/cutover":/out alpine \
-  sh -c 'cp /data/garden.db /data/garden.db-wal /data/garden.db-shm /out/ 2>/dev/null; ls -l /out'
-```
-
-Bring it up to date locally first, where it is easy to look at and easy to
-throw away:
-
-```bash
-TURSO_DATABASE_URL=file:./cutover/garden.db npm run db:migrate
-TURSO_DATABASE_URL=file:./cutover/garden.db npm run db:seed
-TURSO_DATABASE_URL=file:./cutover/garden.db npm run admin:list
-```
-
-`admin:list` should show household 1, *Pink Palace*, with nobody in it yet.
-Migration 0004 moves every existing row into it; the migration test holds it
-to losing nothing. Then hand it to Turso, which wants it in WAL mode:
-
-```bash
-cp cutover/garden.db cutover/figgy.db
-sqlite3 cutover/figgy.db 'PRAGMA journal_mode=WAL;'
-turso db import cutover/figgy.db      # makes a database called figgy
-turso db show figgy --url
-turso db tokens create figgy
-```
-
-(If your Turso CLI has no `import`, `turso db create figgy --from-file
-cutover/figgy.db` does the same.) Put the URL and token in Vercel's
-Production environment and deploy. Keep `cutover/` - it is the last copy of
-the garden as it was at home.
+Any time a variable changes, redeploy the same way; a running deployment
+keeps the values it was built with.
 
 ## Getting the first person in
 
 There is no sign-up form. The first admin comes from an invite minted on the
-command line, against production:
+command line, against production. Vercel will not hand back its Sensitive
+values, so the scripts take theirs from Turso, with a token that lapses
+tomorrow:
 
 ```bash
-vercel env pull .env.production.local --environment=production
-npx tsx --env-file=.env.production.local scripts/admin/invite.ts --household 1 --role admin
+export TURSO_DATABASE_URL="$(turso db show figgy --url)"
+export TURSO_AUTH_TOKEN="$(turso db tokens create figgy --expiration 1d)"
+export BETTER_AUTH_URL=https://your.address
+npm run admin:invite -- --household 1 --role admin
 ```
 
-Open the link it prints, make your account, then make yourself a site admin -
-the one thing the app itself cannot do:
+Each script names the database it worked on; check it says `figgy-…`, not
+`figgy-preview-…`. Open the link it prints, make your account, then make
+yourself a site admin - the one thing the app itself cannot do - and close
+that terminal:
 
 ```bash
-npx tsx --env-file=.env.production.local scripts/admin/site-admin.ts grant you@example.com
-rm .env.production.local
+npm run admin:grant -- you@example.com
 ```
 
 From there, everything is in the app: invite your household from Settings,
@@ -181,6 +219,7 @@ Do one restore before relying on it.
   they have.
 - **`TURSO_AUTH_TOKEN`**: mint a new one, swap it in, redeploy, then
   `turso db tokens invalidate figgy`.
-- **Someone forgot their password**: `scripts/admin/invite.ts --reset
-  them@example.com` prints a one-time link. They are signed out everywhere
+- **Someone forgot their password**: with the three exports from [Getting
+  the first person in](#getting-the-first-person-in), `npm run admin:invite
+  -- --reset them@example.com` prints a one-time link. They are signed out everywhere
   when they use it.
