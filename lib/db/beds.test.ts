@@ -236,7 +236,7 @@ describe('the hothouse runs ahead', () => {
 describe('what could go in now', () => {
 	it('offers the hothouse alone in the depths of winter', async () => {
 		const { beds } = await freshGarden();
-		const july = await beds.sowableThisMonth(GARDEN, '2026-07-15');
+		const july = await beds.couldGoInThisMonth(GARDEN, 'sow', '2026-07-15');
 
 		expect(july.length).toBeGreaterThan(0);
 		// Nothing goes in the open ground in July here.
@@ -249,7 +249,7 @@ describe('what could go in now', () => {
 
 	it('offers everywhere once the season opens, with no fanfare', async () => {
 		const { beds } = await freshGarden();
-		const september = await beds.sowableThisMonth(GARDEN, '2026-09-25');
+		const september = await beds.couldGoInThisMonth(GARDEN, 'sow', '2026-09-25');
 
 		const tomato = september.find((c) => c.commonName === 'Tomato');
 		expect(tomato?.places.length).toBeGreaterThan(1);
@@ -260,7 +260,17 @@ describe('what could go in now', () => {
 	it('says nothing when nothing is in season', async () => {
 		const { beds } = await freshGarden();
 		// June: everything in the starter set is shut, inside and out.
-		expect(await beds.sowableThisMonth(GARDEN, '2026-06-15')).toEqual([]);
+		expect(await beds.couldGoInThisMonth(GARDEN, 'sow', '2026-06-15')).toEqual([]);
+	});
+
+	it('keeps planting out apart from sowing', async () => {
+		const { beds } = await freshGarden();
+		// November: tomato seedlings go out, but its sowing window has shut.
+		const out = await beds.couldGoInThisMonth(GARDEN, 'transplant', '2026-11-15');
+		const sown = await beds.couldGoInThisMonth(GARDEN, 'sow', '2026-11-15');
+
+		expect(out.map((c) => c.commonName)).toEqual(['Tomato']);
+		expect(sown.map((c) => c.commonName)).not.toContain('Tomato');
 	});
 });
 

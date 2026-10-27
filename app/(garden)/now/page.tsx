@@ -12,7 +12,7 @@ import { WeatherStrip } from '@/components/weather/WeatherStrip';
 import { aiAvailable } from '@/lib/ai/client';
 import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
-import { sowableThisMonth } from '@/lib/db/queries/beds';
+import { couldGoInThisMonth, type GoInSuggestion } from '@/lib/db/queries/beds';
 import { getDashboard } from '@/lib/db/queries/garden';
 import { monthName } from '@/lib/schedule/months';
 import { getForecast, signalsFrom } from '@/lib/weather';
@@ -27,9 +27,10 @@ export default async function NowPage() {
 	// Independent, so asked for together: the forecast may be a network call
 	// to the Bureau, and the other two are round trips to the database.
 	const { householdId, role } = await requireHousehold();
-	const [board, toSow, forecast, ai] = await Promise.all([
+	const [board, toSow, toPlantOut, forecast, ai] = await Promise.all([
 		getDashboard(householdId, when),
-		sowableThisMonth(householdId, when),
+		couldGoInThisMonth(householdId, 'sow', when),
+		couldGoInThisMonth(householdId, 'transplant', when),
 		getForecast(when),
 		aiAvailable(householdId),
 	]);
@@ -171,38 +172,65 @@ export default async function NowPage() {
 						)}
 					</Card>
 
-					<Card title="Could go in now" count={toSow.length}>
+					{/*
+					 * Seed and seedling are separate cards. One card called "Could
+					 * go in now" listed only sowing, and a tester could not tell
+					 * whether it meant seeds or seedlings.
+					 */}
+					<Card title="Could be sown now" count={toSow.length}>
 						{toSow.length === 0 ? (
 							<EmptyState>Nothing wants sowing this month.</EmptyState>
 						) : (
-							<ul className="space-y-1">
-								{toSow.map((crop) => (
-									<li
-										key={crop.plantTypeId}
-										className="flex flex-wrap items-center gap-2 rounded-md border border-fertilise bg-fertilise-soft px-2 py-1.5"
-									>
-										<ActionChip action="sow" />
-										<Link
-											href={`/plants/${crop.slug}`}
-											className="font-medium text-sm hover:text-palace-700"
-										>
-											{crop.commonName}
-										</Link>
-										<span className="text-ink-soft text-xs">
-											{crop.places.map((p) => p.name).join(', ')}
-										</span>
-										{crop.places.some((p) => p.shifted) && (
-											<Badge title="Brought forward because of where it would be growing">
-												early inside
-											</Badge>
-										)}
-									</li>
-								))}
-							</ul>
+							<GoInList crops={toSow} how="sow" />
 						)}
 					</Card>
+
+					{/*
+					 * Only when something is open. Few crops have a planting-out
+					 * window, so most months this would be an empty card.
+					 */}
+					{toPlantOut.length > 0 && (
+						<Card title="Could be planted out now" count={toPlantOut.length}>
+							<GoInList crops={toPlantOut} how="transplant" />
+						</Card>
+					)}
 				</aside>
 			</div>
 		</Frame>
+	);
+}
+
+function GoInList({
+	crops,
+	how,
+}: {
+	crops: GoInSuggestion[];
+	how: 'sow' | 'transplant';
+}) {
+	return (
+		<ul className="space-y-1">
+			{crops.map((crop) => (
+				<li
+					key={crop.plantTypeId}
+					className="flex flex-wrap items-center gap-2 rounded-md border border-fertilise bg-fertilise-soft px-2 py-1.5"
+				>
+					<ActionChip action={how} />
+					<Link
+						href={`/plants/${crop.slug}`}
+						className="font-medium text-sm hover:text-palace-700"
+					>
+						{crop.commonName}
+					</Link>
+					<span className="text-ink-soft text-xs">
+						{crop.places.map((p) => p.name).join(', ')}
+					</span>
+					{crop.places.some((p) => p.shifted) && (
+						<Badge title="Brought forward because of where it would be growing">
+							early inside
+						</Badge>
+					)}
+				</li>
+			))}
+		</ul>
 	);
 }

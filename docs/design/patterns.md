@@ -126,7 +126,8 @@ rather than saying so every visit.
 - An action is shown with `ActionChip` (named) or a `MonthStrip` / grid cell
   (filled, with a title).
 - A **group** of one action can sit on that action's soft wash with its border
-  (Harvesting now on `harvest-soft`, Could go in now on `fertilise-soft`).
+  (Harvesting now on `harvest-soft`, Could be sown now and Could be planted
+  out now on `fertilise-soft`).
 - **Overdue** is the prune wash on the card (`border-prune bg-prune-soft/50`)
   and `alert` on the section heading.
 - **Today** is the `palace-50` wash (the grid column, the weather day), with

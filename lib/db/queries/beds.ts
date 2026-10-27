@@ -253,7 +253,7 @@ export async function rotationWarningFor(
 	return null;
 }
 
-export type SowSuggestion = {
+export type GoInSuggestion = {
 	plantTypeId: number;
 	slug: string;
 	commonName: string;
@@ -262,7 +262,8 @@ export type SowSuggestion = {
 };
 
 /**
- * What could go in the ground this month.
+ * What could go in the ground this month, as seed (`sow`) or as a seedling
+ * (`transplant`).
  *
  * Every other part of the schedule hangs off something already planted, which
  * is the wrong way round for an annual: figgy cannot tell you to sow beans by
@@ -271,10 +272,11 @@ export type SowSuggestion = {
  * environment shift the engine does - which is why the hothouse shows up here
  * a month before the beds do.
  */
-export async function sowableThisMonth(
+export async function couldGoInThisMonth(
 	hid: HouseholdId,
+	how: 'sow' | 'transplant',
 	when: IsoDate = todayInGarden(),
-): Promise<SowSuggestion[]> {
+): Promise<GoInSuggestion[]> {
 	const month = Number(when.slice(5, 7));
 
 	const places = await db
@@ -297,16 +299,12 @@ export async function sowableThisMonth(
 		.from(careRule)
 		.innerJoin(plantType, eq(careRule.plantTypeId, plantType.id))
 		.where(
-			and(
-				owns(careRule, hid),
-				eq(careRule.action, 'sow'),
-				eq(careRule.active, true),
-			),
+			and(owns(careRule, hid), eq(careRule.action, how), eq(careRule.active, true)),
 		)
 		.orderBy(asc(plantType.commonName))
 		.all();
 
-	const suggestions = new Map<number, SowSuggestion>();
+	const suggestions = new Map<number, GoInSuggestion>();
 
 	for (const rule of rules) {
 		for (const place of places) {

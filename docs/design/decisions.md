@@ -46,6 +46,19 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-27 - seed or seedling
+**Context:** the rail card on What's on was called "Could go in now", but it
+only ever listed `sow` windows. A tester asked whether it meant seeds or
+seedlings, and the heading could fairly be read as either. Planting a seedling
+out had no place on the page unless you already had the planting.
+**Decision:** the card is "Could be sown now", and a second card, "Could be
+planted out now", lists the crops whose `transplant` window is open, with the
+Transplant chip. Both come from the same query, with the same hothouse shift.
+The second card is only drawn when it has something in it.
+**Cost:** a second card in the rail in the months it shows. Only crops with a
+`transplant` rule appear there - in the starter set that is just tomato - so
+it is not a list of everything a nursery would sell you this month.
+
 ### 2026-10-27 - the whole year on a phone
 **Context:** at 375px the year grid showed under three months. Its scroll box
 is 333px wide, and the sticky Plant and Action columns took 192px of it, so

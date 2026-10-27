@@ -34,8 +34,8 @@ became a cog because it was the only word in the header that wasn't a place.
 ## Titles read like a notebook
 
 Page and card titles are what you'd write at the top of the page: "What’s on",
-"The year", "The garden", "Ask your garden", "Harvesting now", "Could go in
-now", "Growing here now", "What has grown here", "Sow something", "Let figgy
+"The year", "The garden", "Ask your garden", "Harvesting now", "Could be
+sown now", "Could be planted out now", "Growing here now", "What has grown here", "Sow something", "Let figgy
 look it up", "Or say what you know".
 
 A page and its nav entry share one record in `lib/nav.ts` so they can't drift.

@@ -14,7 +14,7 @@ import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import { type IsoDate, today as todayInGarden } from '@/lib/dates';
 import { db } from '@/lib/db/client';
-import { listBeds, sowableThisMonth } from '@/lib/db/queries/beds';
+import { couldGoInThisMonth, listBeds } from '@/lib/db/queries/beds';
 import { getDashboard, getSchedule } from '@/lib/db/queries/garden';
 import { getEditableRules } from '@/lib/db/queries/plant';
 import { careLog, environment, planting, plantType } from '@/lib/db/schema';
@@ -158,7 +158,7 @@ export async function whatToSow(hid: HouseholdId, on?: string) {
 	const when = (on || todayInGarden()) as IsoDate;
 	return {
 		date: when,
-		crops: (await sowableThisMonth(hid, when)).map((c) => ({
+		crops: (await couldGoInThisMonth(hid, 'sow', when)).map((c) => ({
 			what: c.commonName,
 			places: c.places.map((p) => p.name),
 			broughtForward: c.places.some((p) => p.shifted),
