@@ -31,10 +31,6 @@ rules. Not fixed yet - each is a candidate change of its own.
   spaces its sections with `space-y-8` rather than `space-y-rhythm`.
 - **A stale link.** "What it needs" on a plant page links to `/beds`, which now
   redirects to `/garden`.
-- **The year grid's cell labels are `uppercase`** (`components/grid/MonthGrid.tsx`)
-  - "OR" in an 11px cell. The only uppercase in the app; either it's a
-  deliberate exception for a 2xs label in a filled cell and belongs in
-  [voice.md](voice.md), or it goes.
 - **`Button` variants `danger` and `pill` are unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
@@ -49,6 +45,25 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-27 - the whole year on a phone
+**Context:** at 375px the year grid showed under three months. Its scroll box
+is 333px wide, and the sticky Plant and Action columns took 192px of it, so
+July, August and most of September fitted and the rest was a sideways scroll
+away. Truncating plant names would have bought 32px - less than one more
+month - and turned "Unidentified tree" into "Unidenti…".
+**Decision:** below `sm` the plant is a heading row of its own, the action
+chip is a 64px column, and the twelve months share the rest at about 22px
+each, headed by one letter. The whole year is on screen and you can read
+down this month's column again. The wide table is unchanged from `sm` up.
+Both tables draw their cells through one `MonthCell`. Cell labels lost their
+`uppercase` ("or", as the page's description already wrote it), which closes
+the last uppercase in the app.
+**Cost:** two tables in the DOM, one hidden. The grid is 2,856px tall on a
+phone, against 2,306px, because each plant's name row is a 44px tap target.
+Months are one letter, with the full name in the `abbr`. A partial tick shows
+only its fraction ("2/3") on a phone because "✓2/3" doesn't fit; the title
+and screen-reader text say it in full.
 
 ### 2026-10-26 - sources only where there is one to open
 **Context:** plant pages said where things came from even when that told

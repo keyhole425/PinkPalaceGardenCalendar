@@ -21,6 +21,31 @@ test('the year grid matches the orchard spreadsheet', async ({ page }) => {
 	);
 });
 
+test('the whole year fits on a phone', async ({ page }) => {
+	await page.setViewportSize({ width: 375, height: 812 });
+	await page.goto('/grid');
+
+	await expect(
+		page.getByRole('link', { name: 'Lemon', exact: true }),
+	).toBeVisible();
+
+	// Twelve one-letter months, the last of them still on screen, and nothing
+	// to scroll sideways to: under three months fitted before.
+	const table = page.getByRole('table');
+	const months = table.locator('thead abbr');
+	await expect(months).toHaveCount(12);
+	const last = await months.last().boundingBox();
+	expect(last).not.toBeNull();
+	expect((last?.x ?? 0) + (last?.width ?? 0)).toBeLessThanOrEqual(375);
+
+	const box = table.locator('xpath=..');
+	const { scrollWidth, clientWidth } = await box.evaluate((el) => ({
+		scrollWidth: el.scrollWidth,
+		clientWidth: el.clientWidth,
+	}));
+	expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+
 test('a job can be ticked off and taken back', async ({ page }) => {
 	await page.goto('/now');
 

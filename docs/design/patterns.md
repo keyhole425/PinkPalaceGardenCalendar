@@ -195,6 +195,12 @@ follow one pattern:
 - The year starts in July by default (the orchard year), with a toggle to
   January.
 - A plant's notes show their first sentence, clamped to two lines.
+- **On a phone (below `sm`) the whole year fits on screen.** The plant is a
+  heading row above its action rows, the action chip is the only other
+  column, and the months are one letter each (the full name in an `abbr`),
+  like `MonthStrip`. Notes are left to the plant's page, and a partial tick
+  shows just its fraction ("2/3"). Both layouts draw their cells through
+  `MonthCell`, so a change to what a cell says happens once.
 
 ## Navigation
 
