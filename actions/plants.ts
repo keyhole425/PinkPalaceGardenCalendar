@@ -8,7 +8,12 @@ import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
-import { environment, planting, plantType } from '@/lib/db/schema';
+import {
+	ENVIRONMENT_KINDS,
+	environment,
+	planting,
+	plantType,
+} from '@/lib/db/schema';
 import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -283,7 +288,7 @@ export async function setPlantingStatus(
 
 const environmentSchema = z.object({
 	name: z.string().trim().min(1, 'Give it a name'),
-	kind: z.enum(['orchard', 'bed', 'hothouse', 'pot']),
+	kind: z.enum(ENVIRONMENT_KINDS),
 	frostFree: z.boolean().default(false),
 	windowShiftMonths: z.coerce.number().int().min(-6).max(6).default(0),
 	notes: z.string().trim().max(2000).optional(),

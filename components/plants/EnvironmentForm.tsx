@@ -8,6 +8,7 @@ import { textareaClass } from '@/components/ui/Field';
 const KINDS = [
 	['orchard', 'Orchard — open ground, trees'],
 	['bed', 'Bed — open ground, annuals'],
+	['raised_bed', 'Raised bed — built up, annuals'],
 	['hothouse', 'Hothouse — under cover'],
 	['pot', 'Pot'],
 ] as const;

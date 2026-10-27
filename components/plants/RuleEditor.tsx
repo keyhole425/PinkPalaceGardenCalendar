@@ -23,6 +23,7 @@ const ENVIRONMENT_LABEL: Record<string, string> = {
 	'': 'Anywhere',
 	orchard: 'Only in the orchard',
 	bed: 'Only in a bed',
+	raised_bed: 'Only in a raised bed',
 	hothouse: 'Only in the hothouse',
 	pot: 'Only in a pot',
 };

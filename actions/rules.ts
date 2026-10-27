@@ -17,13 +17,17 @@ import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { db, type Tx } from '@/lib/db/client';
 import { deleteRules } from '@/lib/db/rules';
-import { CADENCES, CARE_ACTIONS, careRule, plantType } from '@/lib/db/schema';
+import {
+	CADENCES,
+	CARE_ACTIONS,
+	careRule,
+	ENVIRONMENT_KINDS,
+	plantType,
+} from '@/lib/db/schema';
 import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
-
-const ENVIRONMENT_KINDS = ['orchard', 'bed', 'hothouse', 'pot'] as const;
 
 const saveSchema = z
 	.object({

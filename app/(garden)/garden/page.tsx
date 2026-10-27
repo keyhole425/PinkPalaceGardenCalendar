@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 const KIND_LABEL: Record<string, string> = {
 	orchard: 'Orchard',
 	bed: 'Bed',
+	raised_bed: 'Raised bed',
 	hothouse: 'Hothouse',
 	pot: 'Pot',
 };

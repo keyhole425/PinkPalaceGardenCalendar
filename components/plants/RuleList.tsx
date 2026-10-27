@@ -68,7 +68,8 @@ export function RuleList({
 							<span className="text-ink-soft text-sm">
 								{summary(rule.monthMask)}
 								{rule.alternatives && ' · one of these'}
-								{rule.environmentKind && ` · ${rule.environmentKind} only`}
+								{rule.environmentKind &&
+									` · ${rule.environmentKind.replace('_', ' ')} only`}
 							</span>
 							<span className="ml-auto flex items-center gap-2">
 								{/*

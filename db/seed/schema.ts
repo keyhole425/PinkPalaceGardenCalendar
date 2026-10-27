@@ -3,7 +3,7 @@
  * rule here means it never reaches the database.
  */
 import { z } from 'zod';
-import { CADENCES, CARE_ACTIONS } from '@/lib/db/schema';
+import { CADENCES, CARE_ACTIONS, ENVIRONMENT_KINDS } from '@/lib/db/schema';
 
 const month = z.number().int().min(1).max(12);
 
@@ -47,7 +47,7 @@ export const seedPlantTypeSchema = z.object({
 
 export const seedEnvironmentSchema = z.object({
 	slug: z.string().regex(/^[a-z0-9-]+$/),
-	kind: z.enum(['orchard', 'bed', 'hothouse', 'pot']),
+	kind: z.enum(ENVIRONMENT_KINDS),
 	name: z.string().min(1),
 	sortOrder: z.number().int().default(0),
 	frostFree: z.boolean().default(false),

@@ -48,6 +48,20 @@ export const household = sqliteTable('household', {
 	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
+/**
+ * The kinds of place something can grow. A raised bed is sown like a bed but
+ * is its own kind, so a rule can say "only in a raised bed" - they drain and
+ * warm differently from open ground.
+ */
+export const ENVIRONMENT_KINDS = [
+	'orchard',
+	'bed',
+	'raised_bed',
+	'hothouse',
+	'pot',
+] as const;
+export type EnvironmentKind = (typeof ENVIRONMENT_KINDS)[number];
+
 /** Where something grows. Environments carry their own climate profile. */
 export const environment = sqliteTable(
 	'environment',
@@ -59,7 +73,7 @@ export const environment = sqliteTable(
 			.references(() => household.id, { onDelete: 'cascade' }),
 		/** Unique within a household; two gardens may both have a bed-1. */
 		slug: text('slug').notNull(),
-		kind: text('kind', { enum: ['orchard', 'bed', 'hothouse', 'pot'] }).notNull(),
+		kind: text('kind', { enum: ENVIRONMENT_KINDS }).notNull(),
 		name: text('name').notNull(),
 		sortOrder: integer('sort_order').notNull().default(0),
 
@@ -225,9 +239,7 @@ export const careRule = sqliteTable(
 		 */
 		altGroup: text('alt_group'),
 		/** Scopes the rule to one kind of environment; null means anywhere. */
-		environmentKind: text('environment_kind', {
-			enum: ['orchard', 'bed', 'hothouse', 'pot'],
-		}),
+		environmentKind: text('environment_kind', { enum: ENVIRONMENT_KINDS }),
 
 		label: text('label'),
 		note: text('note'),
