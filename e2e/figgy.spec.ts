@@ -96,6 +96,46 @@ test('something sown in a bed shows up with a harvest estimate', async ({
 	await expect(page.getByRole('button', { name: 'Sow it anyway' })).toBeVisible();
 });
 
+test('a place is added at its own size, changed, and removed', async ({ page }) => {
+	await page.goto('/garden');
+	await page.getByRole('link', { name: 'Add a place' }).click();
+
+	await page.getByLabel('Name', { exact: true }).fill('Herb bed');
+	await page
+		.getByLabel('Kind')
+		.selectOption({ label: 'Raised bed — built up, annuals' });
+	await page.getByLabel('Across').fill('3');
+	await page.getByLabel('Deep').fill('3');
+	await expect(page.getByText('9 spots, 3 across and 3 deep.')).toBeVisible();
+	await page.getByRole('button', { name: 'Add it' }).click();
+
+	await expect(page).toHaveURL(/\/garden\/herb-bed$/);
+	await expect(page.getByText('3 × 3 spots')).toBeVisible();
+
+	await page.getByRole('link', { name: 'Change' }).click();
+	await page.getByLabel('Name', { exact: true }).fill('Kitchen herbs');
+	await page.getByLabel('Across').fill('2');
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+
+	await page.goto('/garden');
+	const herbs = page.locator('section').filter({ hasText: 'Kitchen herbs' });
+	await expect(herbs).toContainText('0 of 6 spots');
+
+	await page.goto('/garden/herb-bed/edit');
+	await page.getByText('Remove', { exact: true }).click();
+	await page.getByRole('button', { name: 'Remove Kitchen herbs' }).click();
+	await expect(page).toHaveURL(/\/garden$/);
+	await expect(page.getByText('Kitchen herbs')).toHaveCount(0);
+});
+
+test("a site admin sees the garden's housekeeping numbers", async ({ page }) => {
+	await page.goto('/settings');
+	await expect(
+		page.getByRole('heading', { name: 'This garden in figgy' }),
+	).toBeVisible();
+});
+
 test('every page carries the security headers and breaks none of its own policy', async ({
 	page,
 }) => {

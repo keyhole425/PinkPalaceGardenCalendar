@@ -2,7 +2,7 @@
  * Beds and the hothouse: what is in them, what was in them, and when what is
  * in them might be ready.
  */
-import { and, asc, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, ne } from 'drizzle-orm';
 import { type IsoDate, plusDays, today as todayInGarden } from '@/lib/dates';
 import { hasMonth, type Month, shiftMask } from '@/lib/schedule/months';
 import { db } from '../client';
@@ -54,7 +54,7 @@ function readyRange(
 	return { from: plusDays(sownOn, min), to: plusDays(sownOn, max ?? min) };
 }
 
-async function loadOccupants(
+export async function loadOccupants(
 	hid: HouseholdId,
 	environmentId: number,
 ): Promise<BedOccupant[]> {
@@ -104,6 +104,14 @@ async function loadOccupants(
 	});
 }
 
+/**
+ * This household's places that are still in the garden. A removed place is
+ * archived rather than deleted, so every list and picker has to leave it out.
+ */
+export function currentPlaces(hid: HouseholdId) {
+	return and(owns(environment, hid), isNull(environment.archivedOn));
+}
+
 async function toBed(
 	hid: HouseholdId,
 	e: typeof environment.$inferSelect,
@@ -130,7 +138,7 @@ export async function listBeds(hid: HouseholdId): Promise<Bed[]> {
 	const rows = await db
 		.select()
 		.from(environment)
-		.where(and(owns(environment, hid), ne(environment.kind, 'orchard')))
+		.where(and(currentPlaces(hid), ne(environment.kind, 'orchard')))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 	return Promise.all(rows.map((row) => toBed(hid, row)));
@@ -147,18 +155,21 @@ export async function listPlaces(hid: HouseholdId): Promise<Bed[]> {
 	const rows = await db
 		.select()
 		.from(environment)
-		.where(owns(environment, hid))
+		.where(currentPlaces(hid))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 	return Promise.all(rows.map((row) => toBed(hid, row)));
 }
 
-/** Any place by slug - the orchard included, which is why it is not filtered. */
+/**
+ * Any place by slug - the orchard included, which is why it is not filtered by
+ * kind. A removed place is gone: its page 404s like any other wrong address.
+ */
 export async function getBed(hid: HouseholdId, slug: string): Promise<Bed | null> {
 	const e = await db
 		.select()
 		.from(environment)
-		.where(and(owns(environment, hid), eq(environment.slug, slug)))
+		.where(and(currentPlaces(hid), eq(environment.slug, slug)))
 		.get();
 	if (!e) return null;
 	return await toBed(hid, e);
@@ -282,7 +293,7 @@ export async function couldGoInThisMonth(
 	const places = await db
 		.select()
 		.from(environment)
-		.where(and(owns(environment, hid), ne(environment.kind, 'orchard')))
+		.where(and(currentPlaces(hid), ne(environment.kind, 'orchard')))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 	if (places.length === 0) return [];

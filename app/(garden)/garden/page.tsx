@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { BedPlan } from '@/components/beds/BedPlan';
-import { EnvironmentForm } from '@/components/plants/EnvironmentForm';
 import { Badge } from '@/components/ui/Badge';
+import { ButtonLink } from '@/components/ui/Button';
 import { DataList, DataRow } from '@/components/ui/DataList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
@@ -36,11 +36,16 @@ export default async function GardenPage() {
 				description="Everywhere things grow here, and what is in each one. A place that
 					runs ahead of the open garden - the hothouse - has its windows moved to
 					match, so the same tomato is sowable earlier inside than out."
+				actions={
+					<span data-tour="add-place" className="inline-block">
+						<ButtonLink href="/garden/new">Add a place</ButtonLink>
+					</span>
+				}
 			/>
 
 			<div data-tour="places">
 				{places.length === 0 ? (
-					<EmptyState>No places yet. Add one below.</EmptyState>
+					<EmptyState>No places yet. Add the first one.</EmptyState>
 				) : (
 					/*
 					 * A bed is a small square plan and pairs up neatly; the orchard is
@@ -62,15 +67,6 @@ export default async function GardenPage() {
 					</div>
 				)}
 			</div>
-
-			<details className="mt-10" data-tour="add-place">
-				<summary className="inline-flex min-h-tap cursor-pointer list-none items-center font-semibold font-serif text-lg">
-					Add a place
-				</summary>
-				<div className="mt-2 max-w-measure">
-					<EnvironmentForm />
-				</div>
-			</details>
 		</Frame>
 	);
 }

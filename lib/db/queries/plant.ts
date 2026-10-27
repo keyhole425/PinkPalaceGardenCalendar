@@ -13,6 +13,7 @@ import {
 	plantType,
 } from '../schema';
 import { type HouseholdId, owns } from '../tenancy';
+import { currentPlaces } from './beds';
 import type { HarvestSeason } from './garden';
 import { getSchedule } from './garden';
 
@@ -240,11 +241,12 @@ export async function getRemovedActions(
 	).map((r) => r.action);
 }
 
+/** Where a new planting could go: every place still in the garden. */
 export async function listEnvironments(hid: HouseholdId) {
 	return await db
 		.select()
 		.from(environment)
-		.where(owns(environment, hid))
+		.where(currentPlaces(hid))
 		.orderBy(asc(environment.sortOrder), asc(environment.id))
 		.all();
 }

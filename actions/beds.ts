@@ -1,12 +1,13 @@
 'use server';
 
 /** Putting things in beds, and taking them out again. */
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
-import { rotationWarningFor } from '@/lib/db/queries/beds';
+import { currentPlaces, rotationWarningFor } from '@/lib/db/queries/beds';
 import { environment, planting, plantType } from '@/lib/db/schema';
 import { ownedRow } from '@/lib/db/tenancy';
 
@@ -34,9 +35,9 @@ const sowSchema = z.object({
 
 function refresh(slug?: string) {
 	revalidatePath('/now');
-	revalidatePath('/beds');
+	revalidatePath('/garden');
 	revalidatePath('/grid');
-	if (slug) revalidatePath(`/beds/${slug}`);
+	if (slug) revalidatePath(`/garden/${slug}`);
 }
 
 export async function sowInBed(
@@ -71,7 +72,7 @@ export async function sowInBed(
 	const place = await db
 		.select({ slug: environment.slug })
 		.from(environment)
-		.where(ownedRow(environment, environmentId, householdId))
+		.where(and(currentPlaces(householdId), eq(environment.id, environmentId)))
 		.get();
 	if (!place) return { ok: false, error: 'No such bed.' };
 

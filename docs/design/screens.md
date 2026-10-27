@@ -9,7 +9,7 @@ labels come from `lib/nav.ts`; keep this table in step with it.
 |---|---|---|---|---|---|
 | `/now` | What’s on | Now | `page` | The home screen. What needs doing, and what's worth knowing while you do it. | **Done** on a task; Add a note |
 | `/grid` | The year | Year | `wide` | Every plant, every month - the spreadsheet the app grew from. | Start in July / January |
-| `/garden` | The garden | Garden | `page` | Every place things grow (orchard, beds, hothouse) and what is in each. | Open a place; add a place |
+| `/garden` | The garden | Garden | `page` | Every place things grow (orchard, beds, hothouse) and what is in each. | Open a place; **Add a place** in the header |
 | `/plants` | Plants | Plants | `list` | The catalogue - what figgy knows how to grow. *Not* the garden. | Add a plant |
 | `/ask` | Ask your garden | Ask | `measure` | Questions about your own records. Claude reads, never writes. | Ask |
 
@@ -24,8 +24,10 @@ Settings is the cog in the header.
 | `/plants/[slug]/edit` | Edit {name} | ← {name} | `list` | Change the plant, its rules and its plantings; ask Claude to look it up again. |
 | `/plants/new` | Add a plant | ← Plants | `measure` | Two ways in: "Let figgy look it up" (Claude research → proposal) or "Or say what you know" (the form). |
 | `/garden/[slug]` | the place's name | ← The garden | `list` | One bed or place: the plan, Sow something, Growing here now, Rotation warnings, What has grown here. |
+| `/garden/[slug]/edit` | Change {name} | ← {name} | `measure` | Rename it, change its kind, spots (across × deep, up to 12 each way), frost, how far it runs ahead, measurements and notes. Below, Remove this place - refused while anything is growing there. Reached from **Change** in the place's header. |
+| `/garden/new` | Add a place | ← The garden | `measure` | The same form, empty. Spots have no default: a bed says its own size. Lands on the new place. |
 | `/proposals/[id]` | the plant that was looked up | ← Plants | `list` | Review what Claude proposed before any of it reaches the schedule; or see that it was accepted, rejected or failed. |
-| `/settings` | Settings | - | `list` | The household (name, members, invites), new gardens for site admins, this garden's numbers, looking things up, past look-ups, and you (take the tour again, sign out). |
+| `/settings` | Settings | - | `list` | The household (name, members, invites), new gardens and this garden's numbers for site admins only, looking things up, past look-ups, and you (take the tour again, sign out). |
 | `/no-garden` | No garden here yet | - | `measure` | Where a request lands when it belongs to no household. Reads nothing, so it cannot redirect back to itself. |
 | `/login` | Sign in | - | `measure` | Email and password, for coming back. Says figgy is invite-only. Outside the garden layout: the cover has the wordmark only. |
 | `/join/[token]` | Start your garden / Join {household} / Choose a new password | - | `measure` | Spending an invite. A spent or expired link says so and points at sign-in. |

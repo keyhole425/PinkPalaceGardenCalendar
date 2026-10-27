@@ -1,6 +1,9 @@
 'use server';
 
-/** Adding and editing plants, the trees themselves, and where they grow. */
+/**
+ * Adding and editing plants, and the trees themselves. Places - where they
+ * grow - are in `actions/places.ts`.
+ */
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -8,13 +11,9 @@ import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
-import {
-	ENVIRONMENT_KINDS,
-	environment,
-	planting,
-	plantType,
-} from '@/lib/db/schema';
-import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
+import { currentPlaces } from '@/lib/db/queries/beds';
+import { environment, planting, plantType } from '@/lib/db/schema';
+import { ownedRow, owns } from '@/lib/db/tenancy';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -209,9 +208,17 @@ export async function createPlanting(
 		.where(ownedRow(plantType, parsed.data.plantTypeId, householdId))
 		.get();
 	if (!plant) return { ok: false, error: 'No such plant.' };
-	if (!(await isOwned(environment, parsed.data.environmentId, householdId))) {
-		return { ok: false, error: 'No such place.' };
-	}
+	const place = await db
+		.select({ id: environment.id })
+		.from(environment)
+		.where(
+			and(
+				currentPlaces(householdId),
+				eq(environment.id, parsed.data.environmentId),
+			),
+		)
+		.get();
+	if (!place) return { ok: false, error: 'No such place.' };
 
 	const clash = await db
 		.select({ id: planting.id })
@@ -268,6 +275,20 @@ export async function setPlantingStatus(
 	});
 	if (!parsed.success) return { ok: false, error: 'Nothing to change.' };
 
+	// Bringing one back means it is growing again, which it cannot be in a
+	// place that has been taken out of the garden.
+	if (parsed.data.status === 'active') {
+		const where = await db
+			.select({ archivedOn: environment.archivedOn })
+			.from(planting)
+			.innerJoin(environment, eq(planting.environmentId, environment.id))
+			.where(ownedRow(planting, parsed.data.plantingId, householdId))
+			.get();
+		if (where?.archivedOn) {
+			return { ok: false, error: 'Its place has been removed from the garden.' };
+		}
+	}
+
 	await db
 		.update(planting)
 		.set({
@@ -283,55 +304,5 @@ export async function setPlantingStatus(
 		.run();
 
 	refresh(parsed.data.slug);
-	return { ok: true };
-}
-
-const environmentSchema = z.object({
-	name: z.string().trim().min(1, 'Give it a name'),
-	kind: z.enum(ENVIRONMENT_KINDS),
-	frostFree: z.boolean().default(false),
-	windowShiftMonths: z.coerce.number().int().min(-6).max(6).default(0),
-	notes: z.string().trim().max(2000).optional(),
-});
-
-export async function createEnvironment(
-	_previous: ActionResult | null,
-	form: FormData,
-): Promise<ActionResult> {
-	const { householdId } = await requireHousehold();
-	const parsed = environmentSchema.safeParse({
-		name: form.get('name'),
-		kind: form.get('kind'),
-		frostFree: form.get('frostFree') === 'on',
-		windowShiftMonths: form.get('windowShiftMonths') || 0,
-		notes: form.get('notes') || undefined,
-	});
-	if (!parsed.success) {
-		return {
-			ok: false,
-			error: parsed.error.issues[0]?.message ?? 'Check the form',
-		};
-	}
-
-	let slug = slugify(parsed.data.name);
-	if (!slug) return { ok: false, error: 'That name has no letters in it.' };
-	let attempt = 1;
-	while (
-		await db
-			.select({ id: environment.id })
-			.from(environment)
-			.where(and(owns(environment, householdId), eq(environment.slug, slug)))
-			.get()
-	) {
-		attempt++;
-		slug = `${slugify(parsed.data.name)}-${attempt}`;
-	}
-
-	await db
-		.insert(environment)
-		.values({ householdId, slug, ...parsed.data })
-		.run();
-	revalidatePath('/environments');
-	refresh();
 	return { ok: true };
 }

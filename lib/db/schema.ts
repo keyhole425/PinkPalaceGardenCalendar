@@ -95,6 +95,12 @@ export const environment = sqliteTable(
 		windowShiftMonths: integer('window_shift_months').notNull().default(0),
 		minTempC: integer('min_temp_c'),
 		notes: text('notes'),
+		/**
+		 * The day this place was removed from the garden. It is archived, not
+		 * deleted: past plantings still point here (the foreign key is
+		 * `restrict`), and the record of what grew in it should keep its name.
+		 */
+		archivedOn: text('archived_on'),
 	},
 	(t) => [uniqueIndex('environment_household_slug_idx').on(t.householdId, t.slug)],
 );

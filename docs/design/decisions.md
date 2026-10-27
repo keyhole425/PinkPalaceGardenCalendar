@@ -31,7 +31,7 @@ rules. Not fixed yet - each is a candidate change of its own.
   spaces its sections with `space-y-8` rather than `space-y-rhythm`.
 - **A stale link.** "What it needs" on a plant page links to `/beds`, which now
   redirects to `/garden`.
-- **`Button` variants `danger` and `pill` are unused.** The Ask suggestions are
+- **`Button` variant `pill` is unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
 - **Badge tone `warn` is unused.** Its one user was the "that is getting old"
@@ -45,6 +45,25 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-27 - places you can change
+**Context:** a place could only be added, from a collapsed link under every
+plan on `/garden`, and the form never asked for a size, so every bed fell back
+to 4 × 2 - eight spots whatever it really held. Nothing let you rename,
+resize or remove a place once it existed. The housekeeping card on Settings
+(row counts, seed version) showed to every member.
+**Decision:** **Add a place** is a button in the `/garden` header, opening
+`/garden/new`; each place has **Change** in its header, opening
+`/garden/[slug]/edit`. Both use one form, where a bed must say how many spots
+across and deep (1-12, the most sowing can reach) and the orchard has none.
+Shrinking a bed under something growing is refused, naming the plant and its
+column. Removing is behind a second press, refused while anything is growing,
+and archives a place with a history (`archived_on`) rather than deleting it, so
+what grew there still says where; a place nothing ever grew in is deleted.
+"This garden in figgy" shows to site admins only.
+**Cost:** an archived place cannot be brought back from the app, and its slug
+stays taken, so a new bed of the same name gets `-2`. A refused shrink means
+clearing a plant to move it, since spots cannot be moved.
 
 ### 2026-10-27 - seed or seedling
 **Context:** the rail card on What's on was called "Could go in now", but it

@@ -1,0 +1,1 @@
+ALTER TABLE `environment` ADD `archived_on` text;

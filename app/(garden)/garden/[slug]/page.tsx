@@ -5,11 +5,13 @@ import { BedPlan } from '@/components/beds/BedPlan';
 import type { SowablePlant } from '@/components/beds/SowForm';
 import { ClearButton, SowForm } from '@/components/beds/SowForm';
 import { Badge } from '@/components/ui/Badge';
+import { ButtonLink } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
 import { DataList, DataRow } from '@/components/ui/DataList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
+import { Icon } from '@/components/ui/Icon';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
@@ -131,6 +133,16 @@ export default async function BedPage({
 			<PageHeader
 				back={{ href: '/garden', label: '\u2190 The garden' }}
 				title={bed.name}
+				actions={
+					<ButtonLink
+						variant="quiet"
+						href={`/garden/${bed.slug}/edit`}
+						className="inline-flex min-h-tap items-center gap-1"
+					>
+						<Icon name="pencil" className="h-4 w-4" />
+						Change
+					</ButtonLink>
+				}
 				description={
 					<>
 						{bed.widthCm &&

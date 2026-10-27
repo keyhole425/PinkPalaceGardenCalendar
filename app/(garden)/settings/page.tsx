@@ -27,7 +27,7 @@ import {
 	planting,
 	plantType,
 } from '@/lib/db/schema';
-import { owns } from '@/lib/db/tenancy';
+import { type HouseholdId, owns } from '@/lib/db/tenancy';
 import { listPendingInvites, type PendingInvite } from '@/lib/invites';
 
 export const dynamic = 'force-dynamic';
@@ -55,6 +55,32 @@ function Pending({ invites }: { invites: PendingInvite[] }) {
 	);
 }
 
+/**
+ * How much is in this garden, and which seed it grew from. For whoever runs
+ * figgy: a member looking after the garden has no use for a row count.
+ */
+async function gardenNumbers(householdId: HouseholdId) {
+	// Counted in the database rather than by fetching every row: the log only
+	// grows, and every row would otherwise cross the network to be counted.
+	const [[plants], [plantings], [rules], [log]] = await Promise.all(
+		[plantType, planting, careRule, careLog].map((table) =>
+			db.select({ n: count() }).from(table).where(owns(table, householdId)).all(),
+		),
+	);
+	const home = await db
+		.select({ seedVersion: household.seedVersion })
+		.from(household)
+		.where(eq(household.id, householdId))
+		.get();
+	return {
+		plants: plants?.n ?? 0,
+		plantings: plantings?.n ?? 0,
+		rules: rules?.n ?? 0,
+		log: log?.n ?? 0,
+		seedVersion: home?.seedVersion ?? 'unknown',
+	};
+}
+
 export default async function SettingsPage() {
 	const ctx = await requireHousehold();
 	const { householdId } = ctx;
@@ -74,25 +100,8 @@ export default async function SettingsPage() {
 			.where(eq(householdAiCredential.householdId, householdId))
 			.get(),
 	]);
-	// Counted in the database rather than by fetching every row: the log only
-	// grows, and every row would otherwise cross the network to be counted.
-	const [[plants], [plantings], [rules], [log]] = await Promise.all(
-		[plantType, planting, careRule, careLog].map((table) =>
-			db.select({ n: count() }).from(table).where(owns(table, householdId)).all(),
-		),
-	);
-	const counts = {
-		plants: plants?.n ?? 0,
-		plantings: plantings?.n ?? 0,
-		rules: rules?.n ?? 0,
-		log: log?.n ?? 0,
-	};
-	const home = await db
-		.select({ seedVersion: household.seedVersion })
-		.from(household)
-		.where(eq(household.id, householdId))
-		.get();
-	const seedVersion = home?.seedVersion ?? 'unknown';
+	// Housekeeping numbers, for site admins only, so nobody else pays for them.
+	const numbers = siteAdmin ? await gardenNumbers(householdId) : null;
 	const spend = await totalSpendCents(householdId);
 	const proposals = await listProposals(householdId, 10);
 
@@ -154,28 +163,26 @@ export default async function SettingsPage() {
 					</Card>
 				)}
 
-				<Card title="This garden in figgy">
-					<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm tabular-nums">
-						{siteAdmin && (
-							<>
-								<dt className="text-ink-soft">Database</dt>
-								<dd className="break-all font-mono text-xs">
-									{describeDbUrl(dbUrl)}
-								</dd>
-							</>
-						)}
-						<dt className="text-ink-soft">Plants</dt>
-						<dd>{counts.plants}</dd>
-						<dt className="text-ink-soft">Growing</dt>
-						<dd>{counts.plantings}</dd>
-						<dt className="text-ink-soft">Rules</dt>
-						<dd>{counts.rules}</dd>
-						<dt className="text-ink-soft">Things recorded</dt>
-						<dd>{counts.log}</dd>
-						<dt className="text-ink-soft">Seed version</dt>
-						<dd>{seedVersion}</dd>
-					</dl>
-				</Card>
+				{numbers && (
+					<Card title="This garden in figgy">
+						<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm tabular-nums">
+							<dt className="text-ink-soft">Database</dt>
+							<dd className="break-all font-mono text-xs">
+								{describeDbUrl(dbUrl)}
+							</dd>
+							<dt className="text-ink-soft">Plants</dt>
+							<dd>{numbers.plants}</dd>
+							<dt className="text-ink-soft">Growing</dt>
+							<dd>{numbers.plantings}</dd>
+							<dt className="text-ink-soft">Rules</dt>
+							<dd>{numbers.rules}</dd>
+							<dt className="text-ink-soft">Things recorded</dt>
+							<dd>{numbers.log}</dd>
+							<dt className="text-ink-soft">Seed version</dt>
+							<dd>{numbers.seedVersion}</dd>
+						</dl>
+					</Card>
+				)}
 
 				<Card title="Looking things up" id="looking-things-up" data-tour="ai-key">
 					{key ? (

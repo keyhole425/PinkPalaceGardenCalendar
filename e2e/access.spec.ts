@@ -71,6 +71,11 @@ test('an invite starts a garden of its own, which cannot see the Pink Palace', a
 
 	await page.goto('/settings');
 	await expect(page.getByRole('heading', { name: 'The back yard' })).toBeVisible();
+	// Their own garden's admin, but not figgy's: the housekeeping numbers
+	// are for site admins only.
+	await expect(
+		page.getByRole('heading', { name: 'This garden in figgy' }),
+	).toHaveCount(0);
 });
 
 test('an invite into a household lands them in it', async ({ page }) => {
