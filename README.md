@@ -33,8 +33,33 @@ Claude was asked. The household always comes from whoever is signed in, never
 from a form, and every query and action is scoped by it. The database holds
 the same line with triggers that refuse a row pointing into another garden.
 
-The Pink Palace is household 1, with its orchard. A new household starts from
-the vegetable catalogue and one bed.
+The Pink Palace is household 1, with its orchard. A new household starts with
+a copy of the library's starter set and one bed.
+
+## The library
+
+What figgy knows about growing things is kept once, in the **library**, and
+shared by every garden. It is the one part of the database that belongs to no
+household: every household reads it and none writes it. Only the seed and,
+later, a site admin change it.
+
+A garden's plants are copies. A copy follows the library until someone in
+that garden edits it, action by action, which is the same promise seeding has
+always kept: change your tomato's sowing and sowing is yours. Following never
+puts the old window back, and an unchanged rule keeps its id, so anything
+recorded against it stays ticked. The orchard is not in the library. It is
+the Pink Palace's own, copied from its spreadsheet.
+
+A plant can have **varieties**, one level deep: chilli, then habanero, bird's
+eye and Carolina Reaper. A variety stores only what differs from its parent.
+Its rules for an action replace the parent's, and any action it doesn't
+mention is the parent's. `lib/library/resolve.ts` fills a variety in, and
+everything else reads the result.
+
+Windows are kept per **region**, because the same month means different
+things in Adelaide and in Hobart. Every household has one. There is only
+Adelaide so far, described in `lib/ai/locale.ts`, which every prompt to
+Claude starts from.
 
 ## The first visit
 

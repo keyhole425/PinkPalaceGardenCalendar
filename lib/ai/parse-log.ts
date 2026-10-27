@@ -12,6 +12,7 @@
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import { type IsoDate, today as todayInGarden } from '@/lib/dates';
+import { householdRegion } from '@/lib/db/queries/household';
 import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropicFor, MODEL } from './client';
 import { localeBrief } from './locale';
@@ -64,6 +65,7 @@ export async function parseLogSentence(
 	when: IsoDate = todayInGarden(),
 ): Promise<ParsedLog> {
 	const client = await anthropicFor(hid);
+	const region = await householdRegion(hid);
 
 	const inventory = plantings
 		.map((p) => `${p.id}: ${p.label} (${p.plantName}, in ${p.place})`)
@@ -79,7 +81,7 @@ export async function parseLogSentence(
 				text: [
 					'You turn a gardener’s offhand sentence into records for their garden diary.',
 					'',
-					localeBrief(),
+					localeBrief(region),
 					'',
 					'Rules:',
 					'- Use the planting ids given. If nothing in the list plainly matches, set',

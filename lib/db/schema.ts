@@ -13,6 +13,7 @@
  */
 import { sql } from 'drizzle-orm';
 import {
+	type AnySQLiteColumn,
 	check,
 	index,
 	integer,
@@ -25,6 +26,14 @@ import {
 
 export const SEED_PROFILES = ['pink-palace', 'starter'] as const;
 export type SeedProfile = (typeof SEED_PROFILES)[number];
+
+/**
+ * Where a garden is, as far as its months are concerned. The same month means
+ * different things in Adelaide and in Hobart, so the library's windows are
+ * kept per region. There is one so far; lib/ai/locale.ts describes each.
+ */
+export const REGION_IDS = ['adelaide'] as const;
+export type RegionId = (typeof REGION_IDS)[number];
 
 /**
  * One garden, and everyone who looks after it.
@@ -45,6 +54,8 @@ export const household = sqliteTable('household', {
 		.default('starter'),
 	/** The seed version last applied, so a re-seed knows what changed. */
 	seedVersion: text('seed_version'),
+	/** Whose months this garden keeps: which of the library's windows apply. */
+	region: text('region', { enum: REGION_IDS }).notNull().default('adelaide'),
 	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
@@ -105,6 +116,13 @@ export const environment = sqliteTable(
 	(t) => [uniqueIndex('environment_household_slug_idx').on(t.householdId, t.slug)],
 );
 
+/**
+ * Where a plant or a rule came from. `seed` is the code in db/seed, `library`
+ * a copy of the shared library, `user` someone here, `ai` an accepted
+ * proposal.
+ */
+export const PLANT_SOURCES = ['seed', 'library', 'user', 'ai'] as const;
+
 /** A kind of plant, not an individual one. The template rules hang off this. */
 export const plantType = sqliteTable(
 	'plant_type',
@@ -138,10 +156,17 @@ export const plantType = sqliteTable(
 		spacingCm: integer('spacing_cm'),
 		rowSpacingCm: integer('row_spacing_cm'),
 
-		source: text('source', { enum: ['seed', 'user', 'ai'] })
-			.notNull()
-			.default('user'),
+		source: text('source', { enum: PLANT_SOURCES }).notNull().default('user'),
 		sourceRef: text('source_ref'),
+		/**
+		 * The library plant this is a copy of, if it is one. A copy follows the
+		 * library until someone here edits it: see lib/library/sync.ts.
+		 */
+		libraryPlantId: integer('library_plant_id').references(() => libraryPlant.id, {
+			onDelete: 'set null',
+		}),
+		/** The library revision last copied in, so a sync knows what changed. */
+		libraryRevision: integer('library_revision'),
 		/** Set when figgy knows the data is incomplete, so the UI can nag. */
 		needsReview: integer('needs_review', { mode: 'boolean' })
 			.notNull()
@@ -250,9 +275,7 @@ export const careRule = sqliteTable(
 		label: text('label'),
 		note: text('note'),
 
-		source: text('source', { enum: ['seed', 'user', 'ai'] })
-			.notNull()
-			.default('user'),
+		source: text('source', { enum: PLANT_SOURCES }).notNull().default('user'),
 		/** Traces a seeded rule back to where it came from. */
 		sourceRef: text('source_ref'),
 		active: integer('active', { mode: 'boolean' }).notNull().default(true),
@@ -399,6 +422,129 @@ export const meta = sqliteTable('meta', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
 });
+
+/*
+ * The library: what figgy knows about growing things, shared by every garden.
+ *
+ * These are the only garden tables with no household. Every household reads
+ * them and none writes them: a household's plants are copies (plant_type with
+ * library_plant_id set) that follow the library until someone there edits
+ * them. Only the seed and a site admin change the library itself.
+ */
+
+export const LIBRARY_SOURCES = ['seed', 'curated'] as const;
+
+/**
+ * A plant, or a kind of one. Chilli is a plant; habanero, bird's eye and the
+ * Carolina Reaper are its varieties, each pointing at it with `parentId`.
+ *
+ * A variety keeps only what differs. A null field means "as its parent" -
+ * lib/library/resolve.ts fills it in - which is why everything but the name is
+ * nullable here and the check insists only that a top-level plant says what
+ * it is. Nesting is one level deep, held by a trigger in the migration: a
+ * gardener thinks "a chilli, and which one", not a taxonomy.
+ */
+export const libraryPlant = sqliteTable(
+	'library_plant',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Unique across the library, and the slug a household's copy takes. */
+		slug: text('slug').notNull(),
+		parentId: integer('parent_id').references(
+			(): AnySQLiteColumn => libraryPlant.id,
+			{ onDelete: 'cascade' },
+		),
+		commonName: text('common_name').notNull(),
+		/**
+		 * Its own, always: a parent can be a gardener's group rather than a
+		 * botanical one. Habanero is Capsicum chinense, bird's eye C. annuum.
+		 */
+		scientificName: text('scientific_name'),
+		/** Other names it goes by, as a JSON array, so a search finds them. */
+		aliases: text('aliases'),
+		category: text('category', {
+			enum: ['fruit_tree', 'vegetable', 'herb', 'other'],
+		}),
+		lifecycle: text('lifecycle', { enum: ['perennial', 'annual', 'biennial'] }),
+		family: text('family'),
+		daysToMaturityMin: integer('days_to_maturity_min'),
+		daysToMaturityMax: integer('days_to_maturity_max'),
+		spacingCm: integer('spacing_cm'),
+		rowSpacingCm: integer('row_spacing_cm'),
+
+		/** The article. One paragraph first, then a section each, all optional. */
+		summary: text('summary'),
+		growingMd: text('growing_md'),
+		careMd: text('care_md'),
+		harvestMd: text('harvest_md'),
+		problemsMd: text('problems_md'),
+		/** Pages the article was written from, as JSON. Data, never instructions. */
+		citations: text('citations'),
+
+		needsReview: integer('needs_review', { mode: 'boolean' })
+			.notNull()
+			.default(false),
+		/** Goes up by one each time it changes, so copies know they are behind. */
+		revision: integer('revision').notNull().default(1),
+		source: text('source', { enum: LIBRARY_SOURCES }).notNull().default('seed'),
+		sourceRef: text('source_ref'),
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		/** Set when a site admin edits it; the seed then leaves it alone. */
+		curatedAt: text('curated_at'),
+	},
+	(t) => [
+		uniqueIndex('library_plant_slug_idx').on(t.slug),
+		index('library_plant_parent_idx').on(t.parentId),
+		check(
+			'library_plant_says_what_it_is',
+			sql`${t.parentId} IS NOT NULL OR (${t.category} IS NOT NULL AND ${t.lifecycle} IS NOT NULL)`,
+		),
+	],
+);
+
+/**
+ * When something is done to a library plant, in one region. The same shape
+ * as a care rule, without the garden. A variety's rules for an action replace
+ * its parent's for that action; actions it says nothing about are its
+ * parent's.
+ */
+export const libraryRule = sqliteTable(
+	'library_rule',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		libraryPlantId: integer('library_plant_id')
+			.notNull()
+			.references(() => libraryPlant.id, { onDelete: 'cascade' }),
+		region: text('region', { enum: REGION_IDS }).notNull(),
+		action: text('action', { enum: CARE_ACTIONS }).notNull(),
+		monthMask: integer('month_mask').notNull(),
+		cadence: text('cadence', { enum: CADENCES }).notNull().default('monthly'),
+		altGroup: text('alt_group'),
+		environmentKind: text('environment_kind', { enum: ENVIRONMENT_KINDS }),
+		label: text('label'),
+		note: text('note'),
+		source: text('source', { enum: LIBRARY_SOURCES }).notNull().default('seed'),
+		sourceRef: text('source_ref'),
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		curatedAt: text('curated_at'),
+	},
+	(t) => [index('library_rule_plant_region_idx').on(t.libraryPlantId, t.region)],
+);
+
+/** What is worth saying about a plant in one region: whether it is happy here. */
+export const libraryRegionNote = sqliteTable(
+	'library_region_note',
+	{
+		libraryPlantId: integer('library_plant_id')
+			.notNull()
+			.references(() => libraryPlant.id, { onDelete: 'cascade' }),
+		region: text('region', { enum: REGION_IDS }).notNull(),
+		noteMd: text('note_md').notNull(),
+		source: text('source', { enum: LIBRARY_SOURCES }).notNull().default('seed'),
+		curatedAt: text('curated_at'),
+	},
+	(t) => [primaryKey({ columns: [t.libraryPlantId, t.region] })],
+);
 
 /*
  * People, and how they get in.

@@ -1,6 +1,10 @@
 /**
- * The vegetable side of the garden: four beds, a hothouse, and a starter set
- * of crops.
+ * The vegetable side of the garden: four beds, a hothouse, and the library's
+ * first crops.
+ *
+ * The crops are written into the shared library, not into any one garden. A
+ * household gets its own copy of each one in STARTER_SET, and can add the
+ * rest from the library - the chilli and its kinds among them.
  *
  * A caution about the months below. Unlike the orchard, which was transcribed
  * from the household's own spreadsheet, these are general temperate-Australia
@@ -13,7 +17,7 @@
  * has its windows shifted by the environment, so the same tomato reads
  * differently inside and out without being entered twice.
  */
-import type { SeedEnvironmentInput, SeedPlantTypeInput } from './schema';
+import type { SeedEnvironmentInput, SeedLibraryPlantInput } from './schema';
 
 export const vegEnvironments: SeedEnvironmentInput[] = [
 	{
@@ -64,7 +68,7 @@ export const vegEnvironments: SeedEnvironmentInput[] = [
 const STARTER_NOTE =
 	'Sowing months are a general temperate-Australia guide, not this garden yet. Correct them here or ask figgy to look the crop up properly.';
 
-export const vegPlantTypes: SeedPlantTypeInput[] = [
+export const vegLibrary: SeedLibraryPlantInput[] = [
 	{
 		slug: 'tomato',
 		commonName: 'Tomato',
@@ -72,35 +76,39 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Solanaceae',
-		notesMd: `Sow under cover from late winter, plant out once frost has passed.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary: 'Sow under cover from late winter, plant out once frost has passed.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 70,
 		daysToMaturityMax: 90,
 		spacingCm: 50,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [8, 9, 10], cadence: 'monthly' },
-			{ action: 'transplant', months: [10, 11], cadence: 'once_in_window' },
-			{ action: 'harvest', months: [12, 1, 2, 3, 4], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [8, 9, 10], cadence: 'monthly' },
+				{ action: 'transplant', months: [10, 11], cadence: 'once_in_window' },
+				{ action: 'harvest', months: [12, 1, 2, 3, 4], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'dwarf-bean',
 		commonName: 'Dwarf bean',
+		aliases: ['bush bean', 'green bean', 'French bean'],
 		scientificName: 'Phaseolus vulgaris',
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Fabaceae',
-		notesMd: `Sow direct in warm soil; sow again every few weeks for a run of picking.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'Sow direct in warm soil; sow again every few weeks for a run of picking.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 60,
 		daysToMaturityMax: 75,
 		spacingCm: 20,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [9, 10, 11, 12, 1], cadence: 'monthly' },
-			{ action: 'harvest', months: [11, 12, 1, 2, 3], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [9, 10, 11, 12, 1], cadence: 'monthly' },
+				{ action: 'harvest', months: [11, 12, 1, 2, 3], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'lettuce',
@@ -109,16 +117,17 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Asteraceae',
-		notesMd: `Bolts in the heat. Sow either side of summer rather than through it.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary: 'Bolts in the heat. Sow either side of summer rather than through it.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 50,
 		daysToMaturityMax: 70,
 		spacingCm: 25,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [2, 3, 4, 8, 9, 10], cadence: 'monthly' },
-			{ action: 'harvest', months: [4, 5, 6, 10, 11, 12], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [2, 3, 4, 8, 9, 10], cadence: 'monthly' },
+				{ action: 'harvest', months: [4, 5, 6, 10, 11, 12], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'carrot',
@@ -127,35 +136,39 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Apiaceae',
-		notesMd: `Sow direct - they dislike being moved. Thin early or they stay small.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'Sow direct - they dislike being moved. Thin early or they stay small.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 70,
 		daysToMaturityMax: 100,
 		spacingCm: 5,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [2, 3, 8, 9, 10, 11], cadence: 'monthly' },
-			{ action: 'thin', months: [3, 4, 9, 10, 11, 12], cadence: 'monthly' },
-			{ action: 'harvest', months: [5, 6, 11, 12, 1, 2], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [2, 3, 8, 9, 10, 11], cadence: 'monthly' },
+				{ action: 'thin', months: [3, 4, 9, 10, 11, 12], cadence: 'monthly' },
+				{ action: 'harvest', months: [5, 6, 11, 12, 1, 2], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'zucchini',
 		commonName: 'Zucchini',
+		aliases: ['courgette'],
 		scientificName: 'Cucurbita pepo',
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Cucurbitaceae',
-		notesMd: `Two plants feed a street. Pick small and often.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary: 'Two plants feed a street. Pick small and often.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 50,
 		daysToMaturityMax: 65,
 		spacingCm: 80,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [9, 10, 11, 12], cadence: 'monthly' },
-			{ action: 'harvest', months: [12, 1, 2, 3], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [9, 10, 11, 12], cadence: 'monthly' },
+				{ action: 'harvest', months: [12, 1, 2, 3], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'pumpkin',
@@ -164,56 +177,63 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Cucurbitaceae',
-		notesMd: `Wants room and a long season. Leave on the vine until the stem dries.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'Wants room and a long season. Leave on the vine until the stem dries.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 100,
 		daysToMaturityMax: 140,
 		spacingCm: 150,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [9, 10, 11], cadence: 'monthly' },
-			{ action: 'harvest', months: [3, 4, 5], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [9, 10, 11], cadence: 'monthly' },
+				{ action: 'harvest', months: [3, 4, 5], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'silverbeet',
 		commonName: 'Silverbeet',
+		aliases: ['chard', 'Swiss chard'],
 		scientificName: 'Beta vulgaris',
 		category: 'vegetable',
 		lifecycle: 'biennial',
 		family: 'Amaranthaceae',
-		notesMd: `Close to indestructible. Pick outer leaves and it keeps going for months.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'Close to indestructible. Pick outer leaves and it keeps going for months.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 55,
 		daysToMaturityMax: 70,
 		spacingCm: 30,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [2, 3, 4, 8, 9, 10], cadence: 'monthly' },
-			{
-				action: 'harvest',
-				months: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-				cadence: 'continuous',
-			},
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [2, 3, 4, 8, 9, 10], cadence: 'monthly' },
+				{
+					action: 'harvest',
+					months: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+					cadence: 'continuous',
+				},
+			],
+		},
 	},
 	{
 		slug: 'pea',
 		commonName: 'Pea',
+		aliases: ['snow pea', 'sugar snap'],
 		scientificName: 'Pisum sativum',
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Fabaceae',
-		notesMd: `A cool-season crop here. Give it something to climb.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary: 'A cool-season crop here. Give it something to climb.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 60,
 		daysToMaturityMax: 80,
 		spacingCm: 8,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [3, 4, 5, 8], cadence: 'monthly' },
-			{ action: 'harvest', months: [7, 8, 9, 10, 11], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [3, 4, 5, 8], cadence: 'monthly' },
+				{ action: 'harvest', months: [7, 8, 9, 10, 11], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'garlic',
@@ -222,16 +242,18 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'vegetable',
 		lifecycle: 'annual',
 		family: 'Amaryllidaceae',
-		notesMd: `In on the shortest day, out on the longest, roughly. A long occupier of a bed.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'In on the shortest day, out on the longest, roughly. A long occupier of a bed.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 210,
 		daysToMaturityMax: 260,
 		spacingCm: 15,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [4, 5], cadence: 'once_in_window' },
-			{ action: 'harvest', months: [11, 12], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [4, 5], cadence: 'once_in_window' },
+				{ action: 'harvest', months: [11, 12], cadence: 'continuous' },
+			],
+		},
 	},
 	{
 		slug: 'basil',
@@ -240,15 +262,109 @@ export const vegPlantTypes: SeedPlantTypeInput[] = [
 		category: 'herb',
 		lifecycle: 'annual',
 		family: 'Lamiaceae',
-		notesMd: `Hates cold soil. Happier in the hothouse at either end of the season.\n\n${STARTER_NOTE}`,
-		needsReview: false,
+		summary:
+			'Hates cold soil. Happier in the hothouse at either end of the season.',
+		regionNotes: { adelaide: STARTER_NOTE },
 		daysToMaturityMin: 60,
 		daysToMaturityMax: 80,
 		spacingCm: 25,
-		plantings: [],
-		rules: [
-			{ action: 'sow', months: [9, 10, 11, 12], cadence: 'monthly' },
-			{ action: 'harvest', months: [12, 1, 2, 3, 4], cadence: 'continuous' },
-		],
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [9, 10, 11, 12], cadence: 'monthly' },
+				{ action: 'harvest', months: [12, 1, 2, 3, 4], cadence: 'continuous' },
+			],
+		},
+	},
+
+	/*
+	 * Chilli, and three of its kinds. The parent is a gardener's group rather
+	 * than a botanical one - habanero and the Reaper are Capsicum chinense,
+	 * bird's eye is C. annuum - so each kind carries its own scientific name.
+	 * A kind lists only what differs: bird's eye keeps the chilli's months.
+	 */
+	{
+		slug: 'chilli',
+		commonName: 'Chilli',
+		scientificName: 'Capsicum',
+		aliases: ['chili', 'hot pepper'],
+		category: 'vegetable',
+		lifecycle: 'annual',
+		family: 'Solanaceae',
+		summary:
+			'Wants warm soil and a long, hot season. Sow under cover in late winter and plant out once frost has passed.',
+		regionNotes: { adelaide: STARTER_NOTE },
+		needsReview: true,
+		daysToMaturityMin: 70,
+		daysToMaturityMax: 100,
+		spacingCm: 45,
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [8, 9, 10], cadence: 'monthly' },
+				{ action: 'transplant', months: [10, 11], cadence: 'once_in_window' },
+				{ action: 'harvest', months: [1, 2, 3, 4, 5], cadence: 'continuous' },
+			],
+		},
+	},
+	{
+		slug: 'habanero',
+		parent: 'chilli',
+		commonName: 'Habanero',
+		scientificName: 'Capsicum chinense',
+		summary:
+			'Very hot, and slow to germinate and to ripen. Sow at the start of the window.',
+		needsReview: true,
+		daysToMaturityMin: 90,
+		daysToMaturityMax: 120,
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [8, 9], cadence: 'monthly' },
+				{ action: 'harvest', months: [2, 3, 4, 5], cadence: 'continuous' },
+			],
+		},
+	},
+	{
+		slug: 'birds-eye-chilli',
+		parent: 'chilli',
+		commonName: 'Bird’s eye chilli',
+		scientificName: 'Capsicum annuum',
+		aliases: ['bird’s eye', 'birds eye', 'Thai chilli'],
+		summary:
+			'Small, upright and prolific. In a pot against a warm wall it often lives through an Adelaide winter.',
+		needsReview: true,
+		daysToMaturityMin: 70,
+		daysToMaturityMax: 90,
+		spacingCm: 40,
+	},
+	{
+		slug: 'carolina-reaper',
+		parent: 'chilli',
+		commonName: 'Carolina Reaper',
+		scientificName: 'Capsicum chinense',
+		aliases: ['reaper'],
+		summary:
+			'Among the hottest chillies grown, and the slowest. Sow early, give it the warmest spot, and wear gloves to pick.',
+		needsReview: true,
+		daysToMaturityMin: 100,
+		daysToMaturityMax: 130,
+		rules: {
+			adelaide: [
+				{ action: 'sow', months: [7, 8], cadence: 'monthly' },
+				{ action: 'harvest', months: [3, 4, 5], cadence: 'continuous' },
+			],
+		},
 	},
 ];
+
+/** What every new garden starts with a copy of. The rest it adds from the library. */
+export const STARTER_SET = [
+	'tomato',
+	'dwarf-bean',
+	'lettuce',
+	'carrot',
+	'zucchini',
+	'pumpkin',
+	'silverbeet',
+	'pea',
+	'garlic',
+	'basil',
+] as const;

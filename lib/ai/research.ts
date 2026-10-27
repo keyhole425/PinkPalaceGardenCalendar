@@ -14,9 +14,11 @@
  * accepting it.
  */
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { householdRegion } from '@/lib/db/queries/household';
+import type { RegionId } from '@/lib/db/schema';
 import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropicFor, MODEL } from './client';
-import { localeBrief, SEARCH_LOCATION } from './locale';
+import { localeBrief, REGIONS, searchLocation } from './locale';
 import { type Citation, type PlantProposal, plantProposalSchema } from './schema';
 import { recordCall } from './usage';
 
@@ -28,11 +30,15 @@ export type ResearchNotes = {
 	searches: number;
 };
 
-function researchPrompt(query: string, known?: KnownPlant): string {
+function researchPrompt(
+	region: RegionId,
+	query: string,
+	known?: KnownPlant,
+): string {
 	const lines = [
 		`Find out how to look after ${query} in this garden.`,
 		'',
-		localeBrief(),
+		localeBrief(region),
 		'',
 		'Work out, month by month, when to do each of these - whichever apply:',
 		'planting or sowing, feeding, pruning, harvesting, netting, thinning.',
@@ -74,9 +80,11 @@ export async function research(
 	signal?: AbortSignal,
 ): Promise<ResearchNotes> {
 	const client = await anthropicFor(hid);
+	const region = await householdRegion(hid);
+	const here = REGIONS[region];
 
 	const messages: Parameters<typeof client.messages.create>[0]['messages'] = [
-		{ role: 'user', content: researchPrompt(query, known) },
+		{ role: 'user', content: researchPrompt(region, query, known) },
 	];
 
 	const citations: Citation[] = [];
@@ -95,11 +103,11 @@ export async function research(
 					{
 						type: 'text',
 						text: [
-							'You are helping keep a home garden calendar in Adelaide, South Australia.',
+							`You are helping keep a home garden calendar in ${here.city}, ${here.region}.`,
 							'Be concrete about months. Prefer local sources. Never invent a month you',
 							'did not find; say you could not find it instead.',
 							'',
-							localeBrief(),
+							localeBrief(region),
 						].join('\n'),
 						// The brief is identical on every lookup, so it caches.
 						cache_control: { type: 'ephemeral' },
@@ -110,7 +118,7 @@ export async function research(
 						type: 'web_search_20260209',
 						name: 'web_search',
 						max_uses: MAX_SEARCHES,
-						user_location: SEARCH_LOCATION,
+						user_location: searchLocation(region),
 					},
 				],
 				messages,
@@ -159,6 +167,7 @@ export async function structure(
 	signal?: AbortSignal,
 ): Promise<PlantProposal> {
 	const client = await anthropicFor(hid);
+	const region = await householdRegion(hid);
 
 	const sourceList = research.citations
 		.map((c) => `- ${c.title}: ${c.url}`)
@@ -175,7 +184,7 @@ export async function structure(
 					text: [
 						'You turn gardening research into a month-by-month schedule.',
 						'',
-						localeBrief(),
+						localeBrief(region),
 						'',
 						'Months are numbers: 1 is January, 12 is December, southern hemisphere.',
 						'',

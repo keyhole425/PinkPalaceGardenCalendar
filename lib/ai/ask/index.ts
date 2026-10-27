@@ -7,6 +7,7 @@
  * as information rather than instruction.
  */
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { householdRegion } from '@/lib/db/queries/household';
 import type { HouseholdId } from '@/lib/db/tenancy';
 import { anthropicFor, MODEL } from '../client';
 import { localeBrief } from '../locale';
@@ -76,6 +77,7 @@ export async function askGarden(
 	question: string,
 ): Promise<AskAnswer> {
 	const client = await anthropicFor(hid);
+	const region = await householdRegion(hid);
 	const summary = await gardenSummary(hid);
 
 	const runner = client.beta.messages.toolRunner({
@@ -90,7 +92,7 @@ export async function askGarden(
 					'provided. They are the only source of truth about this garden; if the',
 					'tools do not say it, say you do not know rather than filling it in.',
 					'',
-					localeBrief(),
+					localeBrief(region),
 					'',
 					'Answer in a few sentences, the way a gardener would. Give months and',
 					'dates plainly. If the answer is "nothing" or "there is no record of',

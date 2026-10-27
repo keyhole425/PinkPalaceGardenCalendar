@@ -1,7 +1,7 @@
 /** Who is in a household. */
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../client';
-import { household, membership, type Role, user } from '../schema';
+import { household, membership, type RegionId, type Role, user } from '../schema';
 import type { HouseholdId } from '../tenancy';
 
 export type Member = { userId: string; name: string; email: string; role: Role };
@@ -23,4 +23,14 @@ export async function listMembers(hid: HouseholdId): Promise<Member[]> {
 
 export async function getHousehold(hid: HouseholdId) {
 	return db.select().from(household).where(eq(household.id, hid)).get();
+}
+
+/** Whose months this garden keeps: what every prompt and window is for. */
+export async function householdRegion(hid: HouseholdId): Promise<RegionId> {
+	const row = await db
+		.select({ region: household.region })
+		.from(household)
+		.where(eq(household.id, hid))
+		.get();
+	return row?.region ?? 'adelaide';
 }

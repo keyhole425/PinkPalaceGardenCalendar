@@ -3,7 +3,12 @@
  * rule here means it never reaches the database.
  */
 import { z } from 'zod';
-import { CADENCES, CARE_ACTIONS, ENVIRONMENT_KINDS } from '@/lib/db/schema';
+import {
+	CADENCES,
+	CARE_ACTIONS,
+	ENVIRONMENT_KINDS,
+	REGION_IDS,
+} from '@/lib/db/schema';
 
 const month = z.number().int().min(1).max(12);
 
@@ -44,6 +49,45 @@ export const seedPlantTypeSchema = z.object({
 	plantings: z.array(z.string().min(1)).default([]),
 	rules: z.array(seedRuleSchema),
 });
+
+/**
+ * A plant in the library, as the seed writes it.
+ *
+ * A variety names its `parent` by slug and leaves out whatever it shares with
+ * it - see lib/library/resolve.ts. Its rules for an action replace the
+ * parent's for that action; an action it gives no rule for is the parent's.
+ */
+export const seedLibraryPlantSchema = z
+	.object({
+		slug: z.string().regex(/^[a-z0-9-]+$/),
+		parent: z
+			.string()
+			.regex(/^[a-z0-9-]+$/)
+			.optional(),
+		commonName: z.string().min(1),
+		scientificName: z.string().optional(),
+		/** Other names it goes by, so a search finds it under them. */
+		aliases: z.array(z.string().min(1)).default([]),
+		category: z.enum(['fruit_tree', 'vegetable', 'herb', 'other']).optional(),
+		lifecycle: z.enum(['perennial', 'annual', 'biennial']).optional(),
+		family: z.string().optional(),
+		daysToMaturityMin: z.number().int().positive().optional(),
+		daysToMaturityMax: z.number().int().positive().optional(),
+		spacingCm: z.number().int().positive().optional(),
+		/** The article's opening paragraph. */
+		summary: z.string().optional(),
+		/** What is worth saying about it in each region. */
+		regionNotes: z.partialRecord(z.enum(REGION_IDS), z.string().min(1)).default({}),
+		needsReview: z.boolean().default(false),
+		/** Windows per region. A variety lists only the actions that differ. */
+		rules: z.partialRecord(z.enum(REGION_IDS), z.array(seedRuleSchema)).default({}),
+	})
+	.refine((p) => p.parent || (p.category && p.lifecycle), {
+		message: 'A plant that is not a variety has to say its category and lifecycle',
+	});
+
+export type SeedLibraryPlant = z.infer<typeof seedLibraryPlantSchema>;
+export type SeedLibraryPlantInput = z.input<typeof seedLibraryPlantSchema>;
 
 export const seedEnvironmentSchema = z.object({
 	slug: z.string().regex(/^[a-z0-9-]+$/),

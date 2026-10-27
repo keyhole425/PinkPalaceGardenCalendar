@@ -75,9 +75,10 @@ export function RuleList({
 								{/*
 								 * Where a rule came from is said only when there is
 								 * something to say: yours, or Claude's with its pages
-								 * underneath. figgy's own starting rules carry no label.
+								 * underneath. figgy's own starting rules, from the seed or
+								 * the library, carry no label.
 								 */}
-								{rule.source !== 'seed' && (
+								{(rule.source === 'user' || rule.source === 'ai') && (
 									<span className="text-ink-soft text-xs">
 										{rule.source === 'ai' ? 'looked up' : 'yours'}
 									</span>
