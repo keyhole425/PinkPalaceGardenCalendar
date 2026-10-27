@@ -92,7 +92,34 @@ export type ExpandOptions = {
 	/** Only windows overlapping this span are returned. */
 	from?: IsoDate;
 	to?: IsoDate;
+	/**
+	 * When the planting began - sown, or planted if that came first. A window
+	 * that closed before then was never this plant's job, so it is left out
+	 * rather than read as missed. One with a log against it stays: whatever
+	 * was written down is kept.
+	 */
+	since?: IsoDate | null;
+	/**
+	 * When the planting was sown, if it was. Its sowing has then happened, so
+	 * the only sow window left is the one it was sown in - which sowing ticks
+	 * - and no other asks for it again, before or after. More of the same crop
+	 * is a new planting, which "could go in now" offers.
+	 */
+	sownOn?: IsoDate | null;
 };
+
+/** Whether a window is this planting's job at all, given when it began. */
+function appliesToPlanting(
+	rule: EffectiveRule,
+	window: Window,
+	{ since, sownOn }: ExpandOptions,
+): boolean {
+	if (since && window.closesOn < since) return false;
+	if (sownOn && rule.action === 'sow') {
+		return window.opensOn <= sownOn && sownOn <= window.closesOn;
+	}
+	return true;
+}
 
 export function expandOccurrences(
 	rules: EffectiveRule[],
@@ -117,6 +144,8 @@ export function expandOccurrences(
 			if (window.closesOn < from || window.opensOn > to) continue;
 
 			const log = mine.find((l) => l.occurrenceKey === window.key);
+			if (!log && !appliesToPlanting(rule, window, options)) continue;
+
 			occurrences.push({
 				rule,
 				opensOn: window.opensOn,

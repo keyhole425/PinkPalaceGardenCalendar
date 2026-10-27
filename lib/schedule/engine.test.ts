@@ -311,6 +311,63 @@ describe('what state a job is in', () => {
 	});
 });
 
+describe('a planting that began part way through', () => {
+	const sow = effective({
+		id: 1,
+		action: 'sow',
+		monthMask: maskFromMonths([8, 9, 10]),
+	});
+	const feed = effective({ id: 2, monthMask: maskFromMonths([8, 11]) });
+	const span = { today: '2026-11-15', from: '2026-01-01', to: '2026-12-31' };
+
+	it('leaves out windows that closed before it was in the ground', () => {
+		const keys = expandOccurrences([feed], [], {
+			...span,
+			since: '2026-09-25',
+		}).map((o) => o.key);
+		expect(keys).toEqual(['2026-11']);
+	});
+
+	it('keeps one of those windows if something was logged against it', () => {
+		const [august] = expandOccurrences(
+			[feed],
+			[
+				{
+					id: 1,
+					careRuleId: 2,
+					occurrenceKey: '2026-08',
+					completedOn: '2026-08-10',
+				},
+			],
+			{ ...span, since: '2026-09-25' },
+		);
+		expect(august).toMatchObject({ key: '2026-08', state: 'done' });
+	});
+
+	it('asks for no sowing once sown, except the window it was sown in', () => {
+		const sown = expandOccurrences([sow], [], {
+			...span,
+			since: '2026-09-25',
+			sownOn: '2026-09-25',
+		});
+		expect(sown.map((o) => o.key)).toEqual(['2026-09']);
+	});
+
+	it('asks for no sowing at all when sown outside every window', () => {
+		expect(
+			expandOccurrences([sow], [], {
+				...span,
+				since: '2026-11-02',
+				sownOn: '2026-11-02',
+			}),
+		).toEqual([]);
+	});
+
+	it('changes nothing for a planting with no dates', () => {
+		expect(expandOccurrences([sow, feed], [], span)).toHaveLength(5);
+	});
+});
+
 describe('harvest seasons', () => {
 	const cherry = effective({
 		id: 1,

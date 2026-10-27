@@ -6,8 +6,10 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { formatLong, isIsoDate, today } from '@/lib/dates';
+import { logCompletion } from '@/lib/db/care';
 import { db } from '@/lib/db/client';
 import { currentPlaces, rotationWarningFor } from '@/lib/db/queries/beds';
+import { sowingAnswered } from '@/lib/db/queries/garden';
 import { environment, planting, plantType } from '@/lib/db/schema';
 import { ownedRow } from '@/lib/db/tenancy';
 
@@ -87,7 +89,7 @@ export async function sowInBed(
 
 	const sownOn = parsed.data.sownOn || today();
 
-	await db
+	const sown = await db
 		.insert(planting)
 		.values({
 			householdId,
@@ -99,7 +101,15 @@ export async function sowInBed(
 			posY: posY ?? null,
 			status: 'active',
 		})
-		.run();
+		.returning({ id: planting.id })
+		.get();
+
+	// Sowing it is the sowing job, so the window it was sown in is ticked
+	// with the sown date. Without this a plant sown today read its own sowing
+	// window as still to do, or as missed.
+	for (const task of await sowingAnswered(householdId, sown.id, sownOn)) {
+		await logCompletion(householdId, task, sownOn);
+	}
 
 	refresh(place.slug);
 	// The plant's own page lists where it grows, and may be where this came from.
