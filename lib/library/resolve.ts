@@ -61,6 +61,8 @@ export type ResolvedPlant = {
 	careMd: string | null;
 	harvestMd: string | null;
 	problemsMd: string | null;
+	/** The pages the article was written from, as stored: JSON, or null. */
+	citations: string | null;
 	regionNote: string | null;
 	needsReview: boolean;
 	/**
@@ -153,6 +155,7 @@ export function resolvePlant(
 		careMd: plant.careMd ?? parent?.careMd ?? null,
 		harvestMd: plant.harvestMd ?? parent?.harvestMd ?? null,
 		problemsMd: plant.problemsMd ?? parent?.problemsMd ?? null,
+		citations: plant.citations ?? parent?.citations ?? null,
 		regionNote: noteFor(plant.id) ?? (parent ? noteFor(parent.id) : null),
 		needsReview: plant.needsReview || (parent?.needsReview ?? false),
 		revision: plant.revision + (parent?.revision ?? 0),
@@ -215,4 +218,38 @@ export async function loadResolved(
 			plant.parentId !== null ? (byId.get(plant.parentId) ?? null) : null;
 		return [resolvePlant(plant, parent, region, rules, notes)];
 	});
+}
+
+/**
+ * Every library plant, resolved, in the order the catalogue reads. The
+ * library is a few dozen rows, so the index and the search read all of it
+ * and filter in memory rather than asking the database twice.
+ */
+export async function loadAllResolved(
+	db: Db | Tx,
+	region: RegionId,
+): Promise<ResolvedPlant[]> {
+	const plants = await db.select().from(libraryPlant).all();
+	const rules = await db
+		.select()
+		.from(libraryRule)
+		.where(eq(libraryRule.region, region))
+		.all();
+	const notes = await db
+		.select()
+		.from(libraryRegionNote)
+		.where(eq(libraryRegionNote.region, region))
+		.all();
+	const byId = new Map(plants.map((p) => [p.id, p]));
+	return plants
+		.map((plant) =>
+			resolvePlant(
+				plant,
+				plant.parentId !== null ? (byId.get(plant.parentId) ?? null) : null,
+				region,
+				rules,
+				notes,
+			),
+		)
+		.sort((a, b) => a.commonName.localeCompare(b.commonName));
 }

@@ -160,7 +160,10 @@ export default async function BedPage({
 			/>
 
 			<div className="space-y-rhythm">
-				<BedPlan bed={bed} />
+				<BedPlan
+					bed={bed}
+					occupantHref={(o) => `/plants/${o.plantSlug}#planting-${o.plantingId}`}
+				/>
 
 				<Card title="Sow something">
 					<SowForm

@@ -24,7 +24,7 @@ import { type SeedLibraryPlant, seedLibraryPlantSchema } from './schema';
 import { vegLibrary } from './veg';
 
 /** Bump when the catalogue changes, so a new garden knows to write it first. */
-export const LIBRARY_SEED_VERSION = '2026-10-27.1';
+export const LIBRARY_SEED_VERSION = '2026-10-27.2';
 const VERSION_KEY = 'library_seed_version';
 
 export type LibraryReport = {

@@ -12,8 +12,11 @@ import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today } from '@/lib/dates';
 import { db } from '@/lib/db/client';
 import { currentPlaces } from '@/lib/db/queries/beds';
+import { householdRegion } from '@/lib/db/queries/household';
 import { environment, planting, plantType } from '@/lib/db/schema';
 import { ownedRow, owns } from '@/lib/db/tenancy';
+import { loadResolved } from '@/lib/library/resolve';
+import { followLibrary } from '@/lib/library/sync';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -30,6 +33,40 @@ function refresh(slug?: string) {
 	revalidatePath('/grid');
 	revalidatePath('/plants');
 	if (slug) revalidatePath(`/plants/${slug}`);
+}
+
+const addSchema = z.object({ slug: z.string().regex(/^[a-z0-9-]+$/) });
+
+/**
+ * "Add to my garden": a copy of a library plant, which then follows the
+ * library like every other copy. It lands back on the article, which offers
+ * to sow some - adding a plant you don't put anywhere is allowed, and is how
+ * figgy knows to say when its window opens.
+ */
+export async function addToGarden(
+	_previous: ActionResult | null,
+	form: FormData,
+): Promise<ActionResult> {
+	const { householdId } = await requireHousehold();
+	const parsed = addSchema.safeParse({ slug: form.get('slug') });
+	if (!parsed.success) return { ok: false, error: 'No such plant.' };
+
+	const region = await householdRegion(householdId);
+	const [plant] = await db.transaction(async (tx) => {
+		const [found] = await loadResolved(tx, [parsed.data.slug], region);
+		if (!found) return [null];
+		return [{ found, report: await followLibrary(tx, householdId, found) }];
+	});
+	if (!plant) return { ok: false, error: 'figgy doesn’t know that plant.' };
+	if (plant.report.plantTypeId === null) {
+		return {
+			ok: false,
+			error: `You already have a plant of your own called ${plant.found.commonName}.`,
+		};
+	}
+
+	refresh(plant.found.slug);
+	redirect(`/plants/${plant.found.slug}?added=1`);
 }
 
 const plantSchema = z.object({

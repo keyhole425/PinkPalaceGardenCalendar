@@ -177,3 +177,43 @@ test('every page carries the security headers and breaks none of its own policy'
 	}
 	expect(violations).toEqual([]);
 });
+
+test('a plant is looked up, added, sown, and found again from its bed', async ({
+	page,
+}) => {
+	await page.goto('/plants');
+	await page.getByLabel('Look up a plant').fill('chilli');
+	await page.getByRole('button', { name: 'Look up' }).click();
+	await expect(
+		page.getByRole('heading', { name: 'Matching “chilli”' }),
+	).toBeVisible();
+	await expect(page.getByRole('link', { name: 'Habanero' })).toBeVisible();
+
+	await page.getByRole('link', { name: 'Chilli', exact: true }).click();
+	await expect(
+		page.getByRole('heading', { name: 'Chilli', level: 1 }),
+	).toBeVisible();
+	await expect(
+		page.getByRole('heading', { name: 'Kinds of chilli' }),
+	).toBeVisible();
+
+	await page.getByRole('button', { name: 'Add to my garden' }).click();
+	await expect(page.getByText('Added to your plants.')).toBeVisible();
+	await page.getByRole('button', { name: 'Sow it' }).click();
+	await expect(page.getByText(/^Sown/)).toBeVisible();
+
+	// The bed's own plan now opens the plant, at that planting.
+	await page.goto('/garden/hothouse');
+	await page.getByRole('link', { name: /^Chilli in column/ }).click();
+	await expect(page).toHaveURL(/\/plants\/chilli#planting-\d+$/);
+	await expect(page.getByRole('heading', { name: 'Your garden' })).toBeVisible();
+});
+
+test('a search that finds nothing offers to look it up', async ({ page }) => {
+	await page.goto('/plants?q=dragon+fruit');
+	await expect(
+		page.getByText('figgy doesn’t know “dragon fruit” yet.'),
+	).toBeVisible();
+	await page.getByRole('link', { name: 'Let figgy look it up' }).click();
+	await expect(page).toHaveURL(/\/plants\/new\?q=dragon%20fruit/);
+});

@@ -24,13 +24,15 @@ rules. Not fixed yet - each is a candidate change of its own.
 - **Ask is unreachable on a phone.** `lib/nav.ts` says "Ask stays in the
   header", but the header's route links are `hidden` below `sm`, and Ask isn't
   one of the four `TABS`. Nothing else links to `/ask`.
-- **Plant pages hand-roll their section headings.** `app/plants/[slug]/page.tsx`
-  and `app/plants/[slug]/edit/page.tsx` write `<h2 className="font-semibold
-  text-lg">` without `font-serif`, so they read differently from every `Card`
-  heading; a `Card` (or `font-serif`) would fix it. The edit page also
-  spaces its sections with `space-y-8` rather than `space-y-rhythm`.
-- **A stale link.** "What it needs" on a plant page links to `/beds`, which now
-  redirects to `/garden`.
+- **The plant edit page hand-rolls its section headings.**
+  `app/plants/[slug]/edit/page.tsx` writes `<h2 className="font-semibold
+  text-lg">` without `font-serif`, so it reads differently from every `Card`
+  heading; a `Card` (or `font-serif`) would fix it. It also spaces its
+  sections with `space-y-8` rather than `space-y-rhythm`.
+- **Sowing doesn't tick the sowing job.** Sowing from a bed or from an
+  article makes a planting with its sown date, but records no `sow` against
+  its window, so a plant sown today can read "missed" for a window that has
+  already closed this year.
 - **`Button` variant `pill` is unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
@@ -45,6 +47,34 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-27 - plants as a library you look things up in
+**Context:** `/plants` was the household's own copies, grouped by category,
+with an Edit link on each row and "Add a plant" in the header. With a shared
+library behind it, the page had to show plants you don't have yet, and a
+plant page had to read as something worth reading before you grow it. A
+bed's plan was a dead end: tapping a filled square did nothing.
+**Decision:** `/plants` is search first: one labelled field in a GET form,
+which works without JavaScript. Below it, **Your plants** (renamed from the
+planned "In your garden", because a new garden has ten plants and none
+planted), then **More vegetables** and the like for the rest of the library.
+Each row has one line for this region ("Sow Aug–Oct · ready in 70–90 days")
+and a `good` **sow now** badge when this month is a sowing month in one of
+your places. Each row opens only the article, and the whole row is the tap
+target. The header has no primary action: "Add a plant figgy doesn't know" is
+at the foot of the page and in the no-match empty state. The tour step points
+at the search. `/plants/[slug]` is an article, with **Add to my garden** as
+its one primary action. Under the opening paragraph and region note come
+**Your garden** (the old plant page, moved over unchanged), **When, in
+{city}**, **At a glance**, the plant's kinds, and its sections. Adding stays
+on the page and offers **Sow some**. The orchard is offered only for fruit
+trees. A filled square on a bed's plan opens `/plants/{slug}#planting-{id}`.
+**Cost:** Edit is no longer on every row: it is "Change" beside When, one
+tap further away. The strip label column is 72px, so "Transplant" (74px)
+leans into the gap. That's the price of the whole year fitting a 375px phone
+without the year grid's "Transpl…". Search reads the whole library into
+memory, which is right for a few dozen plants and needs revisiting at a few
+thousand.
 
 ### 2026-10-27 - places you can change
 **Context:** a place could only be added, from a collapsed link under every

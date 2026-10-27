@@ -1,316 +1,350 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { HarvestForm } from '@/components/plants/HarvestForm';
-import { DoneForm, UndoButton } from '@/components/tasks/DoneForm';
+import { AddToGarden } from '@/components/plants/AddToGarden';
+import { PlantIndexRow } from '@/components/plants/PlantIndexRow';
+import { SowSome } from '@/components/plants/SowSome';
+import { YourGarden } from '@/components/plants/YourGarden';
 import { ActionChip } from '@/components/ui/ActionChip';
 import { Badge } from '@/components/ui/Badge';
+import { ButtonLink } from '@/components/ui/Button';
 import { Callout } from '@/components/ui/Callout';
 import { Card } from '@/components/ui/Card';
+import { DataList, DataRow } from '@/components/ui/DataList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Frame } from '@/components/ui/Frame';
+import { Icon } from '@/components/ui/Icon';
 import { MonthStrip } from '@/components/ui/MonthStrip';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScientificName } from '@/components/ui/ScientificName';
 import { requireHousehold } from '@/lib/auth/context';
-import { formatLong, monthOf, today } from '@/lib/dates';
-import { OVERDUE_LOOKBACK_DAYS } from '@/lib/db/queries/garden';
+import { monthOf, today } from '@/lib/dates';
+import { type Article, getArticle } from '@/lib/db/queries/library';
 import { getPlant } from '@/lib/db/queries/plant';
-import { MONTH_ABBR, type Month, monthsInOrder } from '@/lib/schedule/months';
-import type { Occurrence } from '@/lib/schedule/types';
+import type { Month } from '@/lib/schedule/months';
 import { ACTION_LABEL } from '@/lib/ui/actions';
 
 export const dynamic = 'force-dynamic';
 
-const STATE_LABEL: Record<Occurrence['state'], string> = {
-	done: 'done',
-	due: 'due now',
-	overdue: 'missed',
-	upcoming: 'coming up',
-	future: 'later',
-};
-
-const STATE_CLASS: Record<Occurrence['state'], string> = {
-	done: 'bg-fertilise-soft text-ink',
-	due: 'bg-palace-200 text-palace-700',
-	overdue: 'bg-prune-soft text-ink',
-	upcoming: 'bg-paper-sunk text-ink-soft',
-	future: 'bg-paper-sunk text-ink-soft',
-};
-
 /**
- * A window that closed long ago with nothing logged against it wasn't
- * necessarily missed - figgy simply wasn't there. Only recent gaps are
- * called misses; older ones are honest about being unknown.
+ * One plant, as an article: what it is, when to do what in this region, and
+ * - once you grow it - your own plantings with their jobs. The same address
+ * whether the plant is the library's, your copy of it, or yours alone.
  */
-function describe(occurrence: Occurrence, when: string) {
-	if (occurrence.completedOn) {
-		return {
-			label: `done ${formatLong(occurrence.completedOn)}`,
-			className: STATE_CLASS.done,
-		};
-	}
-	if (
-		occurrence.state === 'overdue' &&
-		occurrence.closesOn < shiftDays(when, -OVERDUE_LOOKBACK_DAYS)
-	) {
-		return { label: 'no record', className: 'bg-paper-sunk text-ink-soft' };
-	}
-	return {
-		label: STATE_LABEL[occurrence.state],
-		className: STATE_CLASS[occurrence.state],
-	};
-}
-
-function shiftDays(date: string, days: number): string {
-	const d = new Date(`${date}T00:00:00Z`);
-	d.setUTCDate(d.getUTCDate() + days);
-	return d.toISOString().slice(0, 10);
-}
-
 export default async function PlantPage({
 	params,
+	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
+	searchParams: Promise<{ added?: string }>;
 }) {
 	const { slug } = await params;
+	const added = (await searchParams).added === '1';
 	const when = today();
 	const { householdId } = await requireHousehold();
-	const plant = await getPlant(householdId, slug, when);
-	if (!plant) notFound();
-
+	const article = await getArticle(householdId, slug, when);
+	if (!article) notFound();
+	const mine = article.plantTypeId ? await getPlant(householdId, slug, when) : null;
 	const currentMonth = monthOf(when) as Month;
-	const thisYear = when.slice(0, 4);
+	const growing = mine?.plantings.length ?? 0;
 
 	return (
 		<Frame width="list">
 			<PageHeader
-				back={{ href: '/plants', label: '\u2190 Plants' }}
-				title={plant.commonName}
-				description={
-					<>
-						{plant.scientificName && (
-							<ScientificName>{plant.scientificName}</ScientificName>
-						)}
-						{plant.scientificName && ' · '}
-						{plant.lifecycle}
-						{plant.family && ` · ${plant.family}`}
-					</>
-				}
+				back={{ href: '/plants', label: '← Plants' }}
+				title={article.commonName}
+				description={<Description article={article} />}
 				actions={
-					plant.needsReview ? <Badge tone="strong">needs review</Badge> : undefined
+					mine ? (
+						growing > 0 ? (
+							<Badge tone="good">{growing} growing</Badge>
+						) : (
+							<Badge tone="quiet">in your plants</Badge>
+						)
+					) : (
+						<AddToGarden slug={article.slug} />
+					)
 				}
 			/>
 
 			<div className="space-y-rhythm">
-				{plant.notesMd && (
-					<Card title="Notes">
-						{/* The full note, which the year grid only shows the start of. */}
-						<Callout tone="note" className="whitespace-pre-line">
-							{plant.notesMd}
-						</Callout>
-						{plant.lookedUpIn && (
-							<p className="text-ink-soft text-xs">
-								Looked up by Claude.{' '}
-								<Link
-									href={`/proposals/${plant.lookedUpIn}`}
-									className="underline hover:text-palace-700"
-								>
-									See the pages it read
-								</Link>
-								.
-							</p>
-						)}
-					</Card>
-				)}
-
-				{plant.needsReview && (
-					<p className="rounded-md border border-palace-300 bg-palace-50 p-3 text-sm">
-						figgy doesn&rsquo;t know this one&rsquo;s full schedule yet.{' '}
-						<Link href={`/plants/${slug}/edit`} className="underline">
-							Fill them in
-						</Link>
-						, or let Claude look it up from there.
+				{added && mine && (
+					<p className="flex items-start gap-2 rounded-md border border-fertilise bg-fertilise-soft p-3 text-sm">
+						<Icon
+							name="check"
+							className="mt-0.5 h-4 w-4 shrink-0 text-fertilise-deep"
+						/>
+						Added to your plants. figgy will say when it&rsquo;s time to sow.
 					</p>
 				)}
 
-				{plant.plantings.length === 0 && plant.templateRules.length > 0 && (
-					<section className="space-y-3">
-						<h2 className="font-semibold text-lg">What it needs</h2>
-						<p className="text-ink-soft text-sm">
-							None of this is in the ground yet, so there is nothing to do about it.
-							Sow some in{' '}
-							<Link href="/beds" className="underline">
-								a bed
-							</Link>{' '}
-							and it joins the schedule.
-						</p>
-						<div className="space-y-2">
-							{plant.templateRules.map((rule) => (
-								<div
-									key={rule.ruleIds.join(',')}
-									className="flex flex-wrap items-center gap-2"
-								>
-									<span className="w-24 shrink-0">
-										<ActionChip action={rule.action} />
-									</span>
-									<MonthStrip
-										action={rule.action}
-										monthMask={rule.monthMask}
-										currentMonth={currentMonth}
-									/>
-									{rule.note && (
-										<span className="text-ink-soft text-sm">{rule.note}</span>
-									)}
-								</div>
-							))}
-						</div>
-					</section>
+				{/* Something you have and haven't put anywhere: offer to. */}
+				{mine && growing === 0 && article.places.length > 0 && (
+					<SowSome
+						slug={article.slug}
+						plantTypeId={mine.id}
+						places={article.places}
+						today={when}
+					/>
 				)}
 
-				{plant.plantings.map((p) => (
-					<section key={p.plantingId} className="space-y-3">
-						<h2 className="font-semibold text-lg">
-							{p.label}
-							<span className="ml-2 font-normal text-ink-soft text-sm">
-								{p.environmentName}
-							</span>
-						</h2>
+				{(article.summary || article.regionNote) && (
+					<div className="max-w-measure space-y-2">
+						{article.summary && (
+							<p className="whitespace-pre-line text-sm">{article.summary}</p>
+						)}
+						{article.regionNote && (
+							<Callout tone="note">
+								In {article.city}: {lowerFirst(article.regionNote)}
+							</Callout>
+						)}
+					</div>
+				)}
 
-						<div className="space-y-2">
-							<div className="flex items-center gap-2 text-ink-soft text-xs">
-								<span className="w-24" />
-								<div className="flex gap-px">
-									{monthsInOrder(7).map((m) => (
-										<span key={m} className="w-5 text-center">
-											{MONTH_ABBR[m - 1].slice(0, 1)}
-										</span>
-									))}
-								</div>
-							</div>
-							{p.rules.map((rule) => (
-								<div key={rule.id} className="flex items-center gap-2">
-									<span className="w-24 shrink-0">
-										<ActionChip action={rule.action} />
-									</span>
-									<MonthStrip
-										action={rule.action}
-										monthMask={rule.monthMask}
-										currentMonth={currentMonth}
-									/>
-									{rule.shifted && (
-										<span className="text-ink-soft text-xs">
-											shifted for {p.environmentName.toLowerCase()}
-										</span>
-									)}
-								</div>
+				{mine && growing > 0 && (
+					<Card title="Your garden" count={growing}>
+						<div className="space-y-rhythm">
+							<YourGarden plant={mine} when={when} currentMonth={currentMonth} />
+						</div>
+					</Card>
+				)}
+
+				<When article={article} mine={Boolean(mine)} currentMonth={currentMonth} />
+
+				<Glance article={article} />
+
+				{article.kinds && (
+					<Card title={article.kinds.title} count={article.kinds.rows.length}>
+						<DataList>
+							{article.kinds.rows.map((row) => (
+								<PlantIndexRow key={row.slug} row={row} />
 							))}
-						</div>
+						</DataList>
+					</Card>
+				)}
 
-						<div>
-							<h3 className="mb-1 font-medium text-ink-soft text-sm">
-								{thisYear} and either side
-							</h3>
-							<ul className="divide-y divide-rule border border-rule">
-								{p.occurrences.map((o) => {
-									const shown = describe(o, when);
-									return (
-										<li
-											key={`${o.rule.id}-${o.key}`}
-											className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
-										>
-											<span className="w-24 shrink-0 font-medium">
-												{ACTION_LABEL[o.rule.action] ?? o.rule.action}
-											</span>
-											<span className="text-ink-soft">
-												{formatLong(o.opensOn)} &ndash; {formatLong(o.closesOn)}
-											</span>
-											<span
-												className={`ml-auto rounded-full px-2 py-0.5 text-xs ${shown.className}`}
-											>
-												{shown.label}
-											</span>
-											{o.state === 'done' && o.logId !== null ? (
-												<UndoButton logId={o.logId} slug={plant.slug} />
-											) : (
-												o.state !== 'future' && (
-													<DoneForm
-														plantingId={p.plantingId}
-														ruleId={o.rule.id}
-														occurrenceKey={o.key}
-														today={when}
-														label={
-															shown.label === 'no record'
-																? 'record it'
-																: 'Mark done'
-														}
-														quiet={shown.label === 'no record'}
-													/>
-												)
-											)}
-										</li>
-									);
-								})}
-								{p.occurrences.length === 0 && (
-									<li className="px-3 py-2 text-ink-soft text-sm">
-										Nothing scheduled. Harvest windows are a season, not a job, so
-										they don&rsquo;t appear here.
-									</li>
-								)}
-							</ul>
-						</div>
-
-						{p.openSeasons.map((season) => (
-							<HarvestForm
-								key={season.rule.id}
-								plantingId={p.plantingId}
-								ruleId={season.rule.id}
-								today={when}
-								closesOn={formatLong(season.closesOn)}
-							/>
-						))}
-
-						<div>
-							<h3 className="mb-1 font-medium text-ink-soft text-sm">History</h3>
-							{p.history.length === 0 ? (
-								<EmptyState>Nothing written down yet.</EmptyState>
-							) : (
-								<ol className="divide-y divide-rule border border-rule">
-									{p.history.map((entry) => (
-										<li
-											key={entry.id}
-											className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-3 py-2 text-sm"
-										>
-											<span className="w-24 shrink-0 font-medium">
-												{ACTION_LABEL[entry.action] ?? entry.action}
-											</span>
-											<span className="text-ink-soft">
-												{formatLong(entry.completedOn)}
-											</span>
-											{entry.quantityNote && (
-												<span className="rounded-full bg-harvest-soft px-2 py-0.5 text-xs">
-													{entry.quantityNote}
-												</span>
-											)}
-											{entry.notesMd && (
-												<span className="w-full text-ink-soft text-xs">
-													{entry.notesMd}
-												</span>
-											)}
-											<span className="ml-auto">
-												<UndoButton
-													logId={entry.id}
-													slug={plant.slug}
-													label="Remove"
-												/>
-											</span>
-										</li>
-									))}
-								</ol>
-							)}
-						</div>
-					</section>
+				{article.sections.map((section) => (
+					<Card key={section.title} title={section.title}>
+						<p className="max-w-measure whitespace-pre-line text-sm">
+							{section.body}
+						</p>
+					</Card>
 				))}
+
+				{article.inLibrary && article.sections.length === 0 && (
+					<Callout tone="quiet">
+						That&rsquo;s all figgy knows about {article.commonName.toLowerCase()} so
+						far.
+					</Callout>
+				)}
+
+				{!article.inLibrary && (
+					<Callout tone="quiet">
+						Only in your garden. figgy&rsquo;s library doesn&rsquo;t have{' '}
+						{article.commonName.toLowerCase()}.
+					</Callout>
+				)}
+
+				{mine?.lookedUpIn && (
+					<p className="text-ink-soft text-xs">
+						Looked up by Claude.{' '}
+						<Link
+							href={`/proposals/${mine.lookedUpIn}`}
+							className="underline hover:text-palace-700"
+						>
+							See the pages it read
+						</Link>
+						.
+					</p>
+				)}
+
+				{article.citations.length > 0 && (
+					<Card title="Sources" count={article.citations.length}>
+						<DataList>
+							{article.citations.map((c) => (
+								<DataRow key={c.url}>
+									<a
+										href={c.url}
+										rel="noopener noreferrer"
+										target="_blank"
+										className="underline hover:text-palace-700"
+									>
+										{c.title || new URL(c.url).hostname}
+									</a>
+								</DataRow>
+							))}
+						</DataList>
+					</Card>
+				)}
 			</div>
 		</Frame>
+	);
+}
+
+function lowerFirst(text: string): string {
+	return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function Description({ article }: { article: Article }) {
+	const facts = [article.lifecycle, article.family].filter(Boolean).join(' · ');
+	return (
+		<>
+			{article.parent && (
+				<>
+					A kind of{' '}
+					<Link
+						href={`/plants/${article.parent.slug}`}
+						className="underline hover:text-palace-700"
+					>
+						{article.parent.commonName.toLowerCase()}
+					</Link>
+					{' · '}
+				</>
+			)}
+			{article.scientificName && (
+				<>
+					<ScientificName>{article.scientificName}</ScientificName>
+					{' · '}
+				</>
+			)}
+			{facts}
+		</>
+	);
+}
+
+function When({
+	article,
+	mine,
+	currentMonth,
+}: {
+	article: Article;
+	mine: boolean;
+	currentMonth: Month;
+}) {
+	// "Transplant and harvest are the chilli's": said once, under the strips,
+	// rather than as a badge on each.
+	const inherited = article.when.filter((r) => r.from);
+	const inheritedFrom = inherited[0]?.from;
+	const inheritedActions = [
+		...new Set(inherited.map((r) => ACTION_LABEL[r.action] ?? r.action)),
+	];
+
+	return (
+		<Card
+			title={`When, in ${article.city}`}
+			aside={
+				<span className="flex items-center gap-3">
+					{article.needsReview && (
+						<Badge
+							tone="strong"
+							title="These months are a general guide that nobody has checked for this garden"
+						>
+							needs review
+						</Badge>
+					)}
+					{mine && (
+						<ButtonLink
+							variant="quiet"
+							size="sm"
+							href={`/plants/${article.slug}/edit`}
+						>
+							Change
+						</ButtonLink>
+					)}
+				</span>
+			}
+		>
+			{article.when.length === 0 ? (
+				<EmptyState>
+					figgy doesn&rsquo;t know when yet.
+					{mine && (
+						<>
+							{' '}
+							<Link
+								href={`/plants/${article.slug}/edit`}
+								className="underline hover:text-palace-700"
+							>
+								Fill the months in
+							</Link>
+							, or let Claude look it up from there.
+						</>
+					)}
+				</EmptyState>
+			) : (
+				<div className="space-y-1">
+					{article.when.map((rule, i) => (
+						<div key={rule.ruleIds} className="flex items-end gap-2">
+							{/*
+							 * 72px: "Transplant" is 74px and leans into the gap, which
+							 * is what lets the whole year fit a 375px phone without the
+							 * year grid's "Transpl…".
+							 */}
+							<span className="w-18 shrink-0">
+								<ActionChip action={rule.action} />
+							</span>
+							<MonthStrip
+								action={rule.action}
+								monthMask={rule.monthMask}
+								currentMonth={currentMonth}
+								labelled={i === 0}
+							/>
+						</div>
+					))}
+				</div>
+			)}
+			{(inheritedFrom || article.shiftLines.length > 0 || article.differs) && (
+				<div className="space-y-0.5 text-ink-soft text-xs">
+					{inheritedFrom && (
+						<p>
+							{joinAnd(inheritedActions)}{' '}
+							{inheritedActions.length === 1 ? 'is' : 'are'} the {inheritedFrom}
+							&rsquo;s.
+						</p>
+					)}
+					{article.shiftLines.map((line) => (
+						<p key={line}>{line}</p>
+					))}
+					{article.differs && (
+						<p>
+							Your months differ from the library&rsquo;s; yours are the ones on
+							your schedule.
+						</p>
+					)}
+				</div>
+			)}
+		</Card>
+	);
+}
+
+function joinAnd(words: string[]): string {
+	if (words.length <= 1) return words[0] ?? '';
+	return `${words.slice(0, -1).join(', ')} and ${words.at(-1)?.toLowerCase()}`;
+}
+
+function Glance({ article }: { article: Article }) {
+	const { daysToMaturityMin: min, daysToMaturityMax: max } = article;
+	const rows = [
+		min
+			? [
+					'Ready in',
+					max && max !== min
+						? `${min}–${max} days from sowing`
+						: `${min} days from sowing`,
+				]
+			: null,
+		article.spacingCm ? ['Spacing', `${article.spacingCm} cm apart`] : null,
+		article.family ? ['Family', `${article.family}, for rotation`] : null,
+	].filter((r): r is [string, string] => r !== null);
+	if (rows.length === 0) return null;
+	return (
+		<Card title="At a glance">
+			<DataList>
+				{rows.map(([label, value]) => (
+					<DataRow key={label}>
+						<span className="w-20 shrink-0 text-ink-soft">{label}</span>
+						<span>{value}</span>
+					</DataRow>
+				))}
+			</DataList>
+		</Card>
 	);
 }

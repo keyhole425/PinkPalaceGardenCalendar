@@ -102,6 +102,8 @@ export async function sowInBed(
 		.run();
 
 	refresh(place.slug);
+	// The plant's own page lists where it grows, and may be where this came from.
+	revalidatePath(`/plants/${plant.slug}`);
 	return {
 		ok: true,
 		warning: rotation

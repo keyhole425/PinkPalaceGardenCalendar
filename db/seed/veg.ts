@@ -66,7 +66,7 @@ export const vegEnvironments: SeedEnvironmentInput[] = [
 ];
 
 const STARTER_NOTE =
-	'Sowing months are a general temperate-Australia guide, not this garden yet. Correct them here or ask figgy to look the crop up properly.';
+	'These months are a general temperate-Australia guide, and nobody has checked them against a garden here yet.';
 
 export const vegLibrary: SeedLibraryPlantInput[] = [
 	{

@@ -119,8 +119,8 @@ const BASICS: StepDefinition[] = [
 		title: 'Plants',
 		body: (ctx) =>
 			ctx.aiAvailable
-				? 'Everything figgy knows how to grow, and what each one needs. Add a plant from here, or let Claude look one up.'
-				: 'Everything figgy knows how to grow, and what each one needs. Add a plant from here.',
+				? 'Look a plant up to read what it needs here, then add it to your garden. If figgy doesn’t know it, Claude can look it up.'
+				: 'Look a plant up to read what it needs here, then add it to your garden.',
 	},
 	{
 		id: 'ask',

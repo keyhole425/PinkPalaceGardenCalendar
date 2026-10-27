@@ -1,19 +1,25 @@
 import Link from 'next/link';
 import { formatShort } from '@/lib/dates';
-import type { Bed } from '@/lib/db/queries/beds';
+import type { Bed, BedOccupant } from '@/lib/db/queries/beds';
 
 /**
  * A bed drawn as the grid of spots it is.
  *
  * Deliberately not drag-and-drop: you are standing in a garden with a phone,
  * and tapping a square is a great deal easier than dragging one.
+ *
+ * `href` makes every square a link (the garden's overview opens the bed);
+ * `occupantHref` makes only the filled ones links, to what is in them - on a
+ * bed's own page, tapping the tomato opens the tomato.
  */
 export function BedPlan({
 	bed,
 	href,
+	occupantHref,
 }: {
 	bed: Bed;
 	href?: (x: number, y: number) => string;
+	occupantHref?: (occupant: BedOccupant) => string;
 }) {
 	const cells = [];
 	for (let y = 0; y < bed.gridRows; y++) {
@@ -64,10 +70,13 @@ export function BedPlan({
 
 					const where = `column ${x + 1}, row ${y + 1}`;
 
-					return href ? (
+					const target =
+						occupant && occupantHref ? occupantHref(occupant) : href?.(x, y);
+
+					return target ? (
 						<Link
 							key={`${x}-${y}`}
-							href={href(x, y)}
+							href={target}
 							aria-label={
 								occupant ? `${occupant.plantName} in ${where}` : `Sow in ${where}`
 							}

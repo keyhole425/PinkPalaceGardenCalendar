@@ -11,8 +11,14 @@ export const dynamic = 'force-dynamic';
 /** Research is two long calls to Claude; it carries on after the redirect. */
 export const maxDuration = 300;
 
-export default async function NewPlantPage() {
+export default async function NewPlantPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ q?: string }>;
+}) {
 	const { householdId, role } = await requireHousehold();
+	// Arriving from a search that found nothing, with the name already typed.
+	const query = ((await searchParams).q ?? '').trim().slice(0, 120);
 	const ai = await aiAvailable(householdId);
 	return (
 		<Frame width="measure">
@@ -27,10 +33,14 @@ export default async function NewPlantPage() {
 						Name something and Claude will research how it is grown here, then
 						propose a schedule for you to check.
 					</p>
-					<AskForm available={ai} canAddKey={role === 'admin'} />
+					<AskForm
+						available={ai}
+						canAddKey={role === 'admin'}
+						defaultQuery={query || undefined}
+					/>
 				</Card>
 
-				<Card title="Or say what you know">
+				<Card title="Or say what you know" id="say-what-you-know">
 					<p className="text-ink-soft text-sm">
 						Name it now and set out what it needs next &mdash; you&rsquo;ll land on
 						the rule editor straight after.

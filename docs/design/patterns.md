@@ -63,6 +63,41 @@ its plant; it is now 1,719px.) Tools for that:
 - **Hide explanatory side-text below `sm`** if it wraps and costs more than it
   explains; the button should say enough on its own.
 
+## Looking something up
+
+`/plants` is the pattern:
+
+- **A plain GET form** (`<search>` around a `<form action="/plants">`). The
+  field is wrapped in its label ("Look up a plant"), with a real placeholder
+  ("tomato, habanero or Solanum"), and **Look up** is the primary button
+  beside it. It works before JavaScript loads, and a search is an address you
+  can come back to.
+- **Every word has to match something**: a name, a scientific name, a
+  family, another name it goes by, or the plant it is a kind of. Plants come
+  before their kinds, and your own plants before the library's.
+- **Results are one ruled list** titled `Matching “chilli”` with a count. In
+  results, a plant you already have says **yours**.
+- **Nothing found** is an `EmptyState` that names what was typed, then
+  offers both ways to add it: **Let figgy look it up** (`add` variant, with
+  the name carried over) and **Or say what you know**.
+
+## An article
+
+A page about a thing, not a list of records (`/plants/[slug]`):
+
+- **What you came to do goes first.** For a plant you grow, that's **Your
+  garden** with its jobs. For one you don't, it's **Add to my garden** in the
+  header.
+- **The opening paragraph** is held to the measure, followed by what's worth
+  saying about this region as a `Callout` `note`, starting "In Adelaide:".
+- **Sections that have nothing in them are left out**, not shown empty. When
+  there's nothing beyond the facts, say so once, in a `quiet` Callout:
+  "That's all figgy knows about habanero so far."
+- **Facts are a ruled list** (At a glance): a label in `ink-soft`, then the
+  value.
+- **Inheritance is said once, in words**, under what inherits it:
+  "Transplant is the chilli's." No badge on each row.
+
 ## Lists
 
 - **Several records → `DataList` + `DataRow`** inside a `Card` with a `count`
@@ -72,7 +107,11 @@ its plant; it is now 1,719px.) Tools for that:
 - **Group rather than paginate.** Plants are grouped by category, each group a
   Card with a count.
 - **Each row says the fact that settles it.** A plant row says "2 growing" or
-  "none planted" - that's what tells you whether it's about your garden.
+  "none planted" - that's what tells you whether it's about your garden - and
+  "sow now" when this month is a sowing month here.
+- **A row that only opens something is one target.** Stretch its link over
+  the row (`after:absolute after:inset-0` on the link, `relative` on the row)
+  instead of making one word of it tappable.
 - **Uniform row height.** Clamp anything that could make one row tall.
 
 ## Forms
