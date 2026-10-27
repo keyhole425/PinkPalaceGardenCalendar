@@ -31,10 +31,6 @@ rules. Not fixed yet - each is a candidate change of its own.
   sections with `space-y-8` rather than `space-y-rhythm`.
 - **The curator's pages have no search.** `/library` lists every plant; fine
   for a few dozen, not for hundreds.
-- **Sowing doesn't tick the sowing job.** Sowing from a bed or from an
-  article makes a planting with its sown date, but records no `sow` against
-  its window, so a plant sown today can read "missed" for a window that has
-  already closed this year.
 - **`Button` variant `pill` is unused.** The Ask suggestions are
   hand-rolled outlined pills (`components/ai/AskGarden.tsx`). Either the pill
   variant should match them, or they should use it.
@@ -79,6 +75,26 @@ recorded in the README. Taking names out of notes is best effort, so notes
 stop at the curator and are never shown to another garden. A note's
 **Mark read** only files it; whatever it says has to be written into the
 article by hand.
+
+### 2026-10-27 - sowing is the sowing job
+**Context:** sowing, from a bed's Sow something or an article's Sow some,
+made a planting with its sown date and wrote nothing else. Its own sow
+windows still asked to be done: a tomato sown on 25 September read October as
+"due now" and then "missed", and a habanero sown in the hothouse on 27 October
+read July and August as "missed", on its page and under Overdue on What's on.
+Any other job whose window closed before a plant was in the ground read the
+same way.
+**Decision:** sowing ticks every sow window open on the sown date, with that
+date, so the planting shows "done 25 September" with Undo, and Recently done
+lists it. Once a planting is sown, no other sow window is its job - before or
+after; more of the same crop is a new planting, which "Could go in now"
+offers. And no window that closed before a planting was sown or planted
+(whichever came first) is shown at all, unless something was logged against
+it. Plantings with neither date - most of the orchard - are unchanged.
+**Cost:** sowing outside every window leaves nothing on the planting saying
+it was sown late; its sown date, on the bed, is the record. Undoing the tick
+puts that one window back as due or missed, since the sown date still says it
+was sown then.
 
 ### 2026-10-27 - plants as a library you look things up in
 **Context:** `/plants` was the household's own copies, grouped by category,

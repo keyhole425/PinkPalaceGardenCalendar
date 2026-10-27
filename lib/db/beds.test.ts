@@ -114,6 +114,94 @@ describe('sowing', () => {
 	});
 });
 
+describe('sowing is the sowing job', () => {
+	async function sow(slug: string, place: string, sownOn: string) {
+		const mods = await freshGarden();
+		const { getSchedule, getDashboard } = await import('./queries/garden');
+		const bed = await mods.beds.getBed(GARDEN, place);
+		const plant = await mods.db
+			.select()
+			.from(mods.schema.plantType)
+			.where(eq(mods.schema.plantType.slug, slug))
+			.get();
+		const result = await mods.actions.sowInBed(
+			null,
+			form({
+				environmentId: String(bed?.id),
+				plantTypeId: String(plant?.id),
+				sownOn,
+			}),
+		);
+		expect(result.ok).toBe(true);
+
+		const sown = await mods.db
+			.select()
+			.from(mods.schema.planting)
+			.where(eq(mods.schema.planting.plantTypeId, plant?.id ?? 0))
+			.get();
+		const schedule = async (when: string) =>
+			(await getSchedule(GARDEN, when)).plantings.find(
+				(p) => p.context.plantingId === sown?.id,
+			);
+		const logs = await mods.db
+			.select()
+			.from(mods.schema.careLog)
+			.where(eq(mods.schema.careLog.plantingId, sown?.id ?? 0))
+			.all();
+		return { schedule, logs, getDashboard };
+	}
+
+	it('ticks the window it was sown in, on the day it was sown', async () => {
+		// Tomato sows August to October, a window a month.
+		const { schedule, logs } = await sow('tomato', 'bed-1', '2026-09-25');
+
+		expect(logs).toHaveLength(1);
+		expect(logs[0]).toMatchObject({
+			action: 'sow',
+			seasonYear: 2026,
+			occurrenceKey: '2026-09',
+			completedOn: '2026-09-25',
+		});
+
+		const sowing = (await schedule('2026-10-27'))?.occurrences.filter(
+			(o) => o.rule.action === 'sow',
+		);
+		expect(sowing).toHaveLength(1);
+		expect(sowing?.[0]).toMatchObject({
+			key: '2026-09',
+			state: 'done',
+			completedOn: '2026-09-25',
+		});
+	});
+
+	it('never calls a window before the sowing missed', async () => {
+		// Tomato sows August to October; the hothouse moves that to July to
+		// September. Sown in late October, after all three - the way a habanero
+		// added from the library late in the year would be.
+		const { schedule, logs, getDashboard } = await sow(
+			'tomato',
+			'hothouse',
+			'2026-10-27',
+		);
+
+		expect(logs).toHaveLength(0);
+		const occurrences = (await schedule('2026-10-27'))?.occurrences ?? [];
+		expect(occurrences.filter((o) => o.rule.action === 'sow')).toEqual([]);
+		expect(occurrences.filter((o) => o.state === 'overdue')).toEqual([]);
+
+		const { overdue } = await getDashboard(GARDEN, '2026-10-27');
+		expect(overdue.filter((t) => t.context.plantName === 'Tomato')).toEqual([]);
+	});
+
+	it('does not ask for it to be sown again next month', async () => {
+		const { schedule } = await sow('tomato', 'bed-1', '2026-09-25');
+		const october = (await schedule('2026-11-05'))?.occurrences.find(
+			(o) => o.rule.action === 'sow' && o.key === '2026-10',
+		);
+		expect(october).toBeUndefined();
+	});
+});
+
 describe('rotation', () => {
 	async function sowThen(sownOn: string) {
 		const mods = await freshGarden();

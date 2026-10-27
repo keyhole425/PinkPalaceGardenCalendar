@@ -15,6 +15,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireHousehold } from '@/lib/auth/context';
 import { isIsoDate, today, yearOf } from '@/lib/dates';
+import { logCompletion } from '@/lib/db/care';
 import { db } from '@/lib/db/client';
 import { findOccurrence, openSeasonsFor } from '@/lib/db/queries/garden';
 import { careLog } from '@/lib/db/schema';
@@ -66,27 +67,8 @@ export async function completeTask(
 		};
 	}
 
-	const written = await db
-		.insert(careLog)
-		.values({
-			householdId,
-			plantingId,
-			// Always the representative rule. The engine treats any member of
-			// a set of alternatives as satisfying the whole set.
-			careRuleId: task.occurrence.rule.id,
-			action: task.occurrence.rule.action,
-			seasonYear: task.occurrence.seasonYear,
-			occurrenceKey,
-			completedOn,
-			notesMd: notes || null,
-		})
-		// The unique index on the occurrence means a clash is almost always a
-		// double submit. Asked for in the statement rather than read out of an
-		// error message, which the driver is free to word however it likes.
-		.onConflictDoNothing()
-		.returning({ id: careLog.id })
-		.get();
-	if (!written) {
+	const written = await logCompletion(householdId, task, completedOn, notes);
+	if (written === null) {
 		return { ok: false, error: 'That one is already marked done.' };
 	}
 

@@ -55,6 +55,8 @@ async function loadPlantings(hid: HouseholdId) {
 			environmentName: environment.name,
 			frostFree: environment.frostFree,
 			windowShiftMonths: environment.windowShiftMonths,
+			sownOn: planting.sownOn,
+			plantedOn: planting.plantedOn,
 		})
 		.from(planting)
 		.innerJoin(plantType, eq(planting.plantTypeId, plantType.id))
@@ -168,7 +170,11 @@ export async function getSchedule(
 		);
 		const rules = resolveRules(applicable, context.environment, context.plantingId);
 		const logs = allLogs.filter((l) => l.plantingId === context.plantingId);
-		const occurrences = expandOccurrences(rules, logs, { today: when });
+		const occurrences = expandOccurrences(rules, logs, {
+			today: when,
+			since: startedOn(row.sownOn, row.plantedOn),
+			sownOn: row.sownOn,
+		});
 
 		plantings.push({ context, rules, occurrences });
 		for (const occurrence of occurrences) {
@@ -180,6 +186,16 @@ export async function getSchedule(
 	}
 
 	return { today: when, plantings, tasks, harvesting };
+}
+
+/**
+ * The day a planting began: sown, or planted out, whichever came first. A
+ * seedling sown in a tray in July and planted in September was alive in
+ * August. Null when neither was written down, as for most of the orchard.
+ */
+function startedOn(sownOn: string | null, plantedOn: string | null) {
+	if (sownOn && plantedOn) return sownOn < plantedOn ? sownOn : plantedOn;
+	return sownOn ?? plantedOn;
 }
 
 /**
@@ -204,6 +220,26 @@ export async function findOccurrence(
 		(o) => o.rule.ruleIds.includes(ruleId) && o.key === occurrenceKey,
 	);
 	return occurrence ? { occurrence, context: entry.context } : null;
+}
+
+/**
+ * The sowing jobs a planting sown on this day answers: every sow window open
+ * on it. Sowing outside any window answers none, and none is left asking -
+ * a sown planting has no sowing still to do (see `sownOn` in the engine).
+ */
+export async function sowingAnswered(
+	hid: HouseholdId,
+	plantingId: number,
+	sownOn: IsoDate,
+): Promise<Task[]> {
+	const { plantings } = await getSchedule(hid, sownOn);
+	const entry = plantings.find((p) => p.context.plantingId === plantingId);
+	if (!entry) return [];
+	return entry.occurrences
+		.filter(
+			(o) => o.rule.action === 'sow' && o.opensOn <= sownOn && sownOn <= o.closesOn,
+		)
+		.map((occurrence) => ({ occurrence, context: entry.context }));
 }
 
 /** The harvest seasons open for one plant right now. */
