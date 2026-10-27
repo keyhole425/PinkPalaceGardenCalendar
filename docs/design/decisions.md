@@ -46,6 +46,22 @@ rules. Not fixed yet - each is a candidate change of its own.
 
 ---
 
+### 2026-10-27 - Markdown that reads as Markdown, and promoting from the page
+**Context:** coriander, looked up by Claude and saved, showed its notes on
+its page with the `##` and `**` printed, because the article printed text
+as it was stored. A site admin looking at it found "Only in your garden" and
+no way to add it to the library, unless they knew `/library` existed.
+**Decision:** article text goes through `Prose`, and one-line previews
+through `plainText()`. A plant only your garden has shows a site admin
+**Add it to the library** under its summary, with the same three ways in
+as the queue: a plant of its own, a kind of…, the same as…. Promoting links
+the copy and answers its offer in the queue, then lands on "In the library
+now." Anyone else is told whether the plant has been offered.
+**Cost:** `Prose` knows headings, bullets, bold and italic, so anything else
+Claude writes (a table, a link) shows as its text. Promoting from the page
+skips the queue, but only for the admin's own garden: a plant from another
+garden still comes in through `/library`, without its garden named.
+
 ### 2026-10-27 - the library learns, and a site admin decides
 **Context:** the library was the seed's, and nothing a garden did reached
 it. A correction to one garden's tomato, a failed crop, or a plant the

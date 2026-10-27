@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { SuggestSomething } from '@/components/library/LibraryForms';
+import { Prose } from '@/components/ai/Prose';
+import {
+	PromoteToLibrary,
+	SuggestSomething,
+} from '@/components/library/LibraryForms';
 import { AddToGarden } from '@/components/plants/AddToGarden';
 import { PlantIndexRow } from '@/components/plants/PlantIndexRow';
 import { SowSome } from '@/components/plants/SowSome';
@@ -17,12 +21,15 @@ import { Icon } from '@/components/ui/Icon';
 import { MonthStrip } from '@/components/ui/MonthStrip';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScientificName } from '@/components/ui/ScientificName';
-import { requireHousehold } from '@/lib/auth/context';
+import { isSiteAdmin, requireHousehold } from '@/lib/auth/context';
 import { formatLong, monthOf, today } from '@/lib/dates';
+import { libraryChoices } from '@/lib/db/queries/curator';
+import { getHousehold, householdRegion } from '@/lib/db/queries/household';
 import { type Article, getArticle } from '@/lib/db/queries/library';
 import { getPlant } from '@/lib/db/queries/plant';
 import type { Month } from '@/lib/schedule/months';
 import { ACTION_LABEL } from '@/lib/ui/actions';
+import { plainText } from '@/lib/ui/markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,12 +43,14 @@ export default async function PlantPage({
 	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ added?: string }>;
+	searchParams: Promise<{ added?: string; promoted?: string }>;
 }) {
 	const { slug } = await params;
-	const added = (await searchParams).added === '1';
+	const query = await searchParams;
+	const added = query.added === '1';
+	const promoted = query.promoted === '1';
 	const when = today();
-	const { householdId } = await requireHousehold();
+	const { householdId, userId } = await requireHousehold();
 	const article = await getArticle(householdId, slug, when);
 	if (!article) notFound();
 	const mine = article.ownSlug
@@ -49,6 +58,17 @@ export default async function PlantPage({
 		: null;
 	const currentMonth = monthOf(when) as Month;
 	const growing = mine?.plantings.length ?? 0;
+	// A plant only this garden has: a site admin can add it to the library
+	// from here; anyone else is told whether it has been offered.
+	const curating =
+		!article.inLibrary && mine !== null && (await isSiteAdmin(userId));
+	const choices = curating
+		? await libraryChoices(await householdRegion(householdId))
+		: [];
+	const offered =
+		!article.inLibrary &&
+		!curating &&
+		((await getHousehold(householdId))?.shareGrowing ?? false);
 
 	return (
 		<Frame width="list">
@@ -80,6 +100,17 @@ export default async function PlantPage({
 					</p>
 				)}
 
+				{promoted && article.inLibrary && (
+					<p className="flex items-start gap-2 rounded-md border border-fertilise bg-fertilise-soft p-3 text-sm">
+						<Icon
+							name="check"
+							className="mt-0.5 h-4 w-4 shrink-0 text-fertilise-deep"
+						/>
+						In the library now. Every garden can look{' '}
+						{article.commonName.toLowerCase()} up; yours stays as you have it.
+					</p>
+				)}
+
 				{/* Something you have and haven't put anywhere: offer to. */}
 				{mine && growing === 0 && article.places.length > 0 && (
 					<SowSome
@@ -93,14 +124,28 @@ export default async function PlantPage({
 				{(article.summary || article.regionNote) && (
 					<div className="max-w-measure space-y-2">
 						{article.summary && (
-							<p className="whitespace-pre-line text-sm">{article.summary}</p>
+							// Claude's look-ups write Markdown; so may a site admin.
+							<div className="text-sm">
+								<Prose text={article.summary} headingLevel={2} />
+							</div>
 						)}
 						{article.regionNote && (
 							<Callout tone="note">
-								In {article.city}: {lowerFirst(article.regionNote)}
+								In {article.city}: {lowerFirst(plainText(article.regionNote))}
 							</Callout>
 						)}
 					</div>
+				)}
+
+				{curating && mine && (
+					<Card title="Add it to the library">
+						<p className="max-w-measure text-ink-soft text-sm">
+							Only in your garden so far. In the library, every garden can look{' '}
+							{article.commonName.toLowerCase()} up and add it. Yours stays as you
+							have it.
+						</p>
+						<PromoteToLibrary plantTypeId={mine.id} plants={choices} />
+					</Card>
 				)}
 
 				{mine && growing > 0 && (
@@ -117,9 +162,9 @@ export default async function PlantPage({
 
 				{article.findings && (
 					<Card title="What gardens found here">
-						<p className="max-w-measure whitespace-pre-line text-sm">
-							{article.findings}
-						</p>
+						<div className="max-w-measure text-sm">
+							<Prose text={article.findings} />
+						</div>
 					</Card>
 				)}
 
@@ -135,9 +180,9 @@ export default async function PlantPage({
 
 				{article.sections.map((section) => (
 					<Card key={section.title} title={section.title}>
-						<p className="max-w-measure whitespace-pre-line text-sm">
-							{section.body}
-						</p>
+						<div className="max-w-measure text-sm">
+							<Prose text={section.body} />
+						</div>
 					</Card>
 				))}
 
@@ -153,10 +198,13 @@ export default async function PlantPage({
 					</div>
 				)}
 
-				{!article.inLibrary && (
+				{!article.inLibrary && !curating && (
 					<Callout tone="quiet">
 						Only in your garden. figgy&rsquo;s library doesn&rsquo;t have{' '}
-						{article.commonName.toLowerCase()}.
+						{article.commonName.toLowerCase()}
+						{offered
+							? ' yet: it has been offered, and a site admin decides whether it joins.'
+							: '.'}
 					</Callout>
 				)}
 

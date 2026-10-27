@@ -26,7 +26,18 @@ function inline(text: string, keyPrefix: string): React.ReactNode[] {
 		});
 }
 
-export function Prose({ text }: { text: string }) {
+export function Prose({
+	text,
+	headingLevel = 3,
+}: {
+	text: string;
+	/**
+	 * What Claude's headings become: a level under whatever heading the prose
+	 * sits beneath. h3 inside a card; h2 straight under a page's title.
+	 */
+	headingLevel?: 2 | 3 | 4;
+}) {
+	const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4';
 	const lines = text.split('\n');
 	const blocks: React.ReactNode[] = [];
 	let bullets: string[] = [];
@@ -60,9 +71,9 @@ export function Prose({ text }: { text: string }) {
 		const heading = line.match(/^(#{1,4})\s+(.*)$/);
 		if (heading) {
 			blocks.push(
-				<h3 key={`h-${index}`} className="mt-3 font-semibold first:mt-0">
+				<Heading key={`h-${index}`} className="mt-3 font-semibold first:mt-0">
 					{inline(heading[2], `h-${index}`)}
-				</h3>,
+				</Heading>,
 			);
 			continue;
 		}

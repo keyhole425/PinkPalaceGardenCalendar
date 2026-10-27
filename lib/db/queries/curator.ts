@@ -301,3 +301,14 @@ export async function openCount(): Promise<number> {
 			.all()
 	).length;
 }
+
+/** Every library plant as something a new plant could join, for the "Add it as" choice. */
+export async function libraryChoices(region: RegionId) {
+	return (await loadAllResolved(db, region)).map((p) => ({
+		id: p.id,
+		name: p.parent
+			? `${p.commonName} (a kind of ${p.parent.commonName.toLowerCase()})`
+			: p.commonName,
+		canHaveKinds: p.parent === null,
+	}));
+}

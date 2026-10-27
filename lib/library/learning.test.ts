@@ -549,6 +549,65 @@ describe('a site admin deciding', () => {
 		expect(copy?.notesMd).toBe('Sow under cover; plant out after the last frost.');
 	});
 
+	it('lets a site admin add a plant of their own from its page', async () => {
+		const m = await modules();
+		await m.plants
+			.createPlantType(
+				null,
+				form({
+					commonName: 'Coriander',
+					scientificName: 'Coriandrum sativum',
+					category: 'herb',
+					lifecycle: 'annual',
+					notesMd: '## Growing coriander\n\nCoriander **bolts** in the heat.',
+				}),
+			)
+			.catch(() => {});
+		const coriander = await idOf(m, GARDEN, 'coriander');
+		const [offer] = await m.db.select().from(m.schema.librarySuggestion).all();
+		// Its own name is not a garden's name: the notes keep it.
+		expect(JSON.parse(offer.payload).notesMd).toBe(
+			'## Growing coriander\n\nCoriander **bolts** in the heat.',
+		);
+
+		const promote = form({ plantTypeId: String(coriander), as: 'new' });
+		expect(await m.library.promoteToLibrary(null, promote)).toEqual({
+			ok: false,
+			error: 'Only a site admin can change the library.',
+		});
+
+		m.actAs({ siteAdmin: true });
+		await expect(m.library.promoteToLibrary(null, promote)).rejects.toThrow(
+			'REDIRECT:/plants/coriander?promoted=1',
+		);
+		const lib = await m.db
+			.select()
+			.from(m.schema.libraryPlant)
+			.where(eq(m.schema.libraryPlant.slug, 'coriander'))
+			.get();
+		expect(lib?.scientificName).toBe('Coriandrum sativum');
+		const copy = await m.db
+			.select()
+			.from(m.schema.plantType)
+			.where(eq(m.schema.plantType.id, coriander))
+			.get();
+		expect(copy?.libraryPlantId).toBe(lib?.id);
+		expect(copy?.source).toBe('user');
+		// The offer in the queue is answered by it.
+		const answered = await m.db
+			.select({ status: m.schema.librarySuggestion.status })
+			.from(m.schema.librarySuggestion)
+			.where(eq(m.schema.librarySuggestion.id, offer.id))
+			.get();
+		expect(answered?.status).toBe('accepted');
+
+		// Another garden can now find it.
+		const friends = await m.seed.createSeededHousehold(m.db, 'Friends', 'starter');
+		const theirs = await m.article.getArticle(friends, 'coriander', '2026-10-15');
+		expect(theirs?.inLibrary).toBe(true);
+		expect(theirs?.plantTypeId).toBeNull();
+	});
+
 	it('takes a note from an article with names taken out', async () => {
 		const m = await modules();
 		expect(

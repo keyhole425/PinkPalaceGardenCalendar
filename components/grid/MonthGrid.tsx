@@ -10,6 +10,7 @@ import {
 	monthsInOrder,
 } from '@/lib/schedule/months';
 import { actionChip, actionFill, actionLabel } from '@/lib/ui/actions';
+import { plainText } from '@/lib/ui/markdown';
 
 /**
  * A full tick when every plant of the type is done, a hollow one otherwise.
@@ -135,7 +136,7 @@ function WideGrid({ plants, startMonth, currentMonth, marks }: GridProps) {
 										{plant.needsReview && <NeedsReview className="ml-2" />}
 										{plant.noteSummary && (
 											<p
-												title={plant.notesMd ?? undefined}
+												title={plant.notesMd ? plainText(plant.notesMd) : undefined}
 												className="mt-1 line-clamp-2 max-w-64 text-ink-soft text-2xs leading-snug"
 											>
 												{plant.noteSummary}

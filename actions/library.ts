@@ -9,11 +9,13 @@
  * as starting a garden does. Everything they change is published to every
  * garden that follows the plant; nothing a garden made its own is touched.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import type { Citation } from '@/lib/ai/schema';
 import { isSiteAdmin, requireHousehold } from '@/lib/auth/context';
+import { opaqueKeys } from '@/lib/crypto/secretbox';
 import { db } from '@/lib/db/client';
 import { openSuggestion } from '@/lib/db/queries/curator';
 import { householdRegion } from '@/lib/db/queries/household';
@@ -24,7 +26,7 @@ import {
 	plantType,
 	type RegionId,
 } from '@/lib/db/schema';
-import { owns } from '@/lib/db/tenancy';
+import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 import {
 	afterResponse,
 	contribute,
@@ -40,7 +42,7 @@ import {
 	replaceRules,
 	setRegionNote,
 } from '@/lib/library/publish';
-import { noteFor } from '@/lib/library/suggestions';
+import { newPlantPayload, noteFor } from '@/lib/library/suggestions';
 
 export type LibraryResult =
 	| { ok: true; message?: string }
@@ -145,10 +147,16 @@ const NOT_CURATOR: LibraryResult = {
 	error: 'Only a site admin can change the library.',
 };
 
-async function curator(): Promise<{ region: RegionId } | null> {
+async function curator(): Promise<{
+	region: RegionId;
+	householdId: HouseholdId;
+} | null> {
 	const ctx = await requireHousehold();
 	if (!(await isSiteAdmin(ctx.userId))) return null;
-	return { region: await householdRegion(ctx.householdId) };
+	return {
+		region: await householdRegion(ctx.householdId),
+		householdId: ctx.householdId,
+	};
 }
 
 async function decide(id: number, status: 'accepted' | 'rejected') {
@@ -375,4 +383,94 @@ export async function saveArticle(
 				? 'Saved, and one garden follows it.'
 				: `Saved, and ${gardens} gardens follow it.`,
 	};
+}
+
+const promoteSchema = z.object({
+	plantTypeId: z.coerce.number().int().positive(),
+	as: z.enum(['new', 'kind', 'same']),
+	target: z.coerce.number().int().positive().optional(),
+});
+
+/**
+ * A site admin's own plant, into the library from its page, without going
+ * through the queue: the same three ways in as a new-plant suggestion, and
+ * the copy is linked the same way. Only a plant of the admin's own garden -
+ * one from another garden comes in through /library, unnamed.
+ */
+export async function promoteToLibrary(
+	_previous: LibraryResult | null,
+	form: FormData,
+): Promise<LibraryResult> {
+	const me = await curator();
+	if (!me) return NOT_CURATOR;
+	const parsed = promoteSchema.safeParse({
+		plantTypeId: form.get('plantTypeId'),
+		as: form.get('as'),
+		target: form.get('target') || undefined,
+	});
+	if (!parsed.success)
+		return { ok: false, error: 'Choose how it joins the library.' };
+	const { plantTypeId, as: how, target } = parsed.data;
+	if (how !== 'new' && !target)
+		return { ok: false, error: 'Choose which plant it is.' };
+
+	const payload = await newPlantPayload(me.householdId, plantTypeId);
+	if (!payload)
+		return { ok: false, error: 'That plant is already in the library.' };
+	const own = await db
+		.select({ slug: plantType.slug, userModifiedAt: plantType.userModifiedAt })
+		.from(plantType)
+		.where(ownedRow(plantType, plantTypeId, me.householdId))
+		.get();
+	if (!own) return { ok: false, error: 'No such plant.' };
+
+	const joined = await db.transaction(async (tx) => {
+		const into =
+			how === 'same'
+				? await tx
+						.select({ id: libraryPlant.id, slug: libraryPlant.slug })
+						.from(libraryPlant)
+						.where(eq(libraryPlant.id, target ?? 0))
+						.get()
+				: await addToLibrary(
+						tx,
+						payload,
+						me.region,
+						how === 'kind' ? (target ?? null) : null,
+					);
+		if (!into) return null;
+		const lib = await tx
+			.select({ revision: libraryPlant.revision })
+			.from(libraryPlant)
+			.where(eq(libraryPlant.id, into.id))
+			.get();
+		// Linked, with its fields and rules still its own: nothing about it
+		// changes today, and its grows count from here, the earlier ones too.
+		await tx
+			.update(plantType)
+			.set({
+				libraryPlantId: into.id,
+				libraryRevision: lib?.revision ?? null,
+				userModifiedAt: own.userModifiedAt ?? new Date().toISOString(),
+			})
+			.where(ownedRow(plantType, plantTypeId, me.householdId))
+			.run();
+		// Any offer of this plant already in the queue is answered by this.
+		await tx
+			.update(librarySuggestion)
+			.set({ status: 'accepted', reviewedAt: new Date().toISOString() })
+			.where(
+				and(
+					eq(librarySuggestion.status, 'open'),
+					inArray(librarySuggestion.subjectKey, opaqueKeys(`plant:${plantTypeId}`)),
+				),
+			)
+			.run();
+		return into;
+	});
+	if (!joined) return { ok: false, error: 'No such plant to put it with.' };
+
+	await contributePlant(me.householdId, plantTypeId);
+	refresh(own.slug);
+	redirect(`/plants/${own.slug}?promoted=1`);
 }

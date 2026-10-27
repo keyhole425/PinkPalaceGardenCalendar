@@ -88,6 +88,11 @@ A page about a thing, not a list of records (`/plants/[slug]`):
 - **What you came to do goes first.** For a plant you grow, that's **Your
   garden** with its jobs. For one you don't, it's **Add to my garden** in the
   header.
+- **Article text goes through `Prose`**, the same renderer as Claude's
+  answers: a look-up's notes and a site admin's sections are Markdown.
+  Anywhere only a line of it shows (the year grid's note, a `title`, a
+  clamped preview) takes `plainText()` from `lib/ui/markdown.ts` instead,
+  so no `##` or `**` ever reaches the page.
 - **The opening paragraph** is held to the measure, followed by what's worth
   saying about this region as a `Callout` `note`, starting "In Adelaide:".
 - **Sections that have nothing in them are left out**, not shown empty. When

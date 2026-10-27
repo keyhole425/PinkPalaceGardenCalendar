@@ -70,7 +70,14 @@ export function redact(text: string, names: string[]): string {
 			'[…]',
 		);
 	}
-	return out.replace(/\s+/g, ' ').trim();
+	// Tidy spaces within lines, but keep the lines: a look-up's notes are
+	// Markdown, and its headings and bullets are lines.
+	return out
+		.split('\n')
+		.map((line) => line.replace(/[ \t]+/g, ' ').trimEnd())
+		.join('\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 }
 
 /** Everything this household calls itself and its things, for redact(). */

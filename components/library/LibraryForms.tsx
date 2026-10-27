@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import {
 	acceptSuggestion,
 	type LibraryResult,
+	promoteToLibrary,
 	rejectSuggestion,
 	saveArticle,
 	setShareGrowing,
@@ -69,50 +70,61 @@ export function DecideSuggestion({
 	);
 }
 
+export type LibraryChoice = { id: number; name: string; canHaveKinds: boolean };
+
 /**
- * A garden's own plant, into the library: as a plant of its own, as a kind
- * of one the library has, or filed with one it already has.
+ * How a plant joins the library: as a plant of its own, as a kind of one it
+ * has, or filed with one it already has. The fields of a form, not a form,
+ * so the queue and a plant's own page ask the same question the same way.
  */
+function AddAsFields({ plants }: { plants: LibraryChoice[] }) {
+	const [as, setAs] = useState<'new' | 'kind' | 'same'>('new');
+	const choices = as === 'kind' ? plants.filter((p) => p.canHaveKinds) : plants;
+	return (
+		<>
+			<Field label="Add it as" className="min-w-40">
+				<select
+					name="as"
+					value={as}
+					onChange={(e) => setAs(e.target.value as typeof as)}
+					className={selectClass}
+				>
+					<option value="new">a plant of its own</option>
+					<option value="kind">a kind of…</option>
+					<option value="same">the same as…</option>
+				</select>
+			</Field>
+			{as !== 'new' && (
+				<Field label="Which plant" className="min-w-40">
+					<select name="target" className={selectClass}>
+						{choices.map((p) => (
+							<option key={p.id} value={p.id}>
+								{p.name}
+							</option>
+						))}
+					</select>
+				</Field>
+			)}
+		</>
+	);
+}
+
+/** A garden's own plant, from the queue: accept it in one of three ways, or turn it down. */
 export function PlaceNewPlant({
 	id,
 	plants,
 }: {
 	id: number;
-	/** Plants that can take it: as a kind, the top-level ones only. */
-	plants: { id: number; name: string; canHaveKinds: boolean }[];
+	plants: LibraryChoice[];
 }) {
 	const [state, formAction, pending] = useActionState(acceptSuggestion, null);
 	const [rejected, reject, rejecting] = useActionState(rejectSuggestion, null);
-	const [as, setAs] = useState<'new' | 'kind' | 'same'>('new');
-	const choices = as === 'kind' ? plants.filter((p) => p.canHaveKinds) : plants;
 	if (state?.ok || rejected?.ok) return <Outcome state={state ?? rejected} />;
 	return (
 		<div className="space-y-2">
 			<form action={formAction} className="flex flex-wrap items-end gap-3">
 				<input type="hidden" name="id" value={id} />
-				<Field label="Add it as" className="min-w-40">
-					<select
-						name="as"
-						value={as}
-						onChange={(e) => setAs(e.target.value as typeof as)}
-						className={selectClass}
-					>
-						<option value="new">a plant of its own</option>
-						<option value="kind">a kind of…</option>
-						<option value="same">the same as…</option>
-					</select>
-				</Field>
-				{as !== 'new' && (
-					<Field label="Which plant" className="min-w-40">
-						<select name="target" className={selectClass}>
-							{choices.map((p) => (
-								<option key={p.id} value={p.id}>
-									{p.name}
-								</option>
-							))}
-						</select>
-					</Field>
-				)}
+				<AddAsFields plants={plants} />
 				<Button type="submit" pending={pending} pendingLabel="Adding">
 					Accept
 				</Button>
@@ -130,6 +142,29 @@ export function PlaceNewPlant({
 				</Button>
 			</form>
 			<Outcome state={state ?? rejected} />
+		</div>
+	);
+}
+
+/** A site admin's own plant, from its page, straight into the library. */
+export function PromoteToLibrary({
+	plantTypeId,
+	plants,
+}: {
+	plantTypeId: number;
+	plants: LibraryChoice[];
+}) {
+	const [state, formAction, pending] = useActionState(promoteToLibrary, null);
+	return (
+		<div className="space-y-2">
+			<form action={formAction} className="flex flex-wrap items-end gap-3">
+				<input type="hidden" name="plantTypeId" value={plantTypeId} />
+				<AddAsFields plants={plants} />
+				<Button type="submit" pending={pending} pendingLabel="Adding">
+					Add to the library
+				</Button>
+			</form>
+			<Outcome state={state} />
 		</div>
 	);
 }

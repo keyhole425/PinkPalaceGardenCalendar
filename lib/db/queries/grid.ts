@@ -8,6 +8,7 @@ import { and, asc, isNull } from 'drizzle-orm';
 import type { IsoDate } from '@/lib/dates';
 import { monthOf, today as todayInGarden } from '@/lib/dates';
 import type { Month } from '@/lib/schedule/months';
+import { plainText } from '@/lib/ui/markdown';
 import { db } from '../client';
 import type { Cadence } from '../schema';
 import { careRule, plantType } from '../schema';
@@ -53,7 +54,8 @@ export type GridPlant = {
  */
 export function noteSummary(notes: string | null): string | null {
 	if (!notes) return null;
-	const flat = notes.replace(/\s+/g, ' ').trim();
+	// Claude writes its notes in Markdown; a summary is a line, not markup.
+	const flat = plainText(notes).replace(/\s+/g, ' ').trim();
 	if (!flat) return null;
 
 	// The first sentence, as long as it is actually a sentence and not an

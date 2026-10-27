@@ -15,6 +15,7 @@ import { justDecided, libraryOverview } from '@/lib/db/queries/curator';
 import { householdRegion } from '@/lib/db/queries/household';
 import { hereLine } from '@/lib/library/describe';
 import { asRules } from '@/lib/library/suggestions';
+import { plainText } from '@/lib/ui/markdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,9 +88,9 @@ export default async function LibraryPage() {
 											{s.payload.notesMd && (
 												<p
 													className="line-clamp-3 max-w-measure"
-													title={s.payload.notesMd}
+													title={plainText(s.payload.notesMd)}
 												>
-													{s.payload.notesMd}
+													{plainText(s.payload.notesMd)}
 												</p>
 											)}
 											<PlaceNewPlant id={s.id} plants={choices} />

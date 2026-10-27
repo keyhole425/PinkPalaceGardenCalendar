@@ -34,7 +34,7 @@ import {
 import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
 import { maskFromMonths, monthsFromMask } from '@/lib/schedule/months';
 import type { RuleLike } from './describe';
-import { afterResponse, gardenKey, redact, subjectKey } from './evidence';
+import { afterResponse, gardenKey, namesOf, redact, subjectKey } from './evidence';
 
 /** One action's months as a suggestion carries them: a list per alternative. */
 export type SuggestedRule = {
@@ -207,21 +207,21 @@ export async function ruleChanged(
 }
 
 /**
- * A plant the library doesn't have: what it is and what it needs, offered as
- * a new plant. Kept up to date as the garden fills its rules in.
+ * A plant of a garden's own, as the library would take it: what it is, what
+ * it needs, and the pages Claude read if it was looked up. Its notes have the
+ * garden's names taken out; the plant's own name stays in, since "coriander
+ * bolts in the heat" says nothing about whose coriander.
  */
-export async function plantOfItsOwn(
+export async function newPlantPayload(
 	hid: HouseholdId,
 	plantTypeId: number,
-): Promise<void> {
-	const here = await sharer(hid);
-	if (!here) return;
+): Promise<NewPlantPayload | null> {
 	const plant = await db
 		.select()
 		.from(plantType)
 		.where(ownedRow(plantType, plantTypeId, hid))
 		.get();
-	if (!plant || plant.libraryPlantId !== null) return;
+	if (!plant || plant.libraryPlantId !== null) return null;
 
 	const proposal = await db
 		.select({ citations: aiProposal.citations })
@@ -234,7 +234,7 @@ export async function plantOfItsOwn(
 			),
 		)
 		.get();
-	const payload: NewPlantPayload = {
+	return {
 		commonName: plant.commonName,
 		scientificName: plant.scientificName,
 		category: plant.category,
@@ -243,10 +243,24 @@ export async function plantOfItsOwn(
 		daysToMaturityMin: plant.daysToMaturityMin,
 		daysToMaturityMax: plant.daysToMaturityMax,
 		spacingCm: plant.spacingCm,
-		notesMd: plant.notesMd ? redact(plant.notesMd, [plant.slug]) : null,
+		notesMd: plant.notesMd ? redact(plant.notesMd, await namesOf(hid)) : null,
 		rules: await rulesOf(hid, plantTypeId),
 		citations: proposal?.citations ? JSON.parse(proposal.citations) : [],
 	};
+}
+
+/**
+ * A plant the library doesn't have, offered as a new plant. Kept up to date
+ * as the garden fills its rules in.
+ */
+export async function plantOfItsOwn(
+	hid: HouseholdId,
+	plantTypeId: number,
+): Promise<void> {
+	const here = await sharer(hid);
+	if (!here) return;
+	const payload = await newPlantPayload(hid, plantTypeId);
+	if (!payload) return;
 	const subject = subjectKey(plantTypeId);
 	await file(hid, here.region, 'new_plant', subject, payload, {
 		subjectKey: subject,
