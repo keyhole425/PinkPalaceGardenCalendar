@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { SuggestSomething } from '@/components/library/LibraryForms';
 import { AddToGarden } from '@/components/plants/AddToGarden';
 import { PlantIndexRow } from '@/components/plants/PlantIndexRow';
 import { SowSome } from '@/components/plants/SowSome';
@@ -17,7 +18,7 @@ import { MonthStrip } from '@/components/ui/MonthStrip';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ScientificName } from '@/components/ui/ScientificName';
 import { requireHousehold } from '@/lib/auth/context';
-import { monthOf, today } from '@/lib/dates';
+import { formatLong, monthOf, today } from '@/lib/dates';
 import { type Article, getArticle } from '@/lib/db/queries/library';
 import { getPlant } from '@/lib/db/queries/plant';
 import type { Month } from '@/lib/schedule/months';
@@ -43,7 +44,9 @@ export default async function PlantPage({
 	const { householdId } = await requireHousehold();
 	const article = await getArticle(householdId, slug, when);
 	if (!article) notFound();
-	const mine = article.plantTypeId ? await getPlant(householdId, slug, when) : null;
+	const mine = article.ownSlug
+		? await getPlant(householdId, article.ownSlug, when)
+		: null;
 	const currentMonth = monthOf(when) as Month;
 	const growing = mine?.plantings.length ?? 0;
 
@@ -112,6 +115,14 @@ export default async function PlantPage({
 
 				<Glance article={article} />
 
+				{article.findings && (
+					<Card title="What gardens found here">
+						<p className="max-w-measure whitespace-pre-line text-sm">
+							{article.findings}
+						</p>
+					</Card>
+				)}
+
 				{article.kinds && (
 					<Card title={article.kinds.title} count={article.kinds.rows.length}>
 						<DataList>
@@ -130,11 +141,16 @@ export default async function PlantPage({
 					</Card>
 				))}
 
-				{article.inLibrary && article.sections.length === 0 && (
-					<Callout tone="quiet">
-						That&rsquo;s all figgy knows about {article.commonName.toLowerCase()} so
-						far.
-					</Callout>
+				{article.inLibrary && (
+					<div className="space-y-1">
+						{article.sections.length === 0 && (
+							<Callout tone="quiet">
+								That&rsquo;s all figgy knows about{' '}
+								{article.commonName.toLowerCase()} so far.
+							</Callout>
+						)}
+						<SuggestSomething slug={article.slug} />
+					</div>
 				)}
 
 				{!article.inLibrary && (
@@ -245,7 +261,7 @@ function When({
 						<ButtonLink
 							variant="quiet"
 							size="sm"
-							href={`/plants/${article.slug}/edit`}
+							href={`/plants/${article.ownSlug ?? article.slug}/edit`}
 						>
 							Change
 						</ButtonLink>
@@ -260,7 +276,7 @@ function When({
 						<>
 							{' '}
 							<Link
-								href={`/plants/${article.slug}/edit`}
+								href={`/plants/${article.ownSlug ?? article.slug}/edit`}
 								className="underline hover:text-palace-700"
 							>
 								Fill the months in
@@ -291,7 +307,10 @@ function When({
 					))}
 				</div>
 			)}
-			{(inheritedFrom || article.shiftLines.length > 0 || article.differs) && (
+			{(inheritedFrom ||
+				article.shiftLines.length > 0 ||
+				article.differs ||
+				article.libraryChange) && (
 				<div className="space-y-0.5 text-ink-soft text-xs">
 					{inheritedFrom && (
 						<p>
@@ -303,6 +322,12 @@ function When({
 					{article.shiftLines.map((line) => (
 						<p key={line}>{line}</p>
 					))}
+					{article.libraryChange && (
+						<p>
+							Updated from the library on {formatLong(article.libraryChange.on)}:{' '}
+							{article.libraryChange.what}.
+						</p>
+					)}
 					{article.differs && (
 						<p>
 							Your months differ from the library&rsquo;s; yours are the ones on

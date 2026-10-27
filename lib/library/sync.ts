@@ -17,10 +17,13 @@
  * did not have before is added.
  */
 import { and, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm';
+import { today } from '@/lib/dates';
 import type { Db, Tx } from '@/lib/db/client';
 import { deleteRules } from '@/lib/db/rules';
 import { careRule, plantType } from '@/lib/db/schema';
 import { type HouseholdId, owns } from '@/lib/db/tenancy';
+import { ACTION_LABEL } from '@/lib/ui/actions';
+import { windowText } from './describe';
 import type { ResolvedPlant } from './resolve';
 
 /** Which source a set of rules is being followed from. */
@@ -88,7 +91,7 @@ export async function followRules(
 	plantTypeId: number,
 	owner: RuleOwner,
 	wanted: RuleInsert[],
-): Promise<{ written: number; owned: string[] }> {
+): Promise<{ written: number; owned: string[]; changed: string[] }> {
 	const owned = await userOwnedActions(db, hid, plantTypeId, owner);
 	const sourceOwned = and(
 		owns(careRule, hid),
@@ -129,12 +132,29 @@ export async function followRules(
 			return true;
 		});
 	const stale = [...unclaimed.values()].flat();
+	const changed = new Set([
+		...toInsert.map((r) => r.action),
+		...existing.filter((r) => stale.includes(r.id)).map((r) => r.action),
+	]);
 
 	if (stale.length > 0) {
 		await deleteRules(db, and(sourceOwned, inArray(careRule.id, stale)));
 	}
 	if (toInsert.length > 0) await db.insert(careRule).values(toInsert).run();
-	return { written: toInsert.length, owned: [...owned] };
+	return { written: toInsert.length, owned: [...owned], changed: [...changed] };
+}
+
+/** "sow Sep–Nov, harvest Feb–May": what following changed, for the article. */
+function describeChange(plant: ResolvedPlant, actions: string[]): string {
+	return actions
+		.map((action) => {
+			const these = plant.rules.filter((r) => r.action === action);
+			const label = (ACTION_LABEL[action] ?? action).toLowerCase();
+			return these.length > 0
+				? `${label} ${windowText(these)}`
+				: `no more ${label}`;
+		})
+		.join(', ');
 }
 
 /** What a household's plant row says when it is a copy of the library's. */
@@ -274,7 +294,11 @@ export async function followLibrary(
 	};
 
 	const linked = await db
-		.select({ id: plantType.id, userModifiedAt: plantType.userModifiedAt })
+		.select({
+			id: plantType.id,
+			userModifiedAt: plantType.userModifiedAt,
+			libraryRevision: plantType.libraryRevision,
+		})
 		.from(plantType)
 		.where(and(owns(plantType, hid), eq(plantType.libraryPlantId, plant.id)))
 		.get();
@@ -333,5 +357,31 @@ export async function followLibrary(
 	report.rules = rules.written;
 	for (const action of rules.owned)
 		report.leftAlone.push(`${plant.slug}:${action}`);
+
+	// A copy that already followed an older revision, whose months have just
+	// moved: say so on its page, rather than a window shifting without a word.
+	if (
+		linked &&
+		linked.libraryRevision !== null &&
+		linked.libraryRevision !== plant.revision &&
+		rules.changed.length > 0
+	) {
+		await db
+			.update(plantType)
+			.set({
+				libraryChange: describeChange(plant, rules.changed),
+				libraryChangedOn: today(),
+				libraryRevision: plant.revision,
+			})
+			.where(and(owns(plantType, hid), eq(plantType.id, plantTypeId)))
+			.run();
+	} else if (linked && edited && linked.libraryRevision !== plant.revision) {
+		// Its fields are its own, but it has seen this revision.
+		await db
+			.update(plantType)
+			.set({ libraryRevision: plant.revision })
+			.where(and(owns(plantType, hid), eq(plantType.id, plantTypeId)))
+			.run();
+	}
 	return report;
 }

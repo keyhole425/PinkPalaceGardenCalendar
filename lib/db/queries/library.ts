@@ -11,6 +11,7 @@ import { REGIONS } from '@/lib/ai/locale';
 import type { Citation } from '@/lib/ai/schema';
 import { type IsoDate, today as todayInGarden } from '@/lib/dates';
 import {
+	actionOrder,
 	hereLine,
 	inSeason,
 	type PlaceLike,
@@ -272,29 +273,17 @@ export type Article = {
 	kinds: { title: string; rows: IndexRow[] } | null;
 	/** True when the library has it; false for a plant of the household's own. */
 	inLibrary: boolean;
-	/** The household's copy, if it has one. */
+	/** The household's copy, if it has one, and the address it lives at. */
 	plantTypeId: number | null;
+	ownSlug: string | null;
 	/** True when the household's months are not the library's any more. */
 	differs: boolean;
+	/** "What gardens found here", as a site admin wrote it. */
+	findings: string | null;
+	/** What following the library last changed in this garden, and when. */
+	libraryChange: { what: string; on: string } | null;
 	places: SowPlace[];
 };
-
-const ACTION_ORDER = [
-	'sow',
-	'transplant',
-	'thin',
-	'fertilise',
-	'water',
-	'prune',
-	'net',
-	'spray',
-	'harvest',
-];
-
-function actionOrder(action: string): number {
-	const i = ACTION_ORDER.indexOf(action);
-	return i === -1 ? ACTION_ORDER.length : i;
-}
 
 function citationsOf(raw: string | null): Citation[] {
 	if (!raw) return [];
@@ -375,13 +364,25 @@ export async function getArticle(
 ): Promise<Article | null> {
 	const month = Number(when.slice(5, 7)) as Month;
 	const region = await householdRegion(hid);
-	const own = await db
+	const bySlug = await db
 		.select()
 		.from(plantType)
 		.where(and(owns(plantType, hid), eq(plantType.slug, slug)))
 		.get();
 
 	const library = await loadAllResolved(db, region);
+	// A copy can sit at an address of its own - a plant the garden added
+	// before the library had it - and is still this library plant's copy.
+	const atSlug = library.find((p) => p.slug === slug);
+	const own =
+		bySlug ??
+		(atSlug
+			? await db
+					.select()
+					.from(plantType)
+					.where(and(owns(plantType, hid), eq(plantType.libraryPlantId, atSlug.id)))
+					.get()
+			: undefined);
 	const lib = own
 		? own.libraryPlantId !== null
 			? library.find((p) => p.id === own.libraryPlantId)
@@ -474,7 +475,13 @@ export async function getArticle(
 		kinds,
 		inLibrary: Boolean(lib),
 		plantTypeId: own?.id ?? null,
+		ownSlug: own?.slug ?? null,
 		differs,
+		findings: lib?.findingsMd ?? null,
+		libraryChange:
+			own?.libraryChange && own.libraryChangedOn
+				? { what: own.libraryChange, on: own.libraryChangedOn }
+				: null,
 		places: await sowPlaces(hid, lib?.category ?? own!.category),
 	};
 }

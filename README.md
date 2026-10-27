@@ -28,10 +28,15 @@ connection may not enforce one.
 ## Households
 
 Every garden is a **household**, and every row in the database belongs to one.
-Two households share nothing: not the plants, not the schedule, not what
-Claude was asked. The household always comes from whoever is signed in, never
-from a form, and every query and action is scoped by it. The database holds
-the same line with triggers that refuse a row pointing into another garden.
+No household can see another's plants, schedule, records or what Claude
+was asked. The household always comes from whoever is signed in, never from
+a form, and every query and action is scoped by it. The database holds the
+same line with triggers that refuse a row pointing into another garden.
+
+What crosses that line, and only in one direction, is what a garden gives
+the shared library (below): anonymous outcomes of its grows, and its
+suggestions. A household admin can stop that in Settings, and stopping deletes
+everything the garden gave.
 
 The Pink Palace is household 1, with its orchard. A new household starts with
 a copy of the library's starter set and one bed.
@@ -40,8 +45,36 @@ a copy of the library's starter set and one bed.
 
 What figgy knows about growing things is kept once, in the **library**, and
 shared by every garden. It is the one part of the database that belongs to no
-household: every household reads it and none writes it. Only the seed and,
-later, a site admin change it.
+household: every household reads it and none writes it. Only the seed and a
+site admin change it, the site admin from `/library`.
+
+**It learns from what grows.** Nothing new is typed in. Each grow of a library
+plant already says when it went in, when it was first picked, how often, and
+whether it made it, and `lib/library/evidence.ts` turns that into one row per
+grow. The row stores no household, planting, person, label or exact date:
+only months, durations, the kind of place, and keyed hashes. The hashes let a
+grow be updated, a garden's rows be deleted, and four grows in one garden be
+told apart from one in each of four gardens. Nobody can work back from them.
+Notes go in with the garden's own names taken out (its name, its people, its
+places, what it calls its plants), and only a site admin reads them. No
+other garden ever sees another's evidence, only what the library says.
+
+**Gardens suggest; a site admin decides.** These become suggestions,
+anonymous in the same way:
+- changing a library plant's months,
+- keeping a Claude look-up of one,
+- having a plant the library lacks,
+- writing a note from an article ("Suggest something").
+
+Plain rules (`lib/library/flags.ts`) point out where the evidence disagrees
+with the library: picked from a month it says not to sow in, a sowing month
+that keeps failing, or a harvest well sooner or later than it says. Nothing
+changes until a site admin accepts it. Accepting publishes it, and every
+garden that hasn't made that rule its own follows, with an "Updated from the
+library" line on the plant's page. A plant a garden added itself can join the
+library as a plant of its own, as a kind of another, or filed with one it
+already has. The garden's copy is then linked, and its earlier grows count
+too.
 
 A garden's plants are copies. A copy follows the library until someone in
 that garden edits it, action by action, which is the same promise seeding has

@@ -29,6 +29,8 @@ rules. Not fixed yet - each is a candidate change of its own.
   text-lg">` without `font-serif`, so it reads differently from every `Card`
   heading; a `Card` (or `font-serif`) would fix it. It also spaces its
   sections with `space-y-8` rather than `space-y-rhythm`.
+- **The curator's pages have no search.** `/library` lists every plant; fine
+  for a few dozen, not for hundreds.
 - **Sowing doesn't tick the sowing job.** Sowing from a bed or from an
   article makes a planting with its sown date, but records no `sow` against
   its window, so a plant sown today can read "missed" for a window that has
@@ -47,6 +49,36 @@ rules. Not fixed yet - each is a candidate change of its own.
   sizes needs the same redundancy.
 
 ---
+
+### 2026-10-27 - the library learns, and a site admin decides
+**Context:** the library was the seed's, and nothing a garden did reached
+it. A correction to one garden's tomato, a failed crop, or a plant the
+library lacked stayed in that garden.
+**Decision:** what a garden records becomes anonymous evidence. What it
+changes (months, a kept look-up, a plant of its own, a note from an
+article's **Suggest something**) becomes a suggestion. A site admin decides
+at `/library`, which is reached from Settings and is not in the nav.
+- The curator page reuses the article's parts: the same strips and the same
+  ruled lists.
+- Each suggestion is one sentence ("A garden moved sow to Sep–Nov."), with
+  the garden's months above the library's.
+- Disagreements are plain-code flags in a `warn` Callout: a sentence each,
+  never a change.
+- **Turn down** is `danger`, quiet until meant, beside a primary **Accept**.
+- Accepting publishes. A plant whose months moved says so in its When card:
+  "Updated from the library on 27 October 2026: sow Sep–Nov."
+- Settings has **Helping the library** for everyone, saying in two
+  sentences what is shared and who reads it. Stopping takes a second press,
+  because it deletes everything the garden gave.
+- An article's **Suggest something** is a disclosure, like Date or note:
+  most visits don't need it.
+
+**Cost:** sharing is on unless an admin turns it off, which is what the
+gardener asked for. It is a change to "two households share nothing",
+recorded in the README. Taking names out of notes is best effort, so notes
+stop at the curator and are never shown to another garden. A note's
+**Mark read** only files it; whatever it says has to be written into the
+article by hand.
 
 ### 2026-10-27 - plants as a library you look things up in
 **Context:** `/plants` was the household's own copies, grouped by category,

@@ -55,6 +55,7 @@ function row(over: Partial<LibraryPlantRow>): LibraryPlantRow {
 		harvestMd: null,
 		problemsMd: null,
 		citations: null,
+		findingsMd: null,
 		needsReview: false,
 		revision: 1,
 		source: 'seed',

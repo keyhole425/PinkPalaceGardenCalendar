@@ -32,6 +32,7 @@ import {
 	plantType,
 } from '@/lib/db/schema';
 import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
+import { contributeLater } from '@/lib/library/evidence';
 
 export type ParseResult =
 	| { ok: true; parsed: ParsedLog; sentence: string }
@@ -239,6 +240,9 @@ export async function commitLog(
 		if (inserted) written++;
 	}
 
+	await contributeLater(householdId, [
+		...new Set(parsed.entries.map((e) => e.plantingId)),
+	]);
 	revalidatePath('/now');
 	revalidatePath('/grid');
 	revalidatePath('/plants');

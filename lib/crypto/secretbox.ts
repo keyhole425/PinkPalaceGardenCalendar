@@ -15,6 +15,7 @@ import {
 	createCipheriv,
 	createDecipheriv,
 	createHash,
+	createHmac,
 	randomBytes,
 } from 'node:crypto';
 
@@ -41,6 +42,30 @@ function currentKey(): Buffer {
 		throw new Error('FIGGY_ENCRYPTION_KEY is not set.');
 	}
 	return createHash('sha256').update('figgy development only').digest();
+}
+
+/**
+ * A name for something that says nothing about it: HMAC-SHA256 under the
+ * encryption key, so the same thing always gets the same name, nobody
+ * without the key can work back from the name, and nothing outside figgy's
+ * server can make one. The library's evidence is keyed by these, so a grow
+ * can be updated and a garden's grows deleted without either being named.
+ *
+ * Under FIGGY_ENCRYPTION_KEY_PREVIOUS a thing has a second name;
+ * `opaqueKeys` gives both, for finding rows written before a key changed.
+ */
+export function opaqueKey(purpose: string): string {
+	return createHmac('sha256', currentKey()).update(purpose).digest('base64url');
+}
+
+export function opaqueKeys(purpose: string): string[] {
+	const previous = previousKey();
+	return previous
+		? [
+				opaqueKey(purpose),
+				createHmac('sha256', previous).update(purpose).digest('base64url'),
+			]
+		: [opaqueKey(purpose)];
 }
 
 function previousKey(): Buffer | null {

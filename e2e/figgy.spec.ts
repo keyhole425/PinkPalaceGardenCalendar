@@ -217,3 +217,34 @@ test('a search that finds nothing offers to look it up', async ({ page }) => {
 	await page.getByRole('link', { name: 'Let figgy look it up' }).click();
 	await expect(page).toHaveURL(/\/plants\/new\?q=dragon%20fruit/);
 });
+
+test('a note from an article reaches the library, where a site admin reads it', async ({
+	page,
+}) => {
+	await page.goto('/plants/tomato');
+	await page.getByText('Suggest something').click();
+	await page
+		.getByLabel('What should figgy know?')
+		.fill('They split after heavy rain unless watered evenly.');
+	await page.getByRole('button', { name: 'Send to the library' }).click();
+	await expect(page.getByText('Sent. A site admin reads every one.')).toBeVisible();
+
+	// The gardener is a site admin, so Settings points at the library.
+	await page.goto('/settings');
+	await page.getByRole('link', { name: 'Open the library' }).click();
+	await expect(
+		page.getByRole('heading', { name: 'The library', level: 1 }),
+	).toBeVisible();
+	await page
+		.locator('section')
+		.filter({ has: page.getByRole('heading', { name: /Suggested changes/ }) })
+		.getByRole('link', { name: 'Tomato' })
+		.click();
+	await expect(
+		page.getByText('They split after heavy rain unless watered evenly.'),
+	).toBeVisible();
+	await page.getByRole('button', { name: 'Mark read' }).click();
+	// It leaves the list, and the page keeps the proof that the tap landed.
+	await expect(page.getByText('Just decided')).toBeVisible();
+	await expect(page.getByText('read', { exact: true })).toBeVisible();
+});

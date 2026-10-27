@@ -1,5 +1,6 @@
 import { count, eq } from 'drizzle-orm';
 import Link from 'next/link';
+import { ShareSwitch } from '@/components/library/LibraryForms';
 import { CheckKey, RemoveKey, SaveKey } from '@/components/settings/AiKeyForms';
 import {
 	InviteForm,
@@ -10,6 +11,7 @@ import {
 	WithdrawInvite,
 } from '@/components/settings/HouseholdForms';
 import { Badge } from '@/components/ui/Badge';
+import { ButtonLink } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DataList, DataRow } from '@/components/ui/DataList';
 import { Frame } from '@/components/ui/Frame';
@@ -18,7 +20,8 @@ import { MODEL } from '@/lib/ai/client';
 import { listProposals, totalSpendCents } from '@/lib/ai/proposals';
 import { isSiteAdmin, requireHousehold } from '@/lib/auth/context';
 import { db, dbUrl, describeDbUrl } from '@/lib/db/client';
-import { listMembers } from '@/lib/db/queries/household';
+import { openCount } from '@/lib/db/queries/curator';
+import { getHousehold, listMembers } from '@/lib/db/queries/household';
 import {
 	careLog,
 	careRule,
@@ -102,6 +105,8 @@ export default async function SettingsPage() {
 	]);
 	// Housekeeping numbers, for site admins only, so nobody else pays for them.
 	const numbers = siteAdmin ? await gardenNumbers(householdId) : null;
+	const sharing = (await getHousehold(householdId))?.shareGrowing ?? true;
+	const waiting = siteAdmin ? await openCount() : 0;
 	const spend = await totalSpendCents(householdId);
 	const proposals = await listProposals(householdId, 10);
 
@@ -151,6 +156,40 @@ export default async function SettingsPage() {
 						</p>
 					)}
 				</Card>
+
+				<Card title="Helping the library" id="helping-the-library">
+					<p className="max-w-measure text-ink-soft text-sm">
+						{sharing
+							? 'What grows here helps figgy’s library learn: when things went in, how long they took, whether they made it, and your notes with names taken out. Nothing says whose garden it came from, and only a site admin reads the notes. Other gardens see only what the library says.'
+							: 'This garden isn’t sharing what it grows, and nothing it gave is kept. The library still works the same for you.'}
+					</p>
+					{admin ? (
+						<ShareSwitch sharing={sharing} />
+					) : (
+						<p className="text-ink-soft text-sm">
+							An admin of this household can change this.
+						</p>
+					)}
+				</Card>
+
+				{siteAdmin && (
+					<Card
+						title="The library"
+						aside={
+							waiting > 0 ? (
+								<Badge tone="strong">{waiting} waiting</Badge>
+							) : undefined
+						}
+					>
+						<p className="text-ink-soft text-sm">
+							What gardens have suggested for the library, and what their grows say.
+							Only site admins see this.
+						</p>
+						<ButtonLink href="/library" variant="quiet">
+							Open the library
+						</ButtonLink>
+					</Card>
+				)}
 
 				{siteAdmin && (
 					<Card title="New gardens" data-tour="new-gardens">

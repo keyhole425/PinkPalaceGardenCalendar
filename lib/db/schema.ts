@@ -56,6 +56,14 @@ export const household = sqliteTable('household', {
 	seedVersion: text('seed_version'),
 	/** Whose months this garden keeps: which of the library's windows apply. */
 	region: text('region', { enum: REGION_IDS }).notNull().default('adelaide'),
+	/**
+	 * Whether what grows here helps the library learn: outcomes, timings and
+	 * notes, without names (lib/library/evidence.ts). On unless an admin turns
+	 * it off, which also deletes everything this garden gave.
+	 */
+	shareGrowing: integer('share_growing', { mode: 'boolean' })
+		.notNull()
+		.default(true),
 	createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
 
@@ -167,6 +175,13 @@ export const plantType = sqliteTable(
 		}),
 		/** The library revision last copied in, so a sync knows what changed. */
 		libraryRevision: integer('library_revision'),
+		/**
+		 * What following the library last changed here, in words, and when -
+		 * so the article can say "Updated from the library" rather than a
+		 * window moving without a word.
+		 */
+		libraryChange: text('library_change'),
+		libraryChangedOn: text('library_changed_on'),
 		/** Set when figgy knows the data is incomplete, so the UI can nag. */
 		needsReview: integer('needs_review', { mode: 'boolean' })
 			.notNull()
@@ -480,6 +495,11 @@ export const libraryPlant = sqliteTable(
 		problemsMd: text('problems_md'),
 		/** Pages the article was written from, as JSON. Data, never instructions. */
 		citations: text('citations'),
+		/**
+		 * "What gardens found here": written by a site admin from the evidence,
+		 * never the evidence itself.
+		 */
+		findingsMd: text('findings_md'),
 
 		needsReview: integer('needs_review', { mode: 'boolean' })
 			.notNull()
@@ -544,6 +564,101 @@ export const libraryRegionNote = sqliteTable(
 		curatedAt: text('curated_at'),
 	},
 	(t) => [primaryKey({ columns: [t.libraryPlantId, t.region] })],
+);
+
+export const GROW_OUTCOMES = ['growing', 'harvested', 'died', 'pulled'] as const;
+export type GrowOutcome = (typeof GROW_OUTCOMES)[number];
+
+/**
+ * What happened to one grow of a library plant, with nothing that says
+ * whose. Derived from the plantings and the log, never typed in.
+ *
+ * No household, planting, person, label or exact date: `growKey` and
+ * `gardenKey` are keyed hashes (lib/crypto/secretbox.ts) that let a re-derive
+ * overwrite its own row, a garden's rows be deleted when it stops sharing,
+ * and the curator tell four grows in one garden from one in each of four -
+ * and nothing else. Months and durations only.
+ */
+export const libraryEvidence = sqliteTable(
+	'library_evidence',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		growKey: text('grow_key').notNull(),
+		gardenKey: text('garden_key').notNull(),
+		libraryPlantId: integer('library_plant_id')
+			.notNull()
+			.references(() => libraryPlant.id, { onDelete: 'cascade' }),
+		region: text('region', { enum: REGION_IDS }).notNull(),
+		environmentKind: text('environment_kind', {
+			enum: ENVIRONMENT_KINDS,
+		}).notNull(),
+		/** The year it went in, for telling this season from five ago. */
+		seasonYear: integer('season_year'),
+		sowMonth: integer('sow_month'),
+		plantMonth: integer('plant_month'),
+		daysToFirstHarvest: integer('days_to_first_harvest'),
+		harvestSpanDays: integer('harvest_span_days'),
+		picks: integer('picks').notNull().default(0),
+		outcome: text('outcome', { enum: GROW_OUTCOMES }).notNull(),
+		/** Note excerpts with names taken out, as JSON. For the curator only. */
+		notes: text('notes'),
+		/** The month this was last worked out, YYYY-MM. */
+		derivedIn: text('derived_in').notNull(),
+	},
+	(t) => [
+		uniqueIndex('library_evidence_grow_idx').on(t.growKey),
+		index('library_evidence_plant_idx').on(t.libraryPlantId),
+		index('library_evidence_garden_idx').on(t.gardenKey),
+	],
+);
+
+export const SUGGESTION_KINDS = [
+	/** A garden changed a library plant's months: here is what to. */
+	'rule_change',
+	/** Claude looked a library plant up for a garden, and it was accepted. */
+	'research',
+	/** A garden has a plant the library doesn't. */
+	'new_plant',
+	/** Someone wrote a note from an article: "Suggest something". */
+	'note',
+] as const;
+export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
+
+export const SUGGESTION_STATUSES = ['open', 'accepted', 'rejected'] as const;
+
+/**
+ * Something a garden offers the library, waiting for a site admin. Nothing
+ * here changes the library until it is accepted, as with a proposal.
+ *
+ * Anonymous the same way evidence is. `subjectKey` is a keyed hash of the
+ * household plant it came from, so accepting a new plant can link that copy
+ * without the suggestion ever naming it. `sourceKey` is what makes two
+ * suggestions the same one: re-suggesting replaces an open one, and one that
+ * was rejected stays rejected rather than coming back.
+ */
+export const librarySuggestion = sqliteTable(
+	'library_suggestion',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		kind: text('kind', { enum: SUGGESTION_KINDS }).notNull(),
+		/** Null for a new plant. */
+		libraryPlantId: integer('library_plant_id').references(() => libraryPlant.id, {
+			onDelete: 'cascade',
+		}),
+		region: text('region', { enum: REGION_IDS }).notNull(),
+		gardenKey: text('garden_key').notNull(),
+		subjectKey: text('subject_key'),
+		sourceKey: text('source_key').notNull(),
+		/** What is suggested, as JSON; its shape is the kind's. */
+		payload: text('payload').notNull(),
+		status: text('status', { enum: SUGGESTION_STATUSES }).notNull().default('open'),
+		createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+		reviewedAt: text('reviewed_at'),
+	},
+	(t) => [
+		uniqueIndex('library_suggestion_source_idx').on(t.sourceKey),
+		index('library_suggestion_status_idx').on(t.status),
+	],
 );
 
 /*

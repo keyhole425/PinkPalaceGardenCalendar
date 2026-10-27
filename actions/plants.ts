@@ -15,13 +15,18 @@ import { currentPlaces } from '@/lib/db/queries/beds';
 import { householdRegion } from '@/lib/db/queries/household';
 import { environment, planting, plantType } from '@/lib/db/schema';
 import { ownedRow, owns } from '@/lib/db/tenancy';
+import { contributeLater } from '@/lib/library/evidence';
 import { loadResolved } from '@/lib/library/resolve';
+import { plantOfItsOwnLater } from '@/lib/library/suggestions';
 import { followLibrary } from '@/lib/library/sync';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 function slugify(name: string): string {
+	// "Jalapeño" is jalapeno, not jalape-o.
 	return name
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '')
@@ -114,7 +119,7 @@ export async function createPlantType(
 		slug = `${slugify(parsed.data.commonName)}-${attempt}`;
 	}
 
-	await db
+	const made = await db
 		.insert(plantType)
 		.values({
 			householdId,
@@ -125,8 +130,12 @@ export async function createPlantType(
 			needsReview: true,
 			userModifiedAt: new Date().toISOString(),
 		})
-		.run();
+		.returning({ id: plantType.id })
+		.get();
 
+	// The library doesn't have it - that is why it was typed in - so it is
+	// offered to the library, and kept up to date as its months go in.
+	await plantOfItsOwnLater(householdId, made.id);
 	refresh(slug);
 	redirect(`/plants/${slug}/edit`);
 }
@@ -175,6 +184,7 @@ export async function updatePlantType(
 		.where(ownedRow(plantType, id, householdId))
 		.run();
 
+	await plantOfItsOwnLater(householdId, id);
 	refresh(row.slug);
 	return { ok: true };
 }
@@ -272,7 +282,7 @@ export async function createPlanting(
 		return { ok: false, error: 'There is already one by that name.' };
 	}
 
-	await db
+	const made = await db
 		.insert(planting)
 		.values({
 			householdId,
@@ -284,8 +294,10 @@ export async function createPlanting(
 			notesMd: parsed.data.notesMd || null,
 			status: 'active',
 		})
-		.run();
+		.returning({ id: planting.id })
+		.get();
 
+	await contributeLater(householdId, [made.id]);
 	refresh(plant.slug);
 	return { ok: true };
 }
@@ -340,6 +352,7 @@ export async function setPlantingStatus(
 		.where(ownedRow(planting, parsed.data.plantingId, householdId))
 		.run();
 
+	await contributeLater(householdId, [parsed.data.plantingId]);
 	refresh(parsed.data.slug);
 	return { ok: true };
 }

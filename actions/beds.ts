@@ -10,6 +10,7 @@ import { db } from '@/lib/db/client';
 import { currentPlaces, rotationWarningFor } from '@/lib/db/queries/beds';
 import { environment, planting, plantType } from '@/lib/db/schema';
 import { ownedRow } from '@/lib/db/tenancy';
+import { contributeLater } from '@/lib/library/evidence';
 
 export type ActionResult =
 	| { ok: true; warning?: string }
@@ -87,7 +88,7 @@ export async function sowInBed(
 
 	const sownOn = parsed.data.sownOn || today();
 
-	await db
+	const sown = await db
 		.insert(planting)
 		.values({
 			householdId,
@@ -99,7 +100,9 @@ export async function sowInBed(
 			posY: posY ?? null,
 			status: 'active',
 		})
-		.run();
+		.returning({ id: planting.id })
+		.get();
+	await contributeLater(householdId, [sown.id]);
 
 	refresh(place.slug);
 	// The plant's own page lists where it grows, and may be where this came from.
@@ -134,6 +137,7 @@ export async function clearFromBed(
 		.set({ status: 'removed', removedOn: today() })
 		.where(ownedRow(planting, parsed.data.plantingId, householdId))
 		.run();
+	await contributeLater(householdId, [parsed.data.plantingId]);
 
 	refresh(parsed.data.slug);
 	return { ok: true };

@@ -22,6 +22,7 @@ import {
 	type SeedProfile,
 } from '@/lib/db/schema';
 import { asHouseholdId, type HouseholdId, owns } from '@/lib/db/tenancy';
+import { contribute, libraryPlantings } from '@/lib/library/evidence';
 import { loadResolved } from '@/lib/library/resolve';
 import {
 	copyFields,
@@ -454,7 +455,14 @@ export async function seedAll(db: Db): Promise<SeedReport[]> {
 
 	const reports: SeedReport[] = [];
 	for (const h of households) {
-		reports.push(await seedHousehold(db, asHouseholdId(h.id), h.profile));
+		const hid = asHouseholdId(h.id);
+		reports.push(await seedHousehold(db, hid, h.profile));
+		// What the library learns is worked out when a grow changes. A grow
+		// nothing has happened to since - one from before the library learned
+		// at all - would never be counted, so every deploy works them all
+		// out again. It is safe to: each grow overwrites its own row, and a
+		// garden that doesn't share is skipped.
+		await contribute(hid, await libraryPlantings(hid));
 	}
 	return reports;
 }

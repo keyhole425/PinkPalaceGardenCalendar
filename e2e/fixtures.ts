@@ -20,6 +20,9 @@ export const E2E_ENV = {
 	TURSO_DATABASE_URL: `file:${E2E_DB}`,
 	BETTER_AUTH_URL: E2E_URL,
 	BETTER_AUTH_SECRET: 'e2e-only-secret-that-signs-nothing-real-0000',
+	// Production refuses to run without one, and the library's anonymous
+	// keys are made with it. The bytes spell e2e-only-encryption-key-00000000.
+	FIGGY_ENCRYPTION_KEY: 'ZTJlLW9ubHktZW5jcnlwdGlvbi1rZXktMDAwMDAwMDA=',
 	// Pinned, so "what's due" is the same on every run.
 	FIGGY_TODAY: '2026-09-25',
 };

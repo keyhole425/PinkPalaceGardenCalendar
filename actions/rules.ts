@@ -25,6 +25,7 @@ import {
 	plantType,
 } from '@/lib/db/schema';
 import { type HouseholdId, ownedRow, owns } from '@/lib/db/tenancy';
+import { ruleChangedLater } from '@/lib/library/suggestions';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -195,6 +196,7 @@ export async function saveRule(
 		await tx.insert(careRule).values(rows).run();
 		await adoptRemaining(tx, householdId, plantTypeId, action, now);
 	});
+	await ruleChangedLater(householdId, plantTypeId, action);
 	refresh(slug);
 	return { ok: true };
 }
@@ -251,6 +253,7 @@ export async function deleteRule(
 
 		await adoptRemaining(tx, householdId, plantTypeId, action, now);
 	});
+	await ruleChangedLater(householdId, plantTypeId, action);
 	refresh(slug);
 	return { ok: true };
 }

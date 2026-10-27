@@ -50,6 +50,24 @@ export function windowText(rules: RuleLike[]): string {
 	return monthsText(rules.reduce((mask, r) => mask | r.monthMask, 0));
 }
 
+/** Every action in the order the year does them, for lists of strips. */
+const ACTION_ORDER = [
+	'sow',
+	'transplant',
+	'thin',
+	'fertilise',
+	'water',
+	'prune',
+	'net',
+	'spray',
+	'harvest',
+];
+
+export function actionOrder(action: string): number {
+	const i = ACTION_ORDER.indexOf(action);
+	return i === -1 ? ACTION_ORDER.length : i;
+}
+
 /** The actions worth a line, in the order a gardener thinks of them. */
 const LEAD: [action: string, verb: string][] = [
 	['sow', 'Sow'],

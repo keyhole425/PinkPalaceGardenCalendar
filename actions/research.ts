@@ -31,6 +31,8 @@ import {
 	plantType,
 } from '@/lib/db/schema';
 import { isOwned, ownedRow, owns } from '@/lib/db/tenancy';
+import { afterResponse, contributePlant } from '@/lib/library/evidence';
+import { researched } from '@/lib/library/suggestions';
 import { maskFromMonths } from '@/lib/schedule/months';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -40,6 +42,8 @@ const RESEARCH_BUDGET_MS = 270_000;
 
 function slugify(name: string): string {
 	return name
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-|-$/g, '')
@@ -314,10 +318,23 @@ export async function acceptProposal(
 			.where(ownedRow(aiProposal, stored.id, householdId))
 			.run();
 
-		return { ok: true as const, slug };
+		return { ok: true as const, slug, plantTypeId };
 	});
 	if (!outcome.ok) return outcome;
 
+	// What the library might learn from this: Claude's months for one of its
+	// plants, or a plant it doesn't have; and any planting made just now.
+	const learnedFor = outcome.plantTypeId;
+	await afterResponse(async () => {
+		await researched(
+			householdId,
+			learnedFor,
+			proposal,
+			parsed.data.accept,
+			stored.citations,
+		);
+		await contributePlant(householdId, learnedFor);
+	});
 	refresh(outcome.slug);
 	redirect(`/plants/${outcome.slug}`);
 }

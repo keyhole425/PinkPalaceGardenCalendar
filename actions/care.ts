@@ -19,6 +19,7 @@ import { db } from '@/lib/db/client';
 import { findOccurrence, openSeasonsFor } from '@/lib/db/queries/garden';
 import { careLog } from '@/lib/db/schema';
 import { ownedRow } from '@/lib/db/tenancy';
+import { contributeLater } from '@/lib/library/evidence';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -89,6 +90,7 @@ export async function completeTask(
 		return { ok: false, error: 'That one is already marked done.' };
 	}
 
+	await contributeLater(householdId, [plantingId]);
 	refresh(task.context.plantSlug);
 	return { ok: true };
 }
@@ -145,6 +147,7 @@ export async function logHarvest(
 		})
 		.run();
 
+	await contributeLater(householdId, [plantingId]);
 	refresh(season.context.plantSlug);
 	return { ok: true };
 }
@@ -167,10 +170,12 @@ export async function undoCompletion(
 		return { ok: false, error: 'Nothing to undo.' };
 	}
 
-	await db
+	const gone = await db
 		.delete(careLog)
 		.where(ownedRow(careLog, parsed.data.logId, householdId))
-		.run();
+		.returning({ plantingId: careLog.plantingId })
+		.get();
+	if (gone) await contributeLater(householdId, [gone.plantingId]);
 	refresh(parsed.data.slug);
 	return { ok: true };
 }

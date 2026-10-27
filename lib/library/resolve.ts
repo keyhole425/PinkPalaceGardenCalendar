@@ -63,6 +63,8 @@ export type ResolvedPlant = {
 	problemsMd: string | null;
 	/** The pages the article was written from, as stored: JSON, or null. */
 	citations: string | null;
+	/** "What gardens found here", as a site admin wrote it. */
+	findingsMd: string | null;
 	regionNote: string | null;
 	needsReview: boolean;
 	/**
@@ -156,6 +158,7 @@ export function resolvePlant(
 		harvestMd: plant.harvestMd ?? parent?.harvestMd ?? null,
 		problemsMd: plant.problemsMd ?? parent?.problemsMd ?? null,
 		citations: plant.citations ?? parent?.citations ?? null,
+		findingsMd: plant.findingsMd ?? parent?.findingsMd ?? null,
 		regionNote: noteFor(plant.id) ?? (parent ? noteFor(parent.id) : null),
 		needsReview: plant.needsReview || (parent?.needsReview ?? false),
 		revision: plant.revision + (parent?.revision ?? 0),

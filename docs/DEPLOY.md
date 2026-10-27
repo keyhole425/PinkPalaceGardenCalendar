@@ -217,6 +217,14 @@ Do one restore before relying on it.
   redeploy. Saved keys still open with the old one; each household admin
   re-saving their key moves it onto the new one. Remove `…_PREVIOUS` once
   they have.
+
+  The library's evidence and suggestions are keyed by hashes made with this
+  key. While `…_PREVIOUS` is set, a grow found under its old hash is
+  rewritten under the new one the next time anything happens to it, and a
+  garden that stops sharing has rows under either hash deleted. Rows no
+  household touches in that time keep their old hash, and once `…_PREVIOUS`
+  is gone a garden that stops sharing can no longer delete those. So keep
+  `…_PREVIOUS` for a season, not a day.
 - **`TURSO_AUTH_TOKEN`**: mint a new one, swap it in, redeploy, then
   `turso db tokens invalidate figgy`.
 - **Someone forgot their password**: with the three exports from [Getting
